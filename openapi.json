@@ -1,0 +1,1243 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Inventory Management API",
+    "description": "REST API over a Python stdlib HTTP server backed by flat JSON files (see /data). Every route requires an API_KEY header; access is further gated per resource and HTTP verb by that key's endpoint_access permissions (see auth_provider.has_access). Reconstructed from api/main.py, api/models, api/providers and the /data/*.json sample files — no server was run to generate this document.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "http://localhost:3000/api/v1" }
+  ],
+  "security": [
+    { "ApiKeyAuth": [] }
+  ],
+  "tags": [
+    { "name": "warehouses" },
+    { "name": "locations" },
+    { "name": "items" },
+    { "name": "item_lines" },
+    { "name": "item_groups" },
+    { "name": "item_types" },
+    { "name": "inventories" },
+    { "name": "suppliers" },
+    { "name": "orders" },
+    { "name": "clients" },
+    { "name": "shipments" },
+    { "name": "transfers" }
+  ],
+  "paths": {
+    "/warehouses": {
+      "get": {
+        "tags": ["warehouses"],
+        "summary": "List warehouses",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Warehouse" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["warehouses"],
+        "summary": "Create a warehouse",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WarehouseInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/warehouses/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["warehouses"],
+        "summary": "Get a warehouse",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Warehouse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["warehouses"],
+        "summary": "Replace a warehouse",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WarehouseInput" } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["warehouses"],
+        "summary": "Delete a warehouse",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/warehouses/{id}/locations": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["warehouses", "locations"],
+        "summary": "List locations inside a warehouse",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Location" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/locations": {
+      "get": {
+        "tags": ["locations"],
+        "summary": "List locations",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Location" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["locations"],
+        "summary": "Create a location",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LocationInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/locations/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["locations"],
+        "summary": "Get a location",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Location" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["locations"],
+        "summary": "Replace a location",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LocationInput" } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["locations"],
+        "summary": "Delete a location",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/items": {
+      "get": {
+        "tags": ["items"],
+        "summary": "List items",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Item" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["items"],
+        "summary": "Create an item",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ItemInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/items/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["items"],
+        "summary": "Get an item",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Item" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["items"],
+        "summary": "Replace an item",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ItemInput" } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["items"],
+        "summary": "Delete an item",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/items/{id}/inventory": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["items", "inventories"],
+        "summary": "List inventory rows for an item, across all locations",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Inventory" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/items/{id}/inventory/totals": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["items", "inventories"],
+        "summary": "Summed inventory quantities for an item, across all locations",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InventoryTotals" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/item_lines": {
+      "get": {
+        "tags": ["item_lines"],
+        "summary": "List item lines",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TaxonomyEntry" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["item_lines"],
+        "summary": "Create an item line",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaxonomyEntryInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/item_lines/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["item_lines"],
+        "summary": "Get an item line",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaxonomyEntry" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["item_lines"],
+        "summary": "Replace an item line",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaxonomyEntryInput" } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["item_lines"],
+        "summary": "Delete an item line",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/item_lines/{id}/items": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["item_lines", "items"],
+        "summary": "List item ids belonging to this item line",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "integer" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/item_groups": {
+      "get": {
+        "tags": ["item_groups"],
+        "summary": "List item groups",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TaxonomyEntry" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["item_groups"],
+        "summary": "Create an item group",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaxonomyEntryInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/item_groups/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["item_groups"],
+        "summary": "Get an item group",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaxonomyEntry" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["item_groups"],
+        "summary": "Replace an item group",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaxonomyEntryInput" } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["item_groups"],
+        "summary": "Delete an item group",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/item_groups/{id}/items": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["item_groups", "items"],
+        "summary": "List item ids belonging to this item group",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "integer" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/item_types": {
+      "get": {
+        "tags": ["item_types"],
+        "summary": "List item types",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TaxonomyEntry" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["item_types"],
+        "summary": "Create an item type",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaxonomyEntryInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/item_types/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["item_types"],
+        "summary": "Get an item type",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaxonomyEntry" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["item_types"],
+        "summary": "Replace an item type",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaxonomyEntryInput" } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["item_types"],
+        "summary": "Delete an item type",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/item_types/{id}/items": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["item_types", "items"],
+        "summary": "List item ids of this item type",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "integer" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/inventories": {
+      "get": {
+        "tags": ["inventories"],
+        "summary": "List all inventory rows",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Inventory" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["inventories"],
+        "summary": "Create or upsert an inventory row",
+        "description": "Upserts on the composite key (item_id, location_id): if a row for that pair already exists it is merged, otherwise a new row is appended.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InventoryInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/inventories/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["inventories"],
+        "summary": "Not supported",
+        "description": "Inventory rows are keyed on the composite (item_id, location_id) pair, not a surrogate id, so this always 404s. Use /items/{id}/inventory instead.",
+        "responses": { "404": { "description": "Not Found" } }
+      },
+      "put": {
+        "tags": ["inventories"],
+        "summary": "Not supported",
+        "description": "Always 404s; use POST /inventories to upsert by (item_id, location_id).",
+        "responses": { "404": { "description": "Not Found" } }
+      },
+      "delete": {
+        "tags": ["inventories"],
+        "summary": "Not supported",
+        "description": "Always 404s; no delete-by-composite-key route exists.",
+        "responses": { "404": { "description": "Not Found" } }
+      }
+    },
+
+    "/suppliers": {
+      "get": {
+        "tags": ["suppliers"],
+        "summary": "List suppliers",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Supplier" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["suppliers"],
+        "summary": "Create a supplier",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SupplierInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/suppliers/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["suppliers"],
+        "summary": "Get a supplier",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Supplier" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["suppliers"],
+        "summary": "Replace a supplier",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SupplierInput" } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["suppliers"],
+        "summary": "Delete a supplier",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/suppliers/{id}/items": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["suppliers", "items"],
+        "summary": "List items sourced from this supplier",
+        "description": "Unlike the item_lines/item_groups/item_types variants, this returns full Item objects rather than bare ids.",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Item" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/orders": {
+      "get": {
+        "tags": ["orders"],
+        "summary": "List orders, each with its line items embedded",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["orders"],
+        "summary": "Create an order and its line items",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/orders/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["orders"],
+        "summary": "Get an order, with its line items embedded",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["orders"],
+        "summary": "Replace order fields",
+        "description": "Replaces the order record itself. If the body includes items they are applied via the same reconciliation as PUT /orders/{id}/items.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderInput" } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["orders"],
+        "summary": "Delete an order and its line items",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/orders/{id}/items": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["orders"],
+        "summary": "List line items for an order",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/OrderLineItem" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["orders"],
+        "summary": "Replace line items for an order",
+        "description": "Diffs old vs. new amounts per item_id and pushes the delta into Inventories.quantity_allocated on the inventory row with the most stock on hand for that item, clamped at 0.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/OrderLineItemInput" } } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/clients": {
+      "get": {
+        "tags": ["clients"],
+        "summary": "List clients",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Client" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["clients"],
+        "summary": "Create a client",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ClientInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/clients/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["clients"],
+        "summary": "Get a client",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Client" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["clients"],
+        "summary": "Replace a client",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ClientInput" } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["clients"],
+        "summary": "Delete a client",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/clients/{id}/orders": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["clients", "orders"],
+        "summary": "List orders where this client is the orderer, ship-to, or bill-to party",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/shipments": {
+      "get": {
+        "tags": ["shipments"],
+        "summary": "List shipments, each with its line items embedded",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Shipment" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["shipments"],
+        "summary": "Create a shipment and its line items",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ShipmentInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/shipments/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["shipments"],
+        "summary": "Get a shipment, with its line items embedded",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Shipment" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["shipments"],
+        "summary": "Replace shipment fields",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ShipmentInput" } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["shipments"],
+        "summary": "Delete a shipment and its line items",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/shipments/{id}/orders": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["shipments", "orders"],
+        "summary": "Get the order linked to this shipment, as a single-element (or empty) list",
+        "description": "Kept list-shaped for v1 compatibility; the underlying schema is a 1:1 shipment.order_id.",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "integer" }, "maxItems": 1 } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["shipments", "orders"],
+        "summary": "Set (or clear) the order linked to this shipment",
+        "description": "Accepts a list for v1 compatibility; only the first id is kept as shipment.order_id, or the link is cleared if the list is empty.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "array", "items": { "type": "integer" } } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/shipments/{id}/items": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["shipments"],
+        "summary": "List line items for a shipment",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ShipmentLineItem" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["shipments"],
+        "summary": "Replace line items for a shipment",
+        "description": "Diffs old vs. new amounts per item_id and pushes the delta into Inventories.quantity_ordered on the inventory row with the most stock on hand for that item, clamped at 0.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ShipmentLineItemInput" } } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/transfers": {
+      "get": {
+        "tags": ["transfers"],
+        "summary": "List transfers, each with its line items embedded",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Transfer" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["transfers"],
+        "summary": "Schedule a batch transfer",
+        "description": "Server sets transfer_status to \"Scheduled\" regardless of the request body, and pushes a notification onto the queue.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TransferInput" } } } },
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/transfers/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["transfers"],
+        "summary": "Get a transfer, with its line items embedded",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Transfer" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["transfers"],
+        "summary": "Replace transfer fields",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TransferInput" } } } },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["transfers"],
+        "summary": "Delete a transfer and its line items",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/transfers/{id}/items": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "get": {
+        "tags": ["transfers"],
+        "summary": "List line items for a transfer",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TransferLineItem" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/transfers/{id}/commit": {
+      "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+      "put": {
+        "tags": ["transfers"],
+        "summary": "Commit a scheduled transfer",
+        "description": "Moves quantity_on_hand for every line item from from_location_id to to_location_id (creating the destination inventory row if it does not exist), sets transfer_status to \"Processed\", and pushes a notification. Takes no request body.",
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "API_KEY",
+        "description": "Looked up against /data/user.json by auth_provider.get_user(); the matching user's endpoint_access map then gates each resource+verb via auth_provider.has_access()."
+      }
+    },
+    "parameters": {
+      "IdPathParam": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer" },
+        "description": "Surrogate id of the resource."
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Missing or unrecognized API_KEY header."
+      },
+      "Forbidden": {
+        "description": "API key is valid but its endpoint_access does not permit this resource/verb."
+      }
+    },
+    "schemas": {
+      "Warehouse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "city": { "type": "string" },
+          "zip_code": { "type": "string" },
+          "province": { "type": "string" },
+          "country": { "type": "string" },
+          "contact_name": { "type": "string" },
+          "contact_phone": { "type": "string" },
+          "contact_email": { "type": "string", "format": "email" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "WarehouseInput": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "city": { "type": "string" },
+          "zip_code": { "type": "string" },
+          "province": { "type": "string" },
+          "country": { "type": "string" },
+          "contact_name": { "type": "string" },
+          "contact_phone": { "type": "string" },
+          "contact_email": { "type": "string", "format": "email" }
+        },
+        "required": ["id", "code", "name"]
+      },
+      "Location": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "warehouse_id": { "type": "integer" },
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "LocationInput": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "warehouse_id": { "type": "integer" },
+          "code": { "type": "string" },
+          "name": { "type": "string" }
+        },
+        "required": ["id", "warehouse_id", "code"]
+      },
+      "TaxonomyEntry": {
+        "description": "Shape shared by item_lines, item_groups and item_types.",
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TaxonomyEntryInput": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "required": ["id", "name"]
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "code": { "type": "string" },
+          "description": { "type": "string" },
+          "barcode": { "type": "string" },
+          "model_number": { "type": "string" },
+          "commodity_code": { "type": "integer" },
+          "unit_weight": { "type": "number" },
+          "item_line_id": { "type": "integer" },
+          "item_group_id": { "type": "integer" },
+          "item_type_id": { "type": "integer" },
+          "min_purchase_qty": { "type": "integer" },
+          "case_size": { "type": "integer" },
+          "packaging_type": { "type": "string" },
+          "order_multiple": { "type": "integer" },
+          "supplier_id": { "type": "integer" },
+          "supplier_sku": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ItemInput": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "code": { "type": "string" },
+          "description": { "type": "string" },
+          "barcode": { "type": "string" },
+          "model_number": { "type": "string" },
+          "commodity_code": { "type": "integer" },
+          "unit_weight": { "type": "number" },
+          "item_line_id": { "type": "integer" },
+          "item_group_id": { "type": "integer" },
+          "item_type_id": { "type": "integer" },
+          "min_purchase_qty": { "type": "integer" },
+          "case_size": { "type": "integer" },
+          "packaging_type": { "type": "string" },
+          "order_multiple": { "type": "integer" },
+          "supplier_id": { "type": "integer" },
+          "supplier_sku": { "type": "string" }
+        },
+        "required": ["id", "code"]
+      },
+      "Inventory": {
+        "type": "object",
+        "description": "Keyed on the composite (item_id, location_id), not a surrogate id.",
+        "properties": {
+          "item_id": { "type": "integer" },
+          "location_id": { "type": "integer" },
+          "quantity_on_hand": { "type": "integer" },
+          "quantity_expected": { "type": "integer" },
+          "quantity_ordered": { "type": "integer" },
+          "quantity_allocated": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "InventoryInput": {
+        "type": "object",
+        "properties": {
+          "item_id": { "type": "integer" },
+          "location_id": { "type": "integer" },
+          "quantity_on_hand": { "type": "integer" },
+          "quantity_expected": { "type": "integer" },
+          "quantity_ordered": { "type": "integer" },
+          "quantity_allocated": { "type": "integer" }
+        },
+        "required": ["item_id", "location_id"]
+      },
+      "InventoryTotals": {
+        "type": "object",
+        "properties": {
+          "total_expected": { "type": "integer" },
+          "total_ordered": { "type": "integer" },
+          "total_allocated": { "type": "integer" },
+          "total_available": { "type": "integer", "description": "Sum of (quantity_on_hand - quantity_allocated) across locations." }
+        }
+      },
+      "Supplier": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "city": { "type": "string" },
+          "zip_code": { "type": "string" },
+          "province": { "type": "string" },
+          "country": { "type": "string" },
+          "contact_name": { "type": "string" },
+          "phone_number": { "type": "string" },
+          "reference": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SupplierInput": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "city": { "type": "string" },
+          "zip_code": { "type": "string" },
+          "province": { "type": "string" },
+          "country": { "type": "string" },
+          "contact_name": { "type": "string" },
+          "phone_number": { "type": "string" },
+          "reference": { "type": "string" }
+        },
+        "required": ["id", "code", "name"]
+      },
+      "Client": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "city": { "type": "string" },
+          "zip_code": { "type": "string" },
+          "province": { "type": "string" },
+          "country": { "type": "string" },
+          "contact_name": { "type": "string" },
+          "contact_phone": { "type": "string" },
+          "contact_email": { "type": "string", "format": "email" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ClientInput": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "city": { "type": "string" },
+          "zip_code": { "type": "string" },
+          "province": { "type": "string" },
+          "country": { "type": "string" },
+          "contact_name": { "type": "string" },
+          "contact_phone": { "type": "string" },
+          "contact_email": { "type": "string", "format": "email" }
+        },
+        "required": ["id", "name"]
+      },
+      "OrderLineItem": {
+        "type": "object",
+        "properties": {
+          "item_id": { "type": "integer" },
+          "amount": { "type": "integer" }
+        }
+      },
+      "OrderLineItemInput": {
+        "type": "object",
+        "properties": {
+          "item_id": { "type": "integer" },
+          "amount": { "type": "integer" },
+          "unit_price": { "type": "number" }
+        },
+        "required": ["item_id", "amount"]
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "client_id": { "type": "integer" },
+          "order_date": { "type": "string", "format": "date-time" },
+          "request_date": { "type": "string", "format": "date-time" },
+          "reference": { "type": "string" },
+          "customer_po_number": { "type": "string" },
+          "order_status": { "type": "string", "enum": ["Pending", "Shipped", "Delivered", "Cancelled"] },
+          "shipping_notes": { "type": "string", "nullable": true },
+          "warehouse_id": { "type": "integer" },
+          "ship_to_client_id": { "type": "integer" },
+          "bill_to_client_id": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/OrderLineItem" } }
+        }
+      },
+      "OrderInput": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "client_id": { "type": "integer" },
+          "order_date": { "type": "string", "format": "date-time" },
+          "request_date": { "type": "string", "format": "date-time" },
+          "reference": { "type": "string" },
+          "customer_po_number": { "type": "string" },
+          "order_status": { "type": "string" },
+          "shipping_notes": { "type": "string", "nullable": true },
+          "warehouse_id": { "type": "integer" },
+          "ship_to_client_id": { "type": "integer" },
+          "bill_to_client_id": { "type": "integer" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/OrderLineItemInput" }, "description": "Only read on POST /orders and on PUT /orders/{id} when present." }
+        },
+        "required": ["id", "client_id"]
+      },
+      "ShipmentLineItem": {
+        "type": "object",
+        "properties": {
+          "item_id": { "type": "integer" },
+          "amount": { "type": "integer" }
+        }
+      },
+      "ShipmentLineItemInput": {
+        "type": "object",
+        "properties": {
+          "item_id": { "type": "integer" },
+          "amount": { "type": "integer" }
+        },
+        "required": ["item_id", "amount"]
+      },
+      "Shipment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "reference": { "type": "string" },
+          "order_id": { "type": "integer", "nullable": true },
+          "shipment_date": { "type": "string", "format": "date-time" },
+          "shipment_type": { "type": "string", "enum": ["Inbound", "Outgoing"] },
+          "shipment_status": { "type": "string", "enum": ["Scheduled", "Transit", "Delivered", "Cancelled"] },
+          "carrier_name": { "type": "string" },
+          "shipping_method": { "type": "string" },
+          "payment_type": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/ShipmentLineItem" } }
+        }
+      },
+      "ShipmentInput": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "reference": { "type": "string" },
+          "order_id": { "type": "integer", "nullable": true },
+          "shipment_date": { "type": "string", "format": "date-time" },
+          "shipment_type": { "type": "string" },
+          "shipment_status": { "type": "string" },
+          "carrier_name": { "type": "string" },
+          "shipping_method": { "type": "string" },
+          "payment_type": { "type": "string" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/ShipmentLineItemInput" }, "description": "Only read on POST /shipments and on PUT /shipments/{id} when present." }
+        },
+        "required": ["id", "reference"]
+      },
+      "TransferLineItem": {
+        "type": "object",
+        "properties": {
+          "item_id": { "type": "integer" },
+          "amount": { "type": "integer" }
+        }
+      },
+      "TransferLineItemInput": {
+        "type": "object",
+        "properties": {
+          "item_id": { "type": "integer" },
+          "amount": { "type": "integer" }
+        },
+        "required": ["item_id", "amount"]
+      },
+      "Transfer": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "reference": { "type": "string" },
+          "from_location_id": { "type": "integer" },
+          "to_location_id": { "type": "integer" },
+          "transfer_status": { "type": "string", "enum": ["Scheduled", "Processed"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/TransferLineItem" } }
+        }
+      },
+      "TransferInput": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "reference": { "type": "string" },
+          "from_location_id": { "type": "integer" },
+          "to_location_id": { "type": "integer" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/TransferLineItemInput" }, "description": "Only read on POST /transfers; transfer_status is always set server-side to \"Scheduled\" on create." }
+        },
+        "required": ["id", "reference", "from_location_id", "to_location_id"]
+      }
+    }
+  }
+}
