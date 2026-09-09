@@ -1,0 +1,43 @@
+name: Require 2 Approvals
+
+on:
+    pull_request_review:
+        types: [submitted, dismissed]
+    pull_request:
+        types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+    pull-requests: read
+
+jobs:
+    check-approvals:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Count approving reviews
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const { data: reviews } = await github.rest.pulls.listReviews({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        pull_number: context.payload.pull_request.number,
+                      });
+
+                      // Keep only the latest review per user (dismissed/re-reviewed handling)
+                      const latestByUser = {};
+                      for (const review of reviews) {
+                        latestByUser[review.user.id] = review;
+                      }
+
+                      const approvals = Object.values(latestByUser).filter(
+                        r => r.state === 'APPROVED'
+                      ).length;
+
+                      console.log(`Approving reviews: ${approvals}`);
+
+                      const required = 2;
+                      if (approvals < required) {
+                        core.setFailed(
+                          `This PR has ${approvals} approval(s), but ${required} are required.`
+                        );
+                      }
