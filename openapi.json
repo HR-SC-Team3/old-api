@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Inventory Management API",
-    "description": "REST API over a Python stdlib HTTP server backed by flat JSON files (see /data). Every route requires an API_KEY header; access is further gated per resource and HTTP verb by that key's endpoint_access permissions (see auth_provider.has_access). Reconstructed from api/main.py, api/models, api/providers and the /data/*.json sample files — no server was run to generate this document.",
+    "description": "REST API over a Python stdlib HTTP server backed by flat JSON files (see /data). Every route requires an API_KEY header; access is further gated per resource and HTTP verb by that key's endpoint_access permissions (see auth_provider.has_access). Reconstructed from api/main.py, api/models, api/providers and the /data/*.json sample files, and cross-checked against every documented route on a live run of the server.",
     "version": "1.0.0"
   },
   "servers": [
