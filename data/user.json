@@ -466,5 +466,83 @@
         "delete": false
       }
     }
+  },
+  {
+    "api_key": "a1u3d5i7t9v2i4e6w8e0r",
+    "app": "audit_viewer",
+    "endpoint_access": {
+      "warehouses": {
+        "get": true,
+        "post": false,
+        "put": false,
+        "delete": false
+      },
+      "locations": {
+        "get": true,
+        "post": false,
+        "put": false,
+        "delete": false
+      },
+      "transfers": {
+        "get": true,
+        "post": false,
+        "put": false,
+        "delete": false
+      },
+      "items": {
+        "get": true,
+        "post": false,
+        "put": false,
+        "delete": false
+      },
+      "item_lines": {
+        "get": true,
+        "post": false,
+        "put": false,
+        "delete": false
+      },
+      "item_groups": {
+        "get": true,
+        "post": false,
+        "put": false,
+        "delete": false
+      },
+      "item_types": {
+        "get": true,
+        "post": false,
+        "put": false,
+        "delete": false
+      },
+      "suppliers": {
+        "get": false,
+        "post": false,
+        "put": false,
+        "delete": false
+      },
+      "orders": {
+        "get": true,
+        "post": false,
+        "put": false,
+        "delete": false
+      },
+      "clients": {
+        "get": true,
+        "post": false,
+        "put": false,
+        "delete": false
+      },
+      "shipments": {
+        "get": true,
+        "post": false,
+        "put": false,
+        "delete": false
+      },
+      "inventories": {
+        "get": true,
+        "post": false,
+        "put": false,
+        "delete": false
+      }
+    }
   }
 ]
