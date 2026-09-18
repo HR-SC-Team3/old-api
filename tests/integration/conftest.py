@@ -1,16 +1,23 @@
 import json
-import subprocess
+import socketserver
 import sys
-import time
+import threading
 from pathlib import Path
 
 import pytest
-import requests
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 API_DIR = REPO_ROOT / "api"
 DATA_DIR = REPO_ROOT / "data"
-BASE_URL = "http://localhost:3000"
+
+# The api/ package uses top-level imports (e.g. "from providers import
+# auth_provider") that only resolve with api/ on sys.path, so import the
+# server module in-process rather than shelling out to `python main.py`.
+# This also keeps the server's code inside the pytest process, which is what
+# lets pytest-cov measure it (a subprocess killed via Popen.terminate()
+# would never flush its coverage data, especially on Windows).
+sys.path.insert(0, str(API_DIR))
+import main as api_main  # noqa: E402
 
 
 def _load_users():
@@ -18,41 +25,17 @@ def _load_users():
         return json.load(f)
 
 
-# Any valid key, just to probe that the server has come up.
-_PROBE_API_KEY = _load_users()[0]["api_key"]
-
-
 @pytest.fixture(scope="session")
 def api_server():
-    process = subprocess.Popen(
-        [sys.executable, "main.py"],
-        cwd=API_DIR,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
+    httpd = socketserver.TCPServer(("localhost", 0), api_main.ApiRequestHandler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
 
-    deadline = time.time() + 10
-    while time.time() < deadline:
-        if process.poll() is not None:
-            output = process.stdout.read().decode(errors="replace")
-            raise RuntimeError(f"API server exited early:\n{output}")
-        try:
-            requests.get(
-                f"{BASE_URL}/api/v1/warehouses",
-                headers={"API_KEY": _PROBE_API_KEY},
-                timeout=1,
-            )
-            break
-        except requests.ConnectionError:
-            time.sleep(0.2)
-    else:
-        process.terminate()
-        raise RuntimeError("API server did not start in time")
+    yield f"http://localhost:{httpd.server_address[1]}"
 
-    yield BASE_URL
-
-    process.terminate()
-    process.wait(timeout=5)
+    httpd.shutdown()
+    httpd.server_close()
+    thread.join(timeout=5)
 
 
 @pytest.fixture
