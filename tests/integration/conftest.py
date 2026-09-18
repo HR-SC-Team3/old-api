@@ -1,6 +1,7 @@
 import collections
 import functools
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -13,7 +14,12 @@ import requests
 REPO_ROOT = Path(__file__).resolve().parents[2]
 API_DIR = REPO_ROOT / "api"
 DATA_DIR = REPO_ROOT / "data"
-BASE_URL = "http://localhost:3000"
+# Deliberately 127.0.0.1, not "localhost": resolving "localhost" added a
+# consistent ~2s tax to every single request in this environment (confirmed
+# by timing the same endpoint against both hosts back to back), almost
+# certainly an IPv6-then-IPv4 dual-stack connect() fallback -- nothing to do
+# with the server itself. Real clients hitting this API should do the same.
+BASE_URL = "http://127.0.0.1:3000"
 
 # The dev server (api/main.py) is a single-threaded socketserver.TCPServer
 # that has been observed to wedge completely (both client and server left
@@ -56,6 +62,7 @@ def api_server():
         cwd=API_DIR,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        env={**os.environ, "API_TEST_MODE": "1"},
     )
 
     # BaseHTTPRequestHandler logs a line per request to stderr (redirected
@@ -106,14 +113,17 @@ def base_url(api_server):
 
 
 @pytest.fixture
-def preserve_data_files():
+def preserve_data_files(base_url):
     """Snapshot data/*.json files before a mutating (POST/PUT/DELETE) test and
     restore their exact original bytes afterward, regardless of pass/fail.
 
-    Every data pool in api/providers/data_provider.py reads its JSON file fresh
-    on each fetch and POST/PUT/DELETE handlers call `save()` on the file, so a
-    test that hits a mutating endpoint can permanently rewrite (and reformat)
-    the repo's fixture data unless it is restored afterward.
+    api/providers/data_provider.py now caches one pool instance per resource
+    for the life of the server process (see its module docstring), so a
+    mutation actually persists both on disk *and* in the server's in-memory
+    cache for every later test in this session. Restoring the on-disk bytes
+    alone isn't enough -- the server also needs to be told to reload, via the
+    test-only `/api/v1/_test/reset-cache` endpoint (only reachable when the
+    server was started with API_TEST_MODE=1, which api_server does).
     """
     snapshots = {}
 
@@ -127,6 +137,9 @@ def preserve_data_files():
 
     for path, original in snapshots.items():
         path.write_bytes(original)
+
+    if snapshots:
+        requests.post(f"{base_url}/api/v1/_test/reset-cache")
 
 
 @pytest.fixture

@@ -79,20 +79,6 @@ def test_response_content_type_is_json(base_url, user_headers):
     assert response.headers.get("Content-Type", "").startswith("application/json")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Every request to this server (not just GET /suppliers) consistently "
-        "takes ~2s, reproducible across repeated calls. The server is a plain "
-        "`socketserver.TCPServer`/`BaseHTTPRequestHandler`, whose default request "
-        "logging calls `address_string()` -> `socket.getfqdn()`, a reverse-DNS "
-        "lookup done synchronously per request; that's the textbook cause of a "
-        "fixed ~2s tax on every response on machines without fast reverse DNS. "
-        "Redesign suggestion: use ThreadingHTTPServer and override "
-        "address_string()/disable request logging in production, or add a real "
-        "framework with proper logging."
-    ),
-)
 def test_response_time_is_reasonable(base_url, user_headers):
     headers = user_headers(resource="suppliers", method="get", allowed=True)
 
@@ -516,18 +502,6 @@ def test_post_supplier_duplicate_id_returns_conflict(
     assert response.status_code == 409
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Root cause: fetch_supplier_pool() reads data/supplier.json from disk "
-        "fresh on every call, and handle_post_version_1 calls it once to "
-        "add_supplier() and again (a second, independent, freshly-reloaded "
-        "instance) to save(). The freshly-reloaded instance never saw the "
-        "append, so the save is a no-op. POST /suppliers returns 201 but the "
-        "created supplier is never retrievable. See module-level comment above "
-        "this section for detail."
-    ),
-)
 def test_post_supplier_is_immediately_retrievable(
     base_url, user_headers, preserve_data_files
 ):
@@ -681,16 +655,6 @@ def test_put_supplier_valid_payload_returns_200(
     assert response.status_code == 200
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Root cause: same fetch-mutate-fetch-save pattern as POST - "
-        "fetch_supplier_pool() reloads data/supplier.json from disk for the "
-        "save() call, independent of the instance update_supplier() mutated, "
-        "so the update never persists. Re-GET after a 200 PUT still returns "
-        "the original, unmodified resource."
-    ),
-)
 def test_put_supplier_update_is_persisted(base_url, user_headers, preserve_data_files):
     preserve_data_files("supplier.json")
     existing = _first_supplier(base_url, user_headers)
@@ -837,16 +801,6 @@ def test_delete_supplier_valid_id_returns_200(
     assert response.status_code in (200, 204)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Root cause: same fetch-mutate-fetch-save pattern as POST/PUT - "
-        "remove_supplier() mutates one freshly-loaded Suppliers instance, and "
-        "save() persists a *different*, independently freshly-loaded instance "
-        "that never had the removal applied. The supplier is still present "
-        "(and still 200s on GET) immediately after a 200 DELETE."
-    ),
-)
 def test_delete_supplier_resource_is_actually_gone(
     base_url, user_headers, preserve_data_files
 ):
@@ -909,10 +863,14 @@ def test_delete_supplier_malformed_id_returns_400(
     strict=True,
     reason=(
         "First DELETE is expected to remove the resource (200/204) and a "
-        "second DELETE on the same, now-gone id is expected to 404. Because "
-        "DELETE never actually persists (see no-op bug above), the first "
-        "delete never really happens, so the id is 'still there' for the "
-        "second call too and both return 200 instead of 200-then-404."
+        "second DELETE on the same, now-gone id is expected to 404. DELETE "
+        "now actually persists (data_provider.py caches one pool instance per "
+        "resource, so the mutate call and the save call act on the same "
+        "instance), so the first delete really does remove the resource -- but "
+        "remove_supplier() is a silent no-op when the id isn't found, and "
+        "handle_delete_version_1 always sends 200 regardless of whether "
+        "anything was removed. The second delete still gets 200 instead of "
+        "404 because there is no existence check before responding."
     ),
 )
 def test_delete_supplier_repeated_delete_returns_404_not_500(
