@@ -1,0 +1,372 @@
+flowchart LR
+
+    subgraph warehouse["WAREHOUSE"]
+        direction TB
+        warehouse__id["id (PK)"]
+        warehouse__code["code"]
+        warehouse__name["name"]
+        warehouse__address["address"]
+        warehouse__city["city"]
+        warehouse__zip_code["zip_code"]
+        warehouse__province["province"]
+        warehouse__country["country"]
+        warehouse__contact_name["contact_name"]
+        warehouse__contact_phone["contact_phone"]
+        warehouse__contact_email["contact_email"]
+        warehouse__created_at["created_at"]
+        warehouse__updated_at["updated_at"]
+        warehouse__id ~~~ warehouse__code
+        warehouse__code ~~~ warehouse__name
+        warehouse__name ~~~ warehouse__address
+        warehouse__address ~~~ warehouse__city
+        warehouse__city ~~~ warehouse__zip_code
+        warehouse__zip_code ~~~ warehouse__province
+        warehouse__province ~~~ warehouse__country
+        warehouse__country ~~~ warehouse__contact_name
+        warehouse__contact_name ~~~ warehouse__contact_phone
+        warehouse__contact_phone ~~~ warehouse__contact_email
+        warehouse__contact_email ~~~ warehouse__created_at
+        warehouse__created_at ~~~ warehouse__updated_at
+    end
+
+    subgraph location["LOCATION"]
+        direction TB
+        location__id["id (PK)"]
+        location__warehouse_id["warehouse_id (FK)"]
+        location__code["code"]
+        location__name["name"]
+        location__created_at["created_at"]
+        location__updated_at["updated_at"]
+        location__id ~~~ location__warehouse_id
+        location__warehouse_id ~~~ location__code
+        location__code ~~~ location__name
+        location__name ~~~ location__created_at
+        location__created_at ~~~ location__updated_at
+    end
+
+    subgraph client["CLIENT"]
+        direction TB
+        client__id["id (PK)"]
+        client__name["name"]
+        client__address["address"]
+        client__city["city"]
+        client__zip_code["zip_code"]
+        client__province["province"]
+        client__country["country"]
+        client__contact_name["contact_name"]
+        client__contact_phone["contact_phone"]
+        client__contact_email["contact_email"]
+        client__created_at["created_at"]
+        client__updated_at["updated_at"]
+        client__id ~~~ client__name
+        client__name ~~~ client__address
+        client__address ~~~ client__city
+        client__city ~~~ client__zip_code
+        client__zip_code ~~~ client__province
+        client__province ~~~ client__country
+        client__country ~~~ client__contact_name
+        client__contact_name ~~~ client__contact_phone
+        client__contact_phone ~~~ client__contact_email
+        client__contact_email ~~~ client__created_at
+        client__created_at ~~~ client__updated_at
+    end
+
+    subgraph supplier["SUPPLIER"]
+        direction TB
+        supplier__id["id (PK)"]
+        supplier__code["code"]
+        supplier__name["name"]
+        supplier__address["address"]
+        supplier__city["city"]
+        supplier__zip_code["zip_code"]
+        supplier__province["province"]
+        supplier__country["country"]
+        supplier__contact_name["contact_name"]
+        supplier__phone_number["phone_number"]
+        supplier__reference["reference"]
+        supplier__created_at["created_at"]
+        supplier__updated_at["updated_at"]
+        supplier__id ~~~ supplier__code
+        supplier__code ~~~ supplier__name
+        supplier__name ~~~ supplier__address
+        supplier__address ~~~ supplier__city
+        supplier__city ~~~ supplier__zip_code
+        supplier__zip_code ~~~ supplier__province
+        supplier__province ~~~ supplier__country
+        supplier__country ~~~ supplier__contact_name
+        supplier__contact_name ~~~ supplier__phone_number
+        supplier__phone_number ~~~ supplier__reference
+        supplier__reference ~~~ supplier__created_at
+        supplier__created_at ~~~ supplier__updated_at
+    end
+
+    subgraph item_line["ITEM_LINE"]
+        direction TB
+        item_line__id["id (PK)"]
+        item_line__name["name"]
+        item_line__description["description"]
+        item_line__created_at["created_at"]
+        item_line__updated_at["updated_at"]
+        item_line__id ~~~ item_line__name
+        item_line__name ~~~ item_line__description
+        item_line__description ~~~ item_line__created_at
+        item_line__created_at ~~~ item_line__updated_at
+    end
+
+    subgraph item_group["ITEM_GROUP"]
+        direction TB
+        item_group__id["id (PK)"]
+        item_group__name["name"]
+        item_group__description["description"]
+        item_group__created_at["created_at"]
+        item_group__updated_at["updated_at"]
+        item_group__id ~~~ item_group__name
+        item_group__name ~~~ item_group__description
+        item_group__description ~~~ item_group__created_at
+        item_group__created_at ~~~ item_group__updated_at
+    end
+
+    subgraph item_type["ITEM_TYPE"]
+        direction TB
+        item_type__id["id (PK)"]
+        item_type__name["name"]
+        item_type__description["description"]
+        item_type__created_at["created_at"]
+        item_type__updated_at["updated_at"]
+        item_type__id ~~~ item_type__name
+        item_type__name ~~~ item_type__description
+        item_type__description ~~~ item_type__created_at
+        item_type__created_at ~~~ item_type__updated_at
+    end
+
+    subgraph item["ITEM"]
+        direction TB
+        item__id["id (PK)"]
+        item__code["code"]
+        item__description["description"]
+        item__barcode["barcode"]
+        item__model_number["model_number"]
+        item__commodity_code["commodity_code"]
+        item__unit_weight["unit_weight"]
+        item__item_line_id["item_line_id (FK)"]
+        item__item_group_id["item_group_id (FK)"]
+        item__item_type_id["item_type_id (FK)"]
+        item__min_purchase_qty["min_purchase_qty"]
+        item__case_size["case_size"]
+        item__packaging_type["packaging_type"]
+        item__order_multiple["order_multiple"]
+        item__supplier_id["supplier_id (FK)"]
+        item__supplier_sku["supplier_sku"]
+        item__created_at["created_at"]
+        item__updated_at["updated_at"]
+        item__id ~~~ item__code
+        item__code ~~~ item__description
+        item__description ~~~ item__barcode
+        item__barcode ~~~ item__model_number
+        item__model_number ~~~ item__commodity_code
+        item__commodity_code ~~~ item__unit_weight
+        item__unit_weight ~~~ item__item_line_id
+        item__item_line_id ~~~ item__item_group_id
+        item__item_group_id ~~~ item__item_type_id
+        item__item_type_id ~~~ item__min_purchase_qty
+        item__min_purchase_qty ~~~ item__case_size
+        item__case_size ~~~ item__packaging_type
+        item__packaging_type ~~~ item__order_multiple
+        item__order_multiple ~~~ item__supplier_id
+        item__supplier_id ~~~ item__supplier_sku
+        item__supplier_sku ~~~ item__created_at
+        item__created_at ~~~ item__updated_at
+    end
+
+    subgraph inventory["INVENTORY"]
+        direction TB
+        inventory__item_id["item_id (FK)"]
+        inventory__location_id["location_id (FK)"]
+        inventory__quantity_on_hand["quantity_on_hand"]
+        inventory__quantity_expected["quantity_expected"]
+        inventory__quantity_ordered["quantity_ordered"]
+        inventory__quantity_allocated["quantity_allocated"]
+        inventory__created_at["created_at"]
+        inventory__updated_at["updated_at"]
+        inventory__item_id ~~~ inventory__location_id
+        inventory__location_id ~~~ inventory__quantity_on_hand
+        inventory__quantity_on_hand ~~~ inventory__quantity_expected
+        inventory__quantity_expected ~~~ inventory__quantity_ordered
+        inventory__quantity_ordered ~~~ inventory__quantity_allocated
+        inventory__quantity_allocated ~~~ inventory__created_at
+        inventory__created_at ~~~ inventory__updated_at
+    end
+
+    subgraph order["ORDER"]
+        direction TB
+        order__id["id (PK)"]
+        order__client_id["client_id (FK)"]
+        order__order_date["order_date"]
+        order__request_date["request_date"]
+        order__reference["reference"]
+        order__customer_po_number["customer_po_number"]
+        order__order_status["order_status"]
+        order__shipping_notes["shipping_notes"]
+        order__warehouse_id["warehouse_id (FK)"]
+        order__ship_to_client_id["ship_to_client_id (FK)"]
+        order__bill_to_client_id["bill_to_client_id (FK)"]
+        order__created_at["created_at"]
+        order__updated_at["updated_at"]
+        order__id ~~~ order__client_id
+        order__client_id ~~~ order__order_date
+        order__order_date ~~~ order__request_date
+        order__request_date ~~~ order__reference
+        order__reference ~~~ order__customer_po_number
+        order__customer_po_number ~~~ order__order_status
+        order__order_status ~~~ order__shipping_notes
+        order__shipping_notes ~~~ order__warehouse_id
+        order__warehouse_id ~~~ order__ship_to_client_id
+        order__ship_to_client_id ~~~ order__bill_to_client_id
+        order__bill_to_client_id ~~~ order__created_at
+        order__created_at ~~~ order__updated_at
+    end
+
+    subgraph order_item["ORDER_ITEM"]
+        direction TB
+        order_item__id["id (PK)"]
+        order_item__order_id["order_id (FK)"]
+        order_item__item_id["item_id (FK)"]
+        order_item__amount["amount"]
+        order_item__unit_price["unit_price"]
+        order_item__id ~~~ order_item__order_id
+        order_item__order_id ~~~ order_item__item_id
+        order_item__item_id ~~~ order_item__amount
+        order_item__amount ~~~ order_item__unit_price
+    end
+
+    subgraph shipment["SHIPMENT"]
+        direction TB
+        shipment__id["id (PK)"]
+        shipment__reference["reference"]
+        shipment__order_id["order_id (FK)"]
+        shipment__shipment_date["shipment_date"]
+        shipment__shipment_type["shipment_type"]
+        shipment__shipment_status["shipment_status"]
+        shipment__carrier_name["carrier_name"]
+        shipment__shipping_method["shipping_method"]
+        shipment__payment_type["payment_type"]
+        shipment__created_at["created_at"]
+        shipment__updated_at["updated_at"]
+        shipment__id ~~~ shipment__reference
+        shipment__reference ~~~ shipment__order_id
+        shipment__order_id ~~~ shipment__shipment_date
+        shipment__shipment_date ~~~ shipment__shipment_type
+        shipment__shipment_type ~~~ shipment__shipment_status
+        shipment__shipment_status ~~~ shipment__carrier_name
+        shipment__carrier_name ~~~ shipment__shipping_method
+        shipment__shipping_method ~~~ shipment__payment_type
+        shipment__payment_type ~~~ shipment__created_at
+        shipment__created_at ~~~ shipment__updated_at
+    end
+
+    subgraph shipment_item["SHIPMENT_ITEM"]
+        direction TB
+        shipment_item__id["id (PK)"]
+        shipment_item__shipment_id["shipment_id (FK)"]
+        shipment_item__item_id["item_id (FK)"]
+        shipment_item__amount["amount"]
+        shipment_item__id ~~~ shipment_item__shipment_id
+        shipment_item__shipment_id ~~~ shipment_item__item_id
+        shipment_item__item_id ~~~ shipment_item__amount
+    end
+
+    subgraph transfer["TRANSFER"]
+        direction TB
+        transfer__id["id (PK)"]
+        transfer__reference["reference"]
+        transfer__from_location_id["from_location_id (FK)"]
+        transfer__to_location_id["to_location_id (FK)"]
+        transfer__transfer_status["transfer_status"]
+        transfer__created_at["created_at"]
+        transfer__updated_at["updated_at"]
+        transfer__id ~~~ transfer__reference
+        transfer__reference ~~~ transfer__from_location_id
+        transfer__from_location_id ~~~ transfer__to_location_id
+        transfer__to_location_id ~~~ transfer__transfer_status
+        transfer__transfer_status ~~~ transfer__created_at
+        transfer__created_at ~~~ transfer__updated_at
+    end
+
+    subgraph transfer_item["TRANSFER_ITEM"]
+        direction TB
+        transfer_item__id["id (PK)"]
+        transfer_item__transfer_id["transfer_id (FK)"]
+        transfer_item__item_id["item_id (FK)"]
+        transfer_item__amount["amount"]
+        transfer_item__id ~~~ transfer_item__transfer_id
+        transfer_item__transfer_id ~~~ transfer_item__item_id
+        transfer_item__item_id ~~~ transfer_item__amount
+    end
+
+    subgraph user["USER"]
+        direction TB
+        user__api_key["api_key (PK)"]
+        user__app["app"]
+        user__endpoint_access["endpoint_access"]
+        user__api_key ~~~ user__app
+        user__app ~~~ user__endpoint_access
+    end
+
+    location__warehouse_id -->|FK| warehouse__id
+    order__warehouse_id -->|FK| warehouse__id
+    inventory__location_id -->|FK| location__id
+    transfer__from_location_id -->|FK| location__id
+    transfer__to_location_id -->|FK| location__id
+    inventory__item_id -->|FK| item__id
+    order_item__item_id -->|FK| item__id
+    shipment_item__item_id -->|FK| item__id
+    transfer_item__item_id -->|FK| item__id
+    item__item_line_id -->|FK| item_line__id
+    item__item_group_id -->|FK| item_group__id
+    item__item_type_id -->|FK| item_type__id
+    item__supplier_id -->|FK| supplier__id
+    order__client_id -->|FK| client__id
+    order__ship_to_client_id -->|FK| client__id
+    order__bill_to_client_id -->|FK| client__id
+    order_item__order_id -->|FK| order__id
+    shipment__order_id -->|FK| order__id
+    shipment_item__shipment_id -->|FK| shipment__id
+    transfer_item__transfer_id -->|FK| transfer__id
+
+    classDef pk fill:#ffe6b3,stroke:#b38600,font-weight:bold;
+    classDef fk fill:#cfe2ff,stroke:#4a76c9;
+    class warehouse__id pk;
+    class location__id pk;
+    class location__warehouse_id fk;
+    class client__id pk;
+    class supplier__id pk;
+    class item_line__id pk;
+    class item_group__id pk;
+    class item_type__id pk;
+    class item__id pk;
+    class item__item_line_id fk;
+    class item__item_group_id fk;
+    class item__item_type_id fk;
+    class item__supplier_id fk;
+    class inventory__item_id fk;
+    class inventory__location_id fk;
+    class order__id pk;
+    class order__client_id fk;
+    class order__warehouse_id fk;
+    class order__ship_to_client_id fk;
+    class order__bill_to_client_id fk;
+    class order_item__id pk;
+    class order_item__order_id fk;
+    class order_item__item_id fk;
+    class shipment__id pk;
+    class shipment__order_id fk;
+    class shipment_item__id pk;
+    class shipment_item__shipment_id fk;
+    class shipment_item__item_id fk;
+    class transfer__id pk;
+    class transfer__from_location_id fk;
+    class transfer__to_location_id fk;
+    class transfer_item__id pk;
+    class transfer_item__transfer_id fk;
+    class transfer_item__item_id fk;
+    class user__api_key pk;

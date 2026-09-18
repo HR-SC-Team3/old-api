@@ -1,0 +1,221 @@
+// Warehouse Management API - schema derived from data/*.json
+// View at https://dbdiagram.io (paste this file, or File > Import > DBML)
+
+Table warehouse [headercolor: #2E86AB] {
+  id integer [pk]
+  code varchar
+  name varchar
+  address varchar
+  city varchar
+  zip_code varchar
+  province varchar
+  country varchar
+  contact_name varchar
+  contact_phone varchar
+  contact_email varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table location [headercolor: #2E86AB] {
+  id integer [pk]
+  warehouse_id integer [ref: > warehouse.id]
+  code varchar
+  name varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table client [headercolor: #5B8C5A] {
+  id integer [pk]
+  name varchar
+  address varchar
+  city varchar
+  zip_code varchar
+  province varchar
+  country varchar
+  contact_name varchar
+  contact_phone varchar
+  contact_email varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table supplier [headercolor: #5B8C5A] {
+  id integer [pk]
+  code varchar
+  name varchar
+  address varchar
+  city varchar
+  zip_code varchar
+  province varchar
+  country varchar
+  contact_name varchar
+  phone_number varchar
+  reference varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table item_line [headercolor: #C77B2F] {
+  id integer [pk]
+  name varchar
+  description varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table item_group [headercolor: #C77B2F] {
+  id integer [pk]
+  name varchar
+  description varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table item_type [headercolor: #C77B2F] {
+  id integer [pk]
+  name varchar
+  description varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table item [headercolor: #C77B2F] {
+  id integer [pk]
+  code varchar
+  description varchar
+  barcode varchar
+  model_number varchar
+  commodity_code integer
+  unit_weight float
+  item_line_id integer [ref: > item_line.id]
+  item_group_id integer [ref: > item_group.id]
+  item_type_id integer [ref: > item_type.id]
+  min_purchase_qty integer
+  case_size integer
+  packaging_type varchar
+  order_multiple integer
+  supplier_id integer [ref: > supplier.id]
+  supplier_sku varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table inventory [headercolor: #2E86AB] {
+  item_id integer [ref: > item.id]
+  location_id integer [ref: > location.id]
+  quantity_on_hand integer
+  quantity_expected integer
+  quantity_ordered integer
+  quantity_allocated integer
+  created_at datetime
+  updated_at datetime
+
+  indexes {
+    (item_id, location_id) [pk]
+  }
+}
+
+Table order [headercolor: #8E44AD] {
+  id integer [pk]
+  client_id integer [ref: > client.id]
+  order_date datetime
+  request_date datetime
+  reference varchar
+  customer_po_number varchar
+  order_status varchar
+  shipping_notes varchar
+  warehouse_id integer [ref: > warehouse.id]
+  ship_to_client_id integer [ref: > client.id]
+  bill_to_client_id integer [ref: > client.id]
+  created_at datetime
+  updated_at datetime
+}
+
+Table order_item [headercolor: #8E44AD] {
+  id integer [pk]
+  order_id integer [ref: > order.id]
+  item_id integer [ref: > item.id]
+  amount integer
+  unit_price float
+}
+
+Table shipment [headercolor: #8E44AD] {
+  id integer [pk]
+  reference varchar
+  order_id integer [ref: > order.id]
+  shipment_date datetime
+  shipment_type varchar
+  shipment_status varchar
+  carrier_name varchar
+  shipping_method varchar
+  payment_type varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table shipment_item [headercolor: #8E44AD] {
+  id integer [pk]
+  shipment_id integer [ref: > shipment.id]
+  item_id integer [ref: > item.id]
+  amount integer
+}
+
+Table transfer [headercolor: #C0392B] {
+  id integer [pk]
+  reference varchar
+  from_location_id integer [ref: > location.id]
+  to_location_id integer [ref: > location.id]
+  transfer_status varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table transfer_item [headercolor: #C0392B] {
+  id integer [pk]
+  transfer_id integer [ref: > transfer.id]
+  item_id integer [ref: > item.id]
+  amount integer
+}
+
+// Standalone: API-key based access config, not linked to the domain model
+Table user [headercolor: #7F8C8D] {
+  api_key varchar [pk]
+  app varchar
+  endpoint_access varchar [note: 'JSON: per-resource GET/POST/PUT/DELETE permission map']
+}
+
+TableGroup warehousing [color: #2E86AB] {
+  warehouse
+  location
+  inventory
+}
+
+TableGroup parties [color: #5B8C5A] {
+  client
+  supplier
+}
+
+TableGroup catalog [color: #C77B2F] {
+  item
+  item_line
+  item_group
+  item_type
+}
+
+TableGroup sales [color: #8E44AD] {
+  order
+  order_item
+  shipment
+  shipment_item
+}
+
+TableGroup transfers [color: #C0392B] {
+  transfer
+  transfer_item
+}
+
+TableGroup access [color: #7F8C8D] {
+  user
+}
