@@ -1,23 +1,29 @@
 """
-GET /suppliers - collection endpoint tests.
+/suppliers endpoint tests: GET (collection), GET /{id}, POST, PUT /{id},
+DELETE /{id}.
 
 These tests exercise the checklist for "As a developer I want to know what
-each endpoint does" (sub-issue: GET /suppliers). Several tests are written
-against the *documented*/expected behavior and are marked `xfail(strict=True)`
-where the live server currently does something else - this pins the actual,
-observed behavior so it shows up clearly in test output and turns into a loud
-XPASS failure the moment someone "fixes" it, prompting an update to these
-notes rather than a silent behavior change.
+each endpoint does" (sub-issues: GET /suppliers, GET /suppliers/{id},
+POST /suppliers, PUT /suppliers/{id}, DELETE /suppliers/{id}). Several tests
+are written against the *documented*/expected behavior and are marked
+`xfail(strict=True)` where the live server currently does something else.
+This pins the actual, observed behavior so it shows up clearly in test
+output and turns into a loud XPASS failure the moment someone "fixes" it,
+prompting an update to these notes rather than a silent behavior change.
 
-Root cause note (applies to several xfails below): `ApiRequestHandler.do_GET`
-splits the raw request path on "/" (`self.path.split("/")`) without ever
-stripping the query string. Any request with a "?..." on it turns
-`paths[0]` into e.g. "suppliers?page=1" instead of "suppliers". That string
-is not a key in the caller's `endpoint_access` map, so `auth_provider.has_access`
-returns False and the request is rejected with 403 Forbidden - even for a
-fully-authorized user, and even though the OpenAPI spec documents no query
-parameters at all for this endpoint. In short: today, sending *any* query
-string to GET /suppliers breaks the request for everyone.
+The file is split into `# region` blocks below, one per endpoint, plus a
+shared-helpers region at the top, collapse/expand them in an editor that
+supports region folding to jump straight to one endpoint's tests.
+
+Root cause note (GET /suppliers region): `ApiRequestHandler.do_GET` splits
+the raw request path on "/" (`self.path.split("/")`) without ever stripping
+the query string. Any request with a "?..." on it turns `paths[0]` into
+e.g. "suppliers?page=1" instead of "suppliers". That string is not a key in
+the caller's `endpoint_access` map, so `auth_provider.has_access` returns
+False and the request is rejected with 403 Forbidden even for a
+fully-authorized user sending an otherwise completely ordinary request. In
+short: today, sending *any* query string to GET /suppliers breaks the
+request for everyone, regardless of what that query string would even do.
 """
 
 import json
@@ -35,6 +41,7 @@ SUPPLIERS_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "suppliers.py").read_te
 )
 
 
+# region Shared helpers
 class Supplier(BaseModel):
     id: int
     code: str
@@ -51,6 +58,21 @@ class Supplier(BaseModel):
     updated_at: datetime
 
 
+def _get_headers(user_headers, method="get", allowed=True):
+    return user_headers(resource="suppliers", method=method, allowed=allowed)
+
+
+def _first_supplier(base_url, user_headers):
+    headers = _get_headers(user_headers)
+    body = requests.get(f"{base_url}/api/v1/suppliers", headers=headers).json()
+    assert body, "fixture data/supplier.json is expected to be non-empty"
+    return body[0]
+
+
+# endregion
+
+
+# region GET /suppliers (collection)
 def test_get_suppliers_returns_200_with_valid_response(base_url, user_headers):
     headers = user_headers(resource="suppliers", method="get", allowed=True)
     response = requests.get(f"{base_url}/api/v1/suppliers", headers=headers)
@@ -95,11 +117,11 @@ def test_response_time_is_reasonable(base_url, user_headers):
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "Not documented in the OpenAPI spec, and not implemented: any query "
-        "string (pagination, filter, or unknown key alike) makes `paths[0]` "
-        "mismatch the 'suppliers' resource key in endpoint_access, so a fully "
-        "permitted user is rejected with 403 instead of the query string being "
-        "ignored or the params being honoured. See module docstring."
+        "Not implemented: any query string (pagination, filter, or unknown "
+        "key alike) makes `paths[0]` mismatch the 'suppliers' resource key "
+        "in endpoint_access, so a fully permitted user is rejected with 403 "
+        "instead of the query string being ignored or the params being "
+        "honoured. See module docstring."
     ),
 )
 @pytest.mark.parametrize(
@@ -143,7 +165,7 @@ def test_query_params_currently_return_403(base_url, user_headers):
 
 @pytest.mark.skip(
     reason=(
-        "GET /suppliers has no documented or implemented filtering, so there is "
+        "GET /suppliers has no implemented filtering, so there is "
         "no supported way to induce an empty result set without mutating the "
         "shared data/supplier.json fixture out from under other tests. "
         "Redesign suggestion: support a filter (e.g. ?country=) so this is testable."
@@ -216,27 +238,16 @@ def test_error_response_leaks_no_internal_details(base_url):
         assert leak_indicator not in text_lower
 
 
-def _get_headers(user_headers, method="get", allowed=True):
-    return user_headers(resource="suppliers", method=method, allowed=allowed)
+# endregion
 
 
-def _first_supplier(base_url, user_headers):
-    headers = _get_headers(user_headers)
-    body = requests.get(f"{base_url}/api/v1/suppliers", headers=headers).json()
-    assert body, "fixture data/supplier.json is expected to be non-empty"
-    return body[0]
-
-
-# ---------------------------------------------------------------------------
-# GET /suppliers/{id} - single-resource endpoint tests.
-#
+# region GET /suppliers/{id}
 # Same routing/logging issues as the collection endpoint apply here too
 # (see module docstring), plus its own: `int(paths[1])` is called with no
 # try/except around it, so a non-numeric id falls through to the generic
 # `except Exception: send_response(500)` in do_GET instead of a 400, and a
 # numeric-but-nonexistent id returns 200 with a JSON body of `null` instead
 # of 404 (get_supplier() returns None, which main.py serializes as-is).
-# ---------------------------------------------------------------------------
 
 
 def test_get_supplier_by_id_returns_200_with_correct_resource(base_url, user_headers):
@@ -295,9 +306,8 @@ def test_get_supplier_by_malformed_id_returns_400(base_url, user_headers):
 
 def test_get_supplier_items_are_consistent_with_items_endpoint(base_url, user_headers):
     """
-    The only "related object" GET /suppliers/{id} has is its /items sub-resource
-    (full Item objects, per the OpenAPI description). Every item it returns
-    should reference this supplier and match the standalone /items/{id} record.
+    The only "related object" GET /suppliers/{id} has is its /items sub-resource.
+    Every item it returns should reference this supplier and match the standalone /items/{id} record.
     """
     existing = _first_supplier(base_url, user_headers)
     supplier_headers = _get_headers(user_headers)
@@ -355,32 +365,17 @@ def test_get_supplier_by_malformed_id_error_leaks_no_internal_details(
         assert leak_indicator not in text_lower
 
 
-# ---------------------------------------------------------------------------
-# POST /suppliers - create endpoint tests.
-#
-# Headline bug, confirmed by direct inspection of data/supplier.json before
-# and after a POST: `handle_post_version_1` calls
-# `data_provider.fetch_supplier_pool().add_supplier(new_supplier)` and then,
-# on the *next* line, `data_provider.fetch_supplier_pool().save()`.
-# `fetch_supplier_pool()` constructs a brand-new `Suppliers` instance that
-# re-reads data/supplier.json from disk every time it's called, so the
-# `.save()` call persists a freshly-loaded (unmodified) copy of the data -
-# not the one `.add_supplier()` just appended to. The append is silently
-# discarded. POST /suppliers always returns 201, but never actually creates
-# anything. The same fetch-mutate-fetch-save pattern is used for every
-# resource's POST/PUT/DELETE in this file, so this is very likely a
-# repo-wide bug, not one specific to suppliers.
-# ---------------------------------------------------------------------------
+# endregion
+
+
+# region POST /suppliers
 
 
 @pytest.mark.xfail(
     strict=True,
     reason=(
         "POST /suppliers returns 201 with an empty body: no created resource, "
-        "no generated id, nothing. The OpenAPI spec itself only documents "
-        '{"description": "Created"} with no response schema for this status, '
-        "so this technically doesn't violate the spec, but it does violate the "
-        "checklist expectation and basic REST practice. "
+        "no generated id, nothing."
         "Redesign suggestion: return the created resource (with its id) in the body."
     ),
 )
@@ -482,8 +477,6 @@ def test_post_supplier_invalid_field_type_is_rejected(
         "There is no id/code uniqueness check anywhere in Suppliers.add_supplier: "
         "POSTing a second supplier with an `id` (or `code`) that already exists "
         "is accepted with 201 instead of a 409/400 conflict. "
-        "(Also affected by the persistence no-op above, but the *status code* "
-        "returned is the thing being pinned here.)"
     ),
 )
 def test_post_supplier_duplicate_id_returns_conflict(
@@ -528,7 +521,7 @@ def test_post_supplier_is_immediately_retrievable(
     reason=(
         "The Supplier schema has no foreign-key fields (id, code, name, address, "
         "city, zip_code, province, country, contact_name, phone_number, "
-        "reference, created_at, updated_at - see openapi.json#/components/schemas/Supplier). "
+        "reference, created_at, updated_at) to validate on creation."
         "Unlike e.g. a location's warehouse_id, there is nothing on a supplier "
         "payload to validate a reference for. N/A for this resource."
     )
@@ -629,15 +622,10 @@ def test_post_supplier_malformed_json_body_leaks_no_internal_details(
         assert leak_indicator not in text_lower
 
 
-# ---------------------------------------------------------------------------
-# PUT /suppliers/{id} - update endpoint tests.
-#
-# Shares the persistence no-op bug from POST (fetch_supplier_pool() is called
-# once for update_supplier() and again, independently, for save()), plus the
-# same unguarded `int(paths[1])` as GET /suppliers/{id}, plus no existence
-# check before "updating" (update_supplier silently does nothing if the id
-# isn't found, and handle_put_version_1 still returns 200 either way).
-# ---------------------------------------------------------------------------
+# endregion
+
+
+# region PUT /suppliers/{id}
 
 
 def test_put_supplier_valid_payload_returns_200(
@@ -724,13 +712,9 @@ def test_put_supplier_replaces_the_whole_record_per_source(
     Not independently observable through the API today (the persistence no-op
     above hides it), but worth recording from reading the source directly:
     Suppliers.update_supplier() does `self.data[i] = supplier`, i.e. a full
-    replace of the stored record with whatever the client sent - not a merge
+    replace of the stored record with whatever the client sent. Not a merge
     of only the provided fields. A client that PUTs a partial payload would,
-    if persistence worked, silently drop every field it omitted. The OpenAPI
-    spec doesn't document which behavior (replace vs. merge) is intended.
-    Redesign suggestion: document PUT as full-replace explicitly (matching
-    the source), and add a PATCH for partial updates instead of leaving PUT
-    ambiguous.
+    if persistence worked, silently drop every field it omitted.
     """
     assert "self.data[i] = supplier" in SUPPLIERS_MODEL_SOURCE
 
@@ -742,21 +726,6 @@ def test_put_supplier_replaces_the_whole_record_per_source(
     )
 )
 def test_put_supplier_invalid_foreign_key_is_rejected(base_url, user_headers):
-    pass
-
-
-@pytest.mark.skip(
-    reason=(
-        "Not meaningfully testable: PUT never actually persists (see the "
-        "no-op bug above), and the server is a single-threaded "
-        "socketserver.TCPServer handling one request at a time, so there is "
-        "no way to race two updates against each other. Redesign suggestion: "
-        "once persistence is fixed, add optimistic concurrency control "
-        "(e.g. an ETag / If-Match header keyed on updated_at) before this "
-        "becomes testable and worth guarding against."
-    )
-)
-def test_put_supplier_concurrent_updates_do_not_corrupt_data(base_url, user_headers):
     pass
 
 
@@ -777,14 +746,10 @@ def test_put_supplier_insufficient_permissions_returns_403(base_url, user_header
     assert response.status_code == 403
 
 
-# ---------------------------------------------------------------------------
-# DELETE /suppliers/{id} - delete endpoint tests.
-#
-# Shares the fetch-mutate-fetch-save persistence no-op with POST/PUT
-# (remove_supplier() and save() run against two independently-loaded
-# instances), plus no existence check (handle_delete_version_1 always
-# returns 200, whether or not remove_supplier() found anything to remove).
-# ---------------------------------------------------------------------------
+# endregion
+
+
+# region DELETE /suppliers/{id}
 
 
 def test_delete_supplier_valid_id_returns_200(
@@ -863,10 +828,7 @@ def test_delete_supplier_malformed_id_returns_400(
     strict=True,
     reason=(
         "First DELETE is expected to remove the resource (200/204) and a "
-        "second DELETE on the same, now-gone id is expected to 404. DELETE "
-        "now actually persists (data_provider.py caches one pool instance per "
-        "resource, so the mutate call and the save call act on the same "
-        "instance), so the first delete really does remove the resource -- but "
+        "second DELETE on the same, now-gone id is expected to 404. "
         "remove_supplier() is a silent no-op when the id isn't found, and "
         "handle_delete_version_1 always sends 200 regardless of whether "
         "anything was removed. The second delete still gets 200 instead of "
@@ -891,25 +853,6 @@ def test_delete_supplier_repeated_delete_returns_404_not_500(
     assert second.status_code == 404
 
 
-@pytest.mark.skip(
-    reason=(
-        "Items reference suppliers via `supplier_id` (see data/item.json), so "
-        "deleting a referenced supplier is a real scenario worth covering - "
-        "but DELETE never actually persists anything (see no-op bug above), "
-        "so there is currently no way to observe whether a real delete would "
-        "block, cascade, or silently orphan those items. Redesign suggestion: "
-        "once persistence is fixed, decide and document one of: block the "
-        "delete (409) while items reference the supplier, cascade the delete "
-        "to those items, or null out/require reassigning their supplier_id - "
-        "and add a test pinning whichever is chosen."
-    )
-)
-def test_delete_supplier_referenced_by_items_is_handled_deliberately(
-    base_url, user_headers
-):
-    pass
-
-
 def test_delete_supplier_requires_authentication(base_url):
     response = requests.delete(f"{base_url}/api/v1/suppliers/1")
 
@@ -921,3 +864,6 @@ def test_delete_supplier_insufficient_permissions_returns_403(base_url, user_hea
     response = requests.delete(f"{base_url}/api/v1/suppliers/1", headers=headers)
 
     assert response.status_code == 403
+
+
+# endregion
