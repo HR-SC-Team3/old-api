@@ -1,3 +1,4 @@
+import os
 import socketserver
 import http.server
 import json
@@ -7,7 +8,20 @@ from providers import data_provider
 
 from processors import notification_processor
 
+# Enables a test-only cache-reset endpoint (see do_POST below). Never set in
+# a normal run of this server -- only the test suite's conftest.py sets it
+# when spawning this process.
+TEST_MODE = os.environ.get("API_TEST_MODE") == "1"
+
 class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
+
+    def address_string(self):
+        # Defensive: force the raw client IP instead of BaseHTTPRequestHandler's
+        # default, in case some environment/version makes that do a reverse-DNS
+        # lookup. (On this repo's own dev machines this turned out not to be the
+        # cause of the ~2s "sometimes slow" tax -- see the "connect to 127.0.0.1,
+        # not localhost" note in the README / commit history for the real cause.)
+        return self.client_address[0]
 
     def handle_get_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "get"):
@@ -494,6 +508,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_POST(self):
+        if TEST_MODE and self.path == "/api/v1/_test/reset-cache":
+            data_provider.reset_pools()
+            self.send_response(204)
+            self.end_headers()
+            return
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
         if user == None:
