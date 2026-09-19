@@ -121,7 +121,7 @@ def preserve_data_files(base_url):
     for the life of the server process (see its module docstring), so a
     mutation actually persists both on disk *and* in the server's in-memory
     cache for every later test in this session. Restoring the on-disk bytes
-    alone isn't enough -- the server also needs to be told to reload, via the
+    alone isn't enough, the server also needs to be told to reload, via the
     test-only `/api/v1/_test/reset-cache` endpoint (only reachable when the
     server was started with API_TEST_MODE=1, which api_server does).
     """
