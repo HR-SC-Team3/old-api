@@ -1,0 +1,44 @@
+### GET - Get all item types
+GET http://localhost:3000/api/v1/item_types
+Accept: application/json
+API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
+
+
+### POST - Create item type
+POST http://localhost:3000/api/v1/item_types
+Content-Type: application/json
+API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
+
+{
+    "id": 1,
+    "name": "Test Item Type"
+}
+
+
+### GET - Get one item type
+GET http://localhost:3000/api/v1/item_types/1
+Accept: application/json
+API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
+
+
+### PUT - Update item type
+PUT http://localhost:3000/api/v1/item_types/1
+Content-Type: application/json
+API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
+
+{
+    "id": 1,
+    "name": "Updated Item Type"
+}
+
+
+### DELETE - Delete item type
+DELETE http://localhost:3000/api/v1/item_types/1
+Accept: application/json
+API_KEY: Yf4a5c6i7l8i9t0y1m2a3n4a5g6
+
+
+### GET - Get items for item type
+GET http://localhost:3000/api/v1/item_types/1/items
+Accept: application/json
+API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
