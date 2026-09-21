@@ -347,10 +347,17 @@ def test_PUT_inventory_by_id_is_not_supported(base_url, user_headers):
 
 
 # region DELETE /inventories/{id}
+def test_delete_inventory_insufficient_permissions_returns_403(base_url, user_headers):
+    headers = _get_headers(user_headers, method="delete", allowed=False,)
+    response = requests.delete(f"{base_url}/api/v1/inventories/1", headers=headers,)
+    assert response.status_code == 403
+
+
 def test_DELETE_inventory_by_id_is_not_supported(base_url, user_headers):
-    headers = _get_headers(user_headers, method= "delete")
-    response = requests.delete(f"{base_url}/api/v1/inventories/1",headers=headers, json={"item_id": 459})
+    headers = _get_headers(user_headers, method="delete")
+    response = requests.delete(f"{base_url}/api/v1/inventories/1", headers=headers,)
     assert response.status_code == 404
+
 # endregion
 
 
