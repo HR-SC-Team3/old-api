@@ -189,7 +189,7 @@ def user_headers():
             all_users = json.load(f)
         all_users.append(new_user)
         with open(DATA_DIR / "user.json", "w") as f:
-            json.dump(all_users, f, indent=2)
+            json.dump(all_users, f, indent=4)
             f.write("\n")
         generated_api_keys.append(new_user["api_key"])
         return {"API_KEY": new_user["api_key"]}
