@@ -580,39 +580,38 @@ def test_put_order_returns_200(
 
     assert response.status_code == 200
 
-
 def test_put_order_update_is_persisted(
-    base_url,
-    user_headers,
-    preserve_data_files
-):
-    preserve_data_files("order.json")
+        base_url,
+        user_headers
+    ):
+        order = _first_order(base_url, user_headers)
 
-    order = _first_order(base_url, user_headers)
+        headers = _get_headers(
+            user_headers,
+            method="put"
+        )
 
-    headers = _get_headers(
-        user_headers,
-        method="put"
-    )
+        updated_order = dict(order)
+        updated_order["reference"] = "UPDATED-REFERENCE"
 
-    updated_order = dict(order)
-    updated_order["reference"] = "UPDATED-REFERENCE"
+        response = requests.put(
+            f"{base_url}/api/v1/orders/{order['id']}",
+            headers=headers,
+            json=updated_order
+        )
 
-    response = requests.put(
-        f"{base_url}/api/v1/orders/{order['id']}",
-        headers=headers,
-        json=updated_order
-    )
+        print("STATUS:", response.status_code)
+        print("BODY:", response.text)
 
-    assert response.status_code == 200
+        assert response.status_code == 200
 
-    get_response = requests.get(
-        f"{base_url}/api/v1/orders/{order['id']}",
-        headers=_get_headers(user_headers)
-    )
+        get_response = requests.get(
+            f"{base_url}/api/v1/orders/{order['id']}",
+            headers=_get_headers(user_headers)
+        )
 
-    assert get_response.status_code == 200
-    assert get_response.json()["reference"] == "UPDATED-REFERENCE"
+        assert get_response.status_code == 200
+        assert get_response.json()["reference"] == "UPDATED-REFERENCE"
 
 
 def test_put_order_uses_full_replace():
