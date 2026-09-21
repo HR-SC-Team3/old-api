@@ -11,9 +11,7 @@ exercises `user_headers`'s on-demand generation path: it synthesizes a user
 for the exact permutation requested, appends it to data/user.json (the live
 auth_provider re-reads that file with no caching, so this works against a
 running server too), and removes it again once each test finishes. See
-scripts/permission_users.py for the shared generation logic, and
-scripts/generate_permission_test_users.py for the alternative of pre-baking
-every permutation into data/user.json up front instead.
+scripts/permission_users.py for the shared generation logic.
 
 These tests don't need the live API server: `user_headers` reads/writes
 data/user.json directly.
