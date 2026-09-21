@@ -523,7 +523,7 @@
         "get": true,
         "post": false,
         "put": false,
-        "delete": false
+        "delete": true
       },
       "clients": {
         "get": true,
@@ -544,5 +544,17 @@
         "delete": false
       }
     }
-  }
+  },
+  {
+    "app": "no_orders_access",
+    "api_key": "some-test-key",
+    "endpoint_access": {
+        "orders": {
+            "get": false,
+            "post": false,
+            "put": false,
+            "delete": false
+        }
+    }
+}
 ]
