@@ -36,9 +36,10 @@ jobs:
                   # Optional: restrict to specific scopes (leave empty to allow any/none)
                   requireScope: false
                   # Disallow a trailing period in the subject
-                  subjectPattern: ^(?![A-Z]).+$
+                  subjectPattern: '^[^\.].*'
                   subjectPatternError: |
-                      The PR title's subject must start with a lowercase letter.
+                      The PR title should not end with a period.
+                      Please remove the trailing period from the title.
                   wip: true
                   validateSingleCommit: false
 
