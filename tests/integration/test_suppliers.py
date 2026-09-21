@@ -85,7 +85,7 @@ def test_get_suppliers_returns_200_with_valid_response(base_url, user_headers):
 
 
 def test_response_body_matches_documented_schema(base_url, user_headers):
-    """Field names, types and (flat) nesting must match the OpenAPI `Supplier` schema."""
+    """Field names, types and (flat) nesting must match the `Supplier` schema."""
     headers = user_headers(resource="suppliers", method="get", allowed=True)
     response = requests.get(f"{base_url}/api/v1/suppliers", headers=headers)
 
