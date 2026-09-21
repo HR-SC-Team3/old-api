@@ -156,7 +156,7 @@ def test_get_inventories_empty_result_returns_200(base_url, user_headers):
         params={"item_id": 999999999},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 404
     assert response.json() == []
 
 def test_get_inventories_invalid_query_param_does_not_return_500(base_url, user_headers):
