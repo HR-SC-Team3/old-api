@@ -582,8 +582,10 @@ def test_put_order_returns_200(
 
 def test_put_order_update_is_persisted(
         base_url,
-        user_headers
+        user_headers,
+        preserve_data_files
     ):
+        preserve_data_files("order.json")
         order = _first_order(base_url, user_headers)
 
         headers = _get_headers(
