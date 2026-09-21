@@ -14,6 +14,11 @@ import requests
 REPO_ROOT = Path(__file__).resolve().parents[2]
 API_DIR = REPO_ROOT / "api"
 DATA_DIR = REPO_ROOT / "data"
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+
+sys.path.insert(0, str(SCRIPTS_DIR))
+from permission_users import make_user_for_permutation  # noqa: E402
+
 # Deliberately 127.0.0.1, not "localhost": resolving "localhost" added a
 # consistent ~2s tax to every single request in this environment (confirmed
 # by timing the same endpoint against both hosts back to back), almost
@@ -153,8 +158,15 @@ def user_headers():
         user_headers(resource="orders", method="post", allowed=True)
 
     Criteria can be combined; the first matching user is returned.
+
+    A `resource`+`method` query with no matching hand-authored user instead
+    generates one on the fly via permission_users.make_user_for_permutation,
+    appends it to data/user.json (auth_provider re-reads that file on every
+    request, with no caching, so the live server picks it up immediately),
+    and removes it again once the test is done.
     """
     users = _load_users()
+    generated_api_keys = []
 
     def _user_headers(app=None, resource=None, method="get", allowed=True):
         for user in users:
@@ -165,9 +177,29 @@ def user_headers():
                 if perms.get(method, False) != allowed:
                     continue
             return {"API_KEY": user["api_key"]}
-        raise LookupError(
-            f"No user found for app={app!r} resource={resource!r} "
-            f"method={method!r} allowed={allowed!r}"
-        )
 
-    return _user_headers
+        if app is not None or resource is None:
+            raise LookupError(
+                f"No user found for app={app!r} resource={resource!r} "
+                f"method={method!r} allowed={allowed!r}"
+            )
+
+        new_user = make_user_for_permutation(resource, method, allowed)
+        with open(DATA_DIR / "user.json", "r") as f:
+            all_users = json.load(f)
+        all_users.append(new_user)
+        with open(DATA_DIR / "user.json", "w") as f:
+            json.dump(all_users, f, indent=2)
+            f.write("\n")
+        generated_api_keys.append(new_user["api_key"])
+        return {"API_KEY": new_user["api_key"]}
+
+    yield _user_headers
+
+    if generated_api_keys:
+        with open(DATA_DIR / "user.json", "r") as f:
+            all_users = json.load(f)
+        all_users = [u for u in all_users if u["api_key"] not in generated_api_keys]
+        with open(DATA_DIR / "user.json", "w") as f:
+            json.dump(all_users, f, indent=2)
+            f.write("\n")
