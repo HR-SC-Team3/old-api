@@ -70,7 +70,7 @@
         "delete": false
       },
       "inventories": {
-        "get": true,
+        "get": false,
         "post": false,
         "put": false,
         "delete": false
@@ -149,9 +149,9 @@
       },
       "inventories": {
         "get": true,
-        "post": false,
+        "post": true,
         "put": true,
-        "delete": false
+        "delete": true
       }
     }
   },

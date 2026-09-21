@@ -56,14 +56,14 @@ def test_get_inventory_returns_200_with_valid_response(base_url, user_headers):
     assert "item_id" in body[0]
     assert "location_id" in body[0]
 
-def test_get_inventory_response_matches_documented_schemas(base_url, user_headers):
+def test_response_body_matches_documented_schema(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers)
     assert response.status_code == 200
     for r in response.json():
         Inventory.model_validate(r)
 
-def test_get_inventories_response_time_is_reasonable(base_url, user_headers):
+def test_response_time_is_reasonable(base_url, user_headers):
     headers = _get_headers(user_headers)
     start = time.monotonic()
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers)
@@ -81,7 +81,7 @@ def test_get_inventor_insufficient_permissions_returns_403(base_url, user_header
     assert response.status_code == 403
 
 # to check if the get is a json file
-def test_get_inventory_response_content_type_is_json(base_url, user_headers):
+def test_response_content_type_is_json(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers)
     assert response.headers.get("Content-Type", "").startswith("application/json")
@@ -148,7 +148,7 @@ def test_get_inventories_supports_sorting(base_url, user_headers):
     assert isinstance(response.json(), list)
 
 def test_get_inventories_empty_result_returns_200(base_url, user_headers):
-    headers = _get_headers(user_headers)
+    headers = user_headers(app="smartglass_reader")
 
     response = requests.get(
         f"{base_url}/api/v1/inventories",

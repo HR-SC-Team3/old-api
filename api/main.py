@@ -390,8 +390,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
         if user == None:
-            self.send_response(401)
-            self.end_headers()
+            if user is None:
+                self.send_response(401)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"error": "Authentication required"}')
+            return
+
         else:
             try:
                 paths = self.path.split("/")
@@ -467,10 +472,28 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             new_inventory = json.loads(post_data.decode())
+
+            required_fields = [
+                "item_id",
+                "location_id",
+                "quantity_on_hand",
+                "quantity_expected",
+                "quantity_ordered",
+                "quantity_allocated",
+            ]
+
+            if not all(field in new_inventory for field in required_fields):
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"error": "Missing required fields"}')
+                return
+
             data_provider.fetch_inventory_pool().add_inventory(new_inventory)
             data_provider.fetch_inventory_pool().save()
             self.send_response(201)
             self.end_headers()
+
         elif paths[0] == "suppliers":
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
@@ -515,12 +538,15 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             return
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
-        if user == None:
+        if user is None:
             self.send_response(401)
+            self.send_header("Content-Type", "application/json")
             self.end_headers()
+            self.wfile.write(b'{"error": "Authentication required"}')
+            return
         else:
             try:
-                paths = self.path.split("/")
+                paths = self.path.split("?")[0].split("/")
                 if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
                     self.handle_post_version_1(paths[3:], user)
             except Exception:
