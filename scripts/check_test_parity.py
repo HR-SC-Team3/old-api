@@ -24,6 +24,11 @@ from pathlib import Path
 
 TESTS_DIR = Path(__file__).resolve().parents[1] / "tests" / "integration"
 
+# Files that aren't a per-resource endpoint test file (test_<resource>.py),
+# so they have nothing to be consistent with and are excluded from the
+# shape comparison below.
+NON_RESOURCE_TEST_FILES = {"test_helpers.py", "test_permission_users.py"}
+
 
 def resource_name_variants(stem):
     """All singular/plural spellings of a test file's resource name to strip.
@@ -65,7 +70,7 @@ def extract_test_names(path):
 
 def main():
     test_files = sorted(
-        p for p in TESTS_DIR.glob("test_*.py") if p.name != "test_helpers.py"
+        p for p in TESTS_DIR.glob("test_*.py") if p.name not in NON_RESOURCE_TEST_FILES
     )
 
     if len(test_files) < 2:
