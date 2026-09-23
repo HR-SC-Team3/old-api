@@ -513,10 +513,6 @@ def test_post_warehouse_duplicate_id_returns_conflict(base_url, user_headers, pr
     assert response.status_code == 409
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API does not add new warehouse because save() uses a newly loaded Warehouses instance"
-)
 def test_post_warehouse_is_immediately_retrievable(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -796,10 +792,6 @@ def test_put_warehouse_insufficient_permissions_returns_403(base_url, user_heade
 
 # region DELETE /warehouses/{id}
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 500 when deleting a warehouse with a valid ID"
-)
 def test_delete_warehouse_valid_id_returns_200(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
