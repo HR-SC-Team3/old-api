@@ -534,6 +534,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
         if user == None:
+            self.rfile.read() # Fix issue on macos where POST body get stuck in body
             self.send_response(401)
             self.end_headers()
             return
