@@ -481,9 +481,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
 
             if not all(field in new_inventory for field in required_fields):
                 self.send_response(400)
-                self.send_header("Content-Type", "application/json")
                 self.end_headers()
-                self.wfile.write(b'{"error": "Missing required fields"}')
                 return
 
             data_provider.fetch_inventory_pool().add_inventory(new_inventory)
