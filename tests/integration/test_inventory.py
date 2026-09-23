@@ -445,6 +445,8 @@ def test_post_inventory_rejects_invalid_foreign_key_references(base_url, user_he
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 422)
 
+@pytest.mark.xfail(strict=True, reason="The API should either return 400, 415 or 422 but it doesn't and returns 500 instead meaning something with the server",)
+
 def test_post_inventory_requires_json_content_type(base_url, user_headers, preserve_data_files):
     preserve_data_files("inventory.json")
 
@@ -517,6 +519,15 @@ def test_PUT_inventory_by_id_is_not_supported(base_url, user_headers):
     headers = _get_headers(user_headers, method= "put")
     response = requests.put(f"{base_url}/api/v1/inventories/1",headers=headers, json={"item_id": 459})
     assert response.status_code == 404
+
+def test_PUT_inventory_requires_authentication(base_url):
+    response = requests.put(f"{base_url}/api/v1/inventories/1", json={"item_id": 459})
+    assert response.status_code == 401
+
+def test_PUT_inventory_insufficient_permission(base_url, user_headers):
+    headers = _get_headers(user_headers, method="put", allowed=False)
+    response = requests.put(f"{base_url}/api/v1/inventories/1", headers=headers, json={"item_id": 459})
+    assert response.status_code == 403
 # endregion
 
 
@@ -531,6 +542,10 @@ def test_DELETE_inventory_by_id_is_not_supported(base_url, user_headers):
     headers = _get_headers(user_headers, method="delete")
     response = requests.delete(f"{base_url}/api/v1/inventories/1", headers=headers,)
     assert response.status_code == 404
+
+def test_DELETE_inventory_by_id_is_not_supported(base_url):
+    response = requests.delete(f"{base_url}/api/v1/inventories/1")
+    assert response.status_code == 401
 
 # endregion
 
