@@ -1,0 +1,43 @@
+### GET - Get all clients
+GET http://localhost:3000/api/v1/clients
+Accept: application/json
+API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
+
+
+### POST - Create client
+POST http://localhost:3000/api/v1/clients
+Content-Type: application/json
+API_KEY:f4a5c6i7l8i9t0y1m2a3n4a5g6
+{
+    "id": 1,
+    "name": "Test Client"
+}
+
+
+### GET - Get one client
+GET http://localhost:3000/api/v1/clients/1
+Accept: application/json
+API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
+
+
+### PUT - Update client
+PUT http://localhost:3000/api/v1/clients/1
+Content-Type: application/json
+API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
+
+{
+    "id": 1,
+    "name": "Updated Client"
+}
+
+
+### DELETE - Delete client
+DELETE http://localhost:3000/api/v1/clients/1
+Accept: application/json
+API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
+
+
+### GET - Get orders for client
+GET http://localhost:3000/api/v1/clients/1/orders
+Accept: application/json
+API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
