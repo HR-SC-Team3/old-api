@@ -390,11 +390,8 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
         if user == None:
-            if user is None:
-                self.send_response(401)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(b'{"error": "Authentication required"}')
+            self.send_response(401)
+            self.end_headers()
             return
 
         else:
@@ -538,11 +535,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             return
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
-        if user is None:
+        if user == None:
             self.send_response(401)
-            self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(b'{"error": "Authentication required"}')
             return
         else:
             try:
