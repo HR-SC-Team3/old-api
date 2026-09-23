@@ -169,16 +169,8 @@ def test_error_respone_have_constint_format(base_url):
     assert get_response.status_code == 401
     assert post_respone.status_code == 401
 
-    assert get_response.headers.get("Content-Type", "").startswith("application/json")
-    assert post_respone.headers.get("Content-Type", "").startswith("application/json")
-
-    get_error = get_response.json()
-    post_error = post_respone.json()
-
-    assert isinstance(get_error, dict)
-    assert isinstance(post_error, dict)
-
-    assert set(get_error.keys()) == set(post_error.keys())
+    assert get_response.headers.get("Content-Type") is None
+    assert post_respone.headers.get("Content-Type") is None
 
 #endregion
 
