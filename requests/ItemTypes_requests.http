@@ -35,7 +35,7 @@ API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
 ### DELETE - Delete item type
 DELETE http://localhost:3000/api/v1/item_types/1
 Accept: application/json
-API_KEY: Yf4a5c6i7l8i9t0y1m2a3n4a5g6
+API_KEY: f4a5c6i7l8i9t0y1m2a3n4a5g6
 
 
 ### GET - Get items for item type
