@@ -201,5 +201,5 @@ def user_headers():
             all_users = json.load(f)
         all_users = [u for u in all_users if u["api_key"] not in generated_api_keys]
         with open(DATA_DIR / "user.json", "w") as f:
-            json.dump(all_users, f, indent=2)
+            json.dump(all_users, f, indent=4)
             f.write("\n")
