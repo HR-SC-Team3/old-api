@@ -33,7 +33,7 @@ class Order(BaseModel):
     reference: str
     customer_po_number: str
     order_status: str
-    shipping_notes: str
+    shipping_notes: str | None
     warehouse_id: int
     ship_to_client_id: int
     bill_to_client_id: int
