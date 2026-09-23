@@ -193,6 +193,12 @@ def test_GET_inventory_by_id_is_not_supported(base_url, user_headers):
 
 
 # region POST /inventories
+
+@pytest.mark.xfail(
+        strict = True,
+        reason = ("POST inventories should return 201 but it doesn't return it right now")
+)
+
 def test_post_inventory_returns_201(base_url, user_headers, preserve_data_files):
     # this is to preserve the original data before anything gets added or removed or changed
     preserve_data_files("inventory.json")
@@ -210,6 +216,17 @@ def test_post_inventory_returns_201(base_url, user_headers, preserve_data_files)
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
     # checking if the status is correct 
     assert response.status_code == 201
+
+    has_location = bool(response.headers.get("Location"))
+    has_body = False
+    if response.content:
+        try:
+            body = response.json()
+            has_body = bool(body)
+        except ValueError:
+            has_body = False
+
+    assert has_body or has_location,("201 Created response must expose the newly created resource through a response body or Location header.")
 
 def test_post_inventory_is_immediately_retrievable(base_url, user_headers, preserve_data_files):
     # this part is to post something into the data
@@ -293,15 +310,181 @@ def test_post_inventory_existing_pair_is_upserted(base_url, user_headers, preser
     assert matching[0]["quantity_ordered"] == 25
     assert matching[0]["quantity_allocated"] == 10
 
+@pytest.mark.xfail(
+        strict = True,
+        reason = ("POST inventories should reject references to missing fields but it doesn't reject it right now")
+)
+@pytest.mark.parametrize(
+    "field,payload",
+    [
+        (
+            "item_id",
+            {
+                "item_id": "not-an-int",
+                "location_id": 999996,
+                "quantity_on_hand": 100,
+                "quantity_expected": 50,
+                "quantity_ordered": 25,
+                "quantity_allocated": 10,
+            },
+        ),
+        (
+            "location_id",
+            {
+                "item_id": 999996,
+                "location_id": "not-an-int",
+                "quantity_on_hand": 100,
+                "quantity_expected": 50,
+                "quantity_ordered": 25,
+                "quantity_allocated": 10,
+            },
+        ),
+        (
+            "quantity_on_hand",
+            {
+                "item_id": 999996,
+                "location_id": 999996,
+                "quantity_on_hand": "not-an-int",
+                "quantity_expected": 50,
+                "quantity_ordered": 25,
+                "quantity_allocated": 10,
+            },
+        ),
+    ],
+)
 
-def test_post_inventory_missing_requiring_fields_is_handled(base_url, user_headers, preserve_data_files):
+def test_post_inventory_missing_requiring_fields_is_handled(base_url, user_headers, preserve_data_files, field, payload):
     preserve_data_files("inventory.json")
 
     headers = _get_headers(user_headers, method="post")
-    response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json={},)
+    response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
+    # it should return a bad request and unprocessable entity
+    assert response.status_code in (400, 422), (f"Invalid type for {field!r} should be rejected,"f"but API returned {response.status_code}")
+
+@pytest.mark.xfail(
+        strict = True,
+        reason = ("POST inventories should reject references invalid values but right now it accepts it")
+)
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "item_id": -1,
+            "location_id": 999997,
+            "quantity_on_hand": 100,
+            "quantity_expected": 50,
+            "quantity_ordered": 25,
+            "quantity_allocated": 10,
+        },
+        {
+            "item_id": 999997,
+            "location_id": -1,
+            "quantity_on_hand": 100,
+            "quantity_expected": 50,
+            "quantity_ordered": 25,
+            "quantity_allocated": 10,
+        },
+        {
+            "item_id": 999997,
+            "location_id": 999997,
+            "quantity_on_hand": -1,
+            "quantity_expected": 50,
+            "quantity_ordered": 25,
+            "quantity_allocated": 10,
+        },
+    ],
+)
+
+def test_post_inventory_missing_rejects_invalid_values(base_url, user_headers, preserve_data_files, payload):
+    preserve_data_files("inventory.json")
+
+    headers = _get_headers(user_headers, method="post")
+    response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
     # it should return a bad request and unprocessable entity
     assert response.status_code in (400, 422)
 
+@pytest.mark.xfail(
+        strict = True,
+        reason = ("POST inventories should reject unexpected fields, but current way may accept or just ignore them")
+)
+
+def test_post_inventory_rejects_unexpected_fields(base_url, user_headers, preserve_data_files):
+    preserve_data_files("inventory.json")
+
+    headers = _get_headers(user_headers, method="post")
+    payload = {
+        "item_id": 999998,
+        "location_id": 999998,
+        "quantity_on_hand": 100,
+        "quantity_expected": 50,
+        "quantity_ordered": 25,
+        "quantity_allocated": 10,
+        "unexpected_field": "should-not-be-accepted",
+    }
+    response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
+    assert response.status_code in (400, 404, 422), ("Unexpected fields should be rejected, but API returned" f"{response.status_code}")
+
+@pytest.mark.xfail(
+        strict = True,
+        reason = ("POST inventories should reject references to non-existent items or locations")
+)
+
+def test_post_inventory_rejects_invalid_foreign_key_references(base_url, user_headers, preserve_data_files):
+    preserve_data_files("inventory.json")
+
+    headers = _get_headers(user_headers, method="post")
+    payload = {
+        "item_id": 9999999999999,
+        "location_id": 9999999999999,
+        "quantity_on_hand": 100,
+        "quantity_expected": 50,
+        "quantity_ordered": 25,
+        "quantity_allocated": 10,
+    }
+    response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
+    assert response.status_code in (400, 404, 422)
+
+def test_post_inventory_requires_json_content_type(base_url, user_headers, preserve_data_files):
+    preserve_data_files("inventory.json")
+
+    headers = _get_headers(user_headers, method="post")
+    headers["Content-Type"] = "text/plain"
+    payload = {
+        "item_id": 999999,
+        "location_id": 999999,
+        "quantity_on_hand": 100,
+        "quantity_expected": 50,
+        "quantity_ordered": 25,
+        "quantity_allocated": 10,
+    }
+
+    response = requests.post(f"{base_url}/api/v1/inventories", headers=headers,data=payload,)
+
+    assert response.status_code in (400, 415, 422)
+
+def test_post_inventory_accepts_application_json_content_type(base_url, user_headers, preserve_data_files):
+    preserve_data_files("inventory.json")
+
+    headers = _get_headers(user_headers, method="post")
+    headers["Content-Type"] = "application/json"
+
+    payload = {
+        "item_id": 999999,
+        "location_id": 999999,
+        "quantity_on_hand": 100,
+        "quantity_expected": 50,
+        "quantity_ordered": 25,
+        "quantity_allocated": 10,
+    }
+
+    response = requests.post(
+        f"{base_url}/api/v1/inventories",
+        headers=headers,
+        json=payload,
+    )
+
+    assert response.status_code == 201
 
 def test_post_inventory_requires_authentication(base_url):
     # a request without a header
