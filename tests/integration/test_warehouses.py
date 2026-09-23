@@ -846,8 +846,7 @@ def test_delete_warehouse_resource_is_actually_gone(base_url, user_headers, pres
         f"{base_url}/api/v1/warehouses/{existing['id']}", headers=get_headers
     )
 
-    assert get_response.status_code == 200
-    assert get_response.json() is None
+    assert get_response.status_code == 404
 
 
 @pytest.mark.xfail(
