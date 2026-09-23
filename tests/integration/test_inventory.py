@@ -2,6 +2,7 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
+from urllib import response
 
 import pytest
 import requests
@@ -345,13 +346,29 @@ def test_post_inventory_existing_pair_is_upserted(base_url, user_headers, preser
     ],
 )
 
-def test_post_inventory_missing_requiring_fields_is_handled(base_url, user_headers, preserve_data_files, field, payload):
+def test_post_inventory_rejects_invalid_field_types(base_url, user_headers, preserve_data_files, field, payload):
     preserve_data_files("inventory.json")
 
     headers = _get_headers(user_headers, method="post")
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
     # it should return a bad request and unprocessable entity
     assert response.status_code in (400, 422), (f"Invalid type for {field!r} should be rejected,"f"but API returned {response.status_code}")
+
+def test_post_inventory_missing_quantity_on_hand_returns_400(base_url, user_headers, preserve_data_files):
+    preserve_data_files("inventory.json")
+
+    headers = _get_headers(user_headers, method="post")
+    payload = {
+        "item_id": 999996,
+        "location_id": 999996,
+        "quantity_expected": 50,
+        "quantity_ordered": 25,
+        "quantity_allocated": 10,
+    }
+
+    response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload)
+    assert response.status_code in (400, 422)
+
 
 @pytest.mark.xfail(
         strict = True,
