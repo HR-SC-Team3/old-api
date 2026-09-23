@@ -554,7 +554,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             return
         else:
             try:
-                paths = self.path.split("?")[0].split("/")
+                paths = self.path.split("/")
                 if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
                     self.handle_post_version_1(paths[3:], user)
             except Exception:
