@@ -23,8 +23,20 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         # not localhost" note in the README / commit history for the real cause.)
         return self.client_address[0]
 
+    def _drain_request_body(self):
+        # Rejecting a request before reading its body leaves those bytes
+        # unread in the socket. On this single-threaded, non-keep-alive
+        # server, closing the connection while unread bytes are still
+        # pending in the kernel receive buffer can trigger a TCP RST
+        # instead of a clean close, surfacing as a connection reset on
+        # the client. Draining the body before responding avoids that.
+        content_length = self.headers.get("Content-Length")
+        if content_length:
+            self.rfile.read(int(content_length))
+
     def handle_get_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "get"):
+            self._drain_request_body()
             self.send_response(403)
             self.end_headers()
             return
@@ -390,8 +402,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
         if user == None:
+            self._drain_request_body()
             self.send_response(401)
             self.end_headers()
+            return
+
         else:
             try:
                 paths = self.path.split("/")
@@ -403,6 +418,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def handle_post_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "post"):
+            self._drain_request_body()
             self.send_response(403)
             self.end_headers()
             return
@@ -467,10 +483,26 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             new_inventory = json.loads(post_data.decode())
+
+            required_fields = [
+                "item_id",
+                "location_id",
+                "quantity_on_hand",
+                "quantity_expected",
+                "quantity_ordered",
+                "quantity_allocated",
+            ]
+
+            if not all(field in new_inventory for field in required_fields):
+                self.send_response(400)
+                self.end_headers()
+                return
+
             data_provider.fetch_inventory_pool().add_inventory(new_inventory)
             data_provider.fetch_inventory_pool().save()
             self.send_response(201)
             self.end_headers()
+
         elif paths[0] == "suppliers":
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
@@ -516,8 +548,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
         if user == None:
+            self._drain_request_body()
             self.send_response(401)
             self.end_headers()
+            return
         else:
             try:
                 paths = self.path.split("/")
@@ -529,6 +563,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def handle_put_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "put"):
+            self._drain_request_body()
             self.send_response(403)
             self.end_headers()
             return
@@ -737,6 +772,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
         if user == None:
+            self._drain_request_body()
             self.send_response(401)
             self.end_headers()
         else:
@@ -750,6 +786,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def handle_delete_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "delete"):
+            self._drain_request_body()
             self.send_response(403)
             self.end_headers()
             return
@@ -830,6 +867,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
         if user == None:
+            self._drain_request_body()
             self.send_response(401)
             self.end_headers()
         else:
