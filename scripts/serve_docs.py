@@ -30,10 +30,79 @@ INDEX_HTML = """<!DOCTYPE html>
   <div id="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
   <script>
+    // Let restoreState() own the scroll position on reload instead of
+    // fighting with the browser's own scroll-restoration guess.
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+
+    var STATE_KEY = "swagger-docs-reload-state";
+
+    function opblockId(el) {
+      return (
+        el.id ||
+        (el.querySelector(".opblock-summary-path, .opblock-summary-operation-id") || {})
+          .textContent
+      );
+    }
+
+    function saveState() {
+      var openIds = Array.prototype.map.call(
+        document.querySelectorAll(".opblock.is-open"),
+        opblockId
+      ).filter(Boolean);
+      sessionStorage.setItem(
+        STATE_KEY,
+        JSON.stringify({ scrollY: window.scrollY, openIds: openIds })
+      );
+    }
+
+    function restoreState() {
+      var raw = sessionStorage.getItem(STATE_KEY);
+      if (!raw) return;
+      var state;
+      try {
+        state = JSON.parse(raw);
+      } catch (e) {
+        return;
+      }
+      (state.openIds || []).forEach(function (id) {
+        var blocks = document.querySelectorAll(".opblock");
+        for (var i = 0; i < blocks.length; i++) {
+          var block = blocks[i];
+          if (opblockId(block) === id && !block.classList.contains("is-open")) {
+            var toggle = block.querySelector(".opblock-summary-control");
+            if (toggle) toggle.click();
+            break;
+          }
+        }
+      });
+
+      // Let the click-triggered re-layout settle before restoring scroll.
+      setTimeout(function () {
+        window.scrollTo(0, state.scrollY || 0);
+      }, 150);
+    }
+
     window.ui = SwaggerUIBundle({
       url: "/api-doc.yml",
       dom_id: "#swagger-ui",
+      deepLinking: true,
     });
+
+    // Swagger UI renders its operation list asynchronously and doesn't
+    // reliably signal readiness, so wait for the first opblock to appear
+    // before restoring the saved scroll position and open endpoints.
+    (function waitForRenderThenRestore() {
+      var container = document.getElementById("swagger-ui");
+      var observer = new MutationObserver(function () {
+        if (container.querySelector(".opblock")) {
+          observer.disconnect();
+          restoreState();
+        }
+      });
+      observer.observe(container, { childList: true, subtree: true });
+    })();
 
     (function pollForChanges() {
       var lastModified = null;
@@ -44,6 +113,7 @@ INDEX_HTML = """<!DOCTYPE html>
             if (lastModified === null) {
               lastModified = data.mtime;
             } else if (data.mtime !== lastModified) {
+              saveState();
               location.reload();
             }
           })

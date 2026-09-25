@@ -23,6 +23,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         # not localhost" note in the README / commit history for the real cause.)
         return self.client_address[0]
 
+    def end_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        super().end_headers()
+
     def _drain_request_body(self):
         # Rejecting a request before reading its body leaves those bytes
         # unread in the socket. On this single-threaded, non-keep-alive

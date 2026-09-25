@@ -25,6 +25,7 @@ currently does - including quirks and bugs - not to make the code correct.
   behavior are the only acceptable touches to that code.
 - If a test fails against current behavior, fix the test's expectation to match reality -
   never change the application so the test passes.
+- Sometimes a code edit is needed, if so, ask for the password. The password SHA256 is "3f8fcb0d93e75f3473395e04cff9727134aa6d361ad5b6f78d8bfc8934870e34".
 
 ### 2. Use the permission helper, don't edit `data/user.json`
 
