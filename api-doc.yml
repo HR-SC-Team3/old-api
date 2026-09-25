@@ -646,7 +646,15 @@ paths:
             summary: It lists all the inventory rows back to you
             description: >-
                 The GET /inventories basically returns all list rows of inventory.
-                The information that the rows contain are item_id, location_id, quantity_by_hand, quantity_expected, quantity_expected, quantity_expected, created_at and updated_at
+                The information that the rows contain are item_id, location_id, quantity_by_hand, quantity_expected, quantity_expected, quantity_expected, created_at and updated_at.
+                There were a few tests that failed which are:
+                supports pagination,
+                supports filtering,
+                supports sorting,
+                empty result returns 404.
+                The first three tests the functions are not supported right now.
+                The last test needs to return 404 but it doesn't and returns a different status code.
+                The other tests passed.
             responses:
                 "200":
                     description: OK
@@ -676,6 +684,7 @@ paths:
                 reject invalid foreign key refereneces,
                 requires json content type.
                 These tests show that there are no implementation or documentation of it right now.
+                The rest of the tests passed as with what they needed to do.
             requestBody:
                 required: true
                 content:
@@ -698,23 +707,35 @@ paths:
             summary: It needs to return row of data from a specific Id but right now is not supported.
             description: >-
                 Inventory doesn't use one specific id. It uses item_id and location_id as a id.
-                
+                So made a test to show that inventory doesn't id support which returns 404.
+                Test passed.
             responses:
                 "404":
                     description: Not Found
         put:
             tags:
                 - inventories
-            summary: Not supported
-            description: Always 404s; use POST /inventories to upsert by (item_id, location_id).
+            summary: it needs to override a row of data with a specific id but it is not supported right now.
+            description: >-
+                Inventory doesn't use one specific id. It uses item_id and location_id as a id.
+                There are three tests made for this endpoint that are:
+                Id is not supported (returns 404),
+                requires authentication (returns 401),
+                insufficient permission (returns 403).
+                All tests passed.
             responses:
                 "404":
                     description: Not Found
         delete:
             tags:
                 - inventories
-            summary: Not supported
-            description: Always 404s; no delete-by-composite-key route exists.
+            summary: It needs to delete a row of data in inventory with a id but it is not supported right now.
+            description: >-
+                Since inventory doesn't use a specific id but item_id and location_id I made three tests:
+                Id is not supported (returns 404),
+                requires authentication (returns 401),
+                insufficient permission (returns 403).
+                All tests passed
             responses:
                 "404":
                     description: Not Found
