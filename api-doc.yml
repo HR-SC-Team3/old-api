@@ -761,7 +761,7 @@ paths:
             tags:
                 - suppliers
             summary: Create a supplier.
-            description: >-
+            description: |-
                 Known issues:
                 - No data validation, any shape is accepted and stored.
             requestBody:
@@ -784,7 +784,7 @@ paths:
             tags:
                 - suppliers
             summary: Get a supplier by ID.
-            description: >-
+            description: |-
                 Known issues:
                 - Non numeric ID crashes the app
                 - Non existing ID returns 200 with null
@@ -803,7 +803,7 @@ paths:
             tags:
                 - suppliers
             summary: Replace a supplier.
-            description: >-
+            description: |-
                 Known issues:
                 - No validation, a record is replaced no matter what
                 - Non numeric id's crash the app
@@ -825,7 +825,7 @@ paths:
             tags:
                 - suppliers
             summary: Delete a supplier
-            description: >-
+            description: |-
                 Known issues:
                 - Non numeric ID crashes the app
                 - Invalid ID returns 200 without doing anything
@@ -844,7 +844,7 @@ paths:
                 - suppliers
                 - items
             summary: List items sourced from this supplier
-            description: >-
+            description: |-
                 Unlike the item_lines/item_groups/item_types variants, this returns full
                 Item objects rather than bare ids.
 
