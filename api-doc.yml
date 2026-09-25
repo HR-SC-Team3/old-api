@@ -760,8 +760,9 @@ paths:
         post:
             tags:
                 - suppliers
-            summary: >
-                Create a supplier. Known issues:
+            summary: Create a supplier.
+            description: >-
+                Known issues:
                 - No data validation, any shape is accepted and stored.
             requestBody:
                 required: true
@@ -782,8 +783,9 @@ paths:
         get:
             tags:
                 - suppliers
-            summary: >
-                Get a supplier by ID. Known issues:
+            summary: Get a supplier by ID.
+            description: >-
+                Known issues:
                 - Non numeric ID crashes the app
                 - Non existing ID returns 200 with null
             responses:
@@ -800,8 +802,9 @@ paths:
         put:
             tags:
                 - suppliers
-            summary: >
-                Replace a supplier. Known issues:
+            summary: Replace a supplier.
+            description: >-
+                Known issues:
                 - No validation, a record is replaced no matter what
                 - Non numeric id's crash the app
                 - Invalid id's get seen as a post
@@ -821,8 +824,9 @@ paths:
         delete:
             tags:
                 - suppliers
-            summary: >
-                Delete a supplier Known issues:
+            summary: Delete a supplier
+            description: >-
+                Known issues:
                 - Non numeric ID crashes the app
                 - Invalid ID returns 200 without doing anything
             responses:
@@ -843,6 +847,10 @@ paths:
             description: >-
                 Unlike the item_lines/item_groups/item_types variants, this returns full
                 Item objects rather than bare ids.
+
+                Known issues:
+                - Non numeric ID crashes the app
+                - Invalid ID returns 200 with null
             responses:
                 "200":
                     description: OK
