@@ -867,6 +867,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
+    def do_OPTIONS(self):
+        self._drain_request_body()
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "API_KEY, Content-Type")
+        self.end_headers()
+
     def do_DELETE(self):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
