@@ -643,7 +643,10 @@ paths:
         get:
             tags:
                 - inventories
-            summary: List all inventory rows
+            summary: It lists all the inventory rows back to you
+            description: >-
+                The GET /inventories basically returns all list rows of inventory.
+                The information that the rows contain are item_id, location_id, quantity_by_hand, quantity_expected, quantity_expected, quantity_expected, created_at and updated_at
             responses:
                 "200":
                     description: OK
@@ -660,10 +663,19 @@ paths:
         post:
             tags:
                 - inventories
-            summary: Create or upsert an inventory row
+            summary: It creates or upserts a row of data inventory
             description: >-
-                Upserts on the composite key (item_id, location_id): if a row for that
-                pair already exists it is merged, otherwise a new row is appended.
+                When POST it creates or upserts a row of data inventory. 
+                Create just creates new data for inventory.
+                Upsert updates a exisiting row of data to new data inventory.
+                There are few test that failed. Those tests are marked with xfail the tests are:
+                return 201,
+                reject invalid field types,
+                reject missing invalid values,
+                reject unexpected fields,
+                reject invalid foreign key refereneces,
+                requires json content type.
+                These tests show that there are no implementation or documentation of it right now.
             requestBody:
                 required: true
                 content:
@@ -683,11 +695,10 @@ paths:
         get:
             tags:
                 - inventories
-            summary: Not supported
+            summary: It needs to return row of data from a specific Id but right now is not supported.
             description: >-
-                Inventory rows are keyed on the composite (item_id, location_id) pair,
-                not a surrogate id, so this always 404s. Use /items/{id}/inventory
-                instead.
+                Inventory doesn't use one specific id. It uses item_id and location_id as a id.
+                
             responses:
                 "404":
                     description: Not Found
