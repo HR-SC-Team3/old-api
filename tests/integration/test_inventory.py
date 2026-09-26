@@ -1,12 +1,12 @@
 import json
 import time
-from datetime import datetime
 from pathlib import Path
 from urllib import response
 
 import pytest
 import requests
-from pydantic import BaseModel
+
+from schemas import Inventory
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 INVENTORIES_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "inventories.py").read_text(
@@ -14,15 +14,6 @@ INVENTORIES_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "inventories.py").rea
 )
 
 # region Shared helpers
-class Inventory(BaseModel):
-    item_id: int
-    location_id: int
-    quantity_on_hand: int
-    quantity_expected: int
-    quantity_ordered: int
-    quantity_allocated: int
-    created_at: datetime
-    updated_at: datetime
 
 # a helper method to get the user and check their method and if they are allowed with inventory
 def _get_headers(user_headers, method="get", allowed=True):

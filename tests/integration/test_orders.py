@@ -1,13 +1,12 @@
 import json
 import time
 
-from datetime import datetime
 from pathlib import Path
 
 import pytest
 import requests
 
-from pydantic import BaseModel
+from schemas import ItemAmount, Order
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -18,28 +17,6 @@ ORDERS_MODEL_SOURCE = (
 
 
 # region Shared helpers
-
-
-class OrderItem(BaseModel):
-    item_id: int
-    amount: int
-
-
-class Order(BaseModel):
-    id: int
-    client_id: int
-    order_date: datetime
-    request_date: datetime
-    reference: str
-    customer_po_number: str
-    order_status: str
-    shipping_notes: str | None
-    warehouse_id: int
-    ship_to_client_id: int
-    bill_to_client_id: int
-    created_at: datetime
-    updated_at: datetime
-    items: list[OrderItem]
 
 
 def _get_headers(user_headers, method="get", allowed=True):
@@ -881,7 +858,7 @@ def test_get_order_items_schema(
     assert response.status_code == 200
 
     for item in response.json():
-        OrderItem.model_validate(item)
+        ItemAmount.model_validate(item)
 
 
 def test_get_order_items_only_contains_expected_fields(
