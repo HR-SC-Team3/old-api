@@ -1,11 +1,11 @@
 import json
 import time
-from datetime import datetime
 from pathlib import Path
 
 import pytest
 import requests
-from pydantic import BaseModel
+
+from schemas import Location, Warehouse
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -13,22 +13,6 @@ WAREHOUSES_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "warehouses.py").read_
 
 
 # region Shared helpers
-
-
-class Warehouse(BaseModel):
-    id: int
-    code: str
-    name: str
-    address: str
-    city: str
-    zip_code: str
-    province: str
-    country: str
-    contact_name: str
-    contact_phone: str
-    contact_email: str
-    created_at: datetime
-    updated_at: datetime
 
 
 def _get_headers(user_headers, method="get", allowed=True):
@@ -338,6 +322,23 @@ def test_get_warehouse_locations_belong_to_requested_warehouse(base_url, user_he
 
     for location in locations:
         assert location["warehouse_id"] == existing["id"]
+
+
+def test_get_warehouse_locations_match_documented_schema(base_url, user_headers):
+    existing = _first_warehouse(
+        base_url, user_headers
+    )
+
+    headers = _get_headers(user_headers)
+
+    response = requests.get(
+        f"{base_url}/api/v1/warehouses/{existing['id']}/locations", headers=headers
+    )
+
+    assert response.status_code == 200
+
+    for location in response.json():
+        Location.model_validate(location)
 
 
 def test_get_warehouse_locations_requires_authentication(base_url):

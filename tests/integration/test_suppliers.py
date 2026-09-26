@@ -29,12 +29,12 @@ request for everyone, regardless of what that query string would even do.
 
 import json
 import time
-from datetime import datetime
 from pathlib import Path
 
 import pytest
 import requests
-from pydantic import BaseModel
+
+from schemas import Supplier
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SUPPLIERS_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "suppliers.py").read_text(
@@ -43,22 +43,6 @@ SUPPLIERS_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "suppliers.py").read_te
 
 
 # region Shared helpers
-class Supplier(BaseModel):
-    id: int
-    code: str
-    name: str
-    address: str
-    city: str
-    zip_code: str
-    province: str
-    country: str
-    contact_name: str
-    phone_number: str
-    reference: str
-    created_at: datetime
-    updated_at: datetime
-
-
 def _url(base_url, path=""):
     return f"{base_url}/api/v1/suppliers{path}"
 

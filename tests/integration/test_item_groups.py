@@ -47,12 +47,12 @@ completely different shapes for the same kind of relationship.
 
 import json
 import time
-from datetime import datetime
 from pathlib import Path
 
 import pytest
 import requests
-from pydantic import BaseModel
+
+from schemas import ItemGroup
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ITEM_GROUPS_MODEL_SOURCE = (
@@ -61,14 +61,6 @@ ITEM_GROUPS_MODEL_SOURCE = (
 
 
 # region Shared helpers
-class ItemGroup(BaseModel):
-    id: int
-    name: str
-    description: str
-    created_at: datetime
-    updated_at: datetime
-
-
 def _url(base_url, path=""):
     return f"{base_url}/api/v1/item_groups{path}"
 

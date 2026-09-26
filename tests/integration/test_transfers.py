@@ -41,12 +41,12 @@ Root cause notes shared across the whole resource:
 
 import json
 import time
-from datetime import datetime
 from pathlib import Path
 
 import pytest
 import requests
-from pydantic import BaseModel
+
+from schemas import ItemAmount, Transfer
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TRANSFERS_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "transfers.py").read_text(
@@ -55,22 +55,6 @@ TRANSFERS_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "transfers.py").read_te
 
 
 # region Shared helpers
-class TransferItem(BaseModel):
-    item_id: int
-    amount: int
-
-
-class Transfer(BaseModel):
-    id: int
-    reference: str
-    from_location_id: int
-    to_location_id: int
-    transfer_status: str
-    created_at: datetime
-    updated_at: datetime
-    items: list[TransferItem]
-
-
 def _url(base_url, path=""):
     return f"{base_url}/api/v1/transfers{path}"
 
@@ -1025,7 +1009,7 @@ def test_get_transfer_items_schema(base_url, user_headers):
     )
 
     for raw in response.json():
-        TransferItem.model_validate(raw)
+        ItemAmount.model_validate(raw)
 
 
 def test_get_transfer_items_only_contains_expected_fields(base_url, user_headers):
