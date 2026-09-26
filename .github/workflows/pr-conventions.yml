@@ -1,0 +1,68 @@
+name: Enforce PR Conventions
+
+on:
+    pull_request:
+        types: [opened, edited, reopened, synchronize]
+
+permissions:
+    pull-requests: read
+    statuses: write
+
+jobs:
+    check-pr-title:
+        name: Validate PR title (Conventional Commits)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Validate PR title
+              uses: amannn/action-semantic-pull-request@v5
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  # Allowed commit types
+                  types: |
+                      feat
+                      fix
+                      docs
+                      style
+                      refactor
+                      perf
+                      test
+                      tests
+                      build
+                      ci
+                      chore
+                      revert
+                      dev
+                  # Optional: restrict to specific scopes (leave empty to allow any/none)
+                  requireScope: false
+                  # Disallow a trailing period in the subject
+                  subjectPattern: '^[^\.].*'
+                  subjectPatternError: |
+                      The PR title should not end with a period.
+                      Please remove the trailing period from the title.
+                  wip: true
+                  validateSingleCommit: false
+
+    check-branch-name:
+        name: Validate branch name (Conventional Commits)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Validate branch naming convention
+              env:
+                  BRANCH_NAME: ${{ github.head_ref }}
+              run: |
+                  # Allowed pattern: <type>/<short-description>
+                  # e.g. feat/login-page, fix/null-pointer, chore/update-deps
+                  # Allowed types: feat, fix, docs, style, refactor, perf, test, tests, build, ci, chore, revert, dev
+                  PATTERN='^(feat|fix|docs|style|refactor|perf|test|tests|build|ci|chore|revert|dev)\/[a-z0-9._-]+$'
+
+                  echo "Checking branch name: $BRANCH_NAME"
+
+                  if [[ ! "$BRANCH_NAME" =~ $PATTERN ]]; then
+                    echo "::error::Branch name '$BRANCH_NAME' does not follow Conventional Commits style."
+                    echo "::error::Expected format: <type>/<description>, e.g. feat/add-login, fix/header-bug"
+                    echo "::error::Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+                    exit 1
+                  fi
+
+                  echo "Branch name is valid."
