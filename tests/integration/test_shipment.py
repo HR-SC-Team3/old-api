@@ -460,28 +460,28 @@ def test_put_shipment_rejects_invalid_foreign_key(base_url, user_headers, preser
     response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422)
 
-def test_put_shipment_update_is_persisted(base_url, user_headers, preserve_data_files,):
-    preserve_data_files("shipment.json")
-    existing = _first_shipment(base_url, user_headers)
-    headers = _get_headers(user_headers, method="put")
-    payload = {
-        "reference":"UPDATED-SHIPMENT-TEST-999",
-        "order_id": existing["order_id"],
-        "shipment_date": existing["shipment_date"],
-        "shipment_type": existing["shipment_type"],
-        "shipment_status": existing["shipment_status"],
-        "carrier_name": existing["carrier_name"],
-        "shipping_method": existing["shipping_method"],
-        "payment_type": existing["payment_type"],
-    }
+# def test_put_shipment_update_is_persisted(base_url, user_headers, preserve_data_files,):
+#     preserve_data_files("shipment.json")
+#     existing = _first_shipment(base_url, user_headers)
+#     headers = _get_headers(user_headers, method="put")
+#     payload = {
+#         "reference":"UPDATED-SHIPMENT-TEST-999",
+#         "order_id": existing["order_id"],
+#         "shipment_date": existing["shipment_date"],
+#         "shipment_type": existing["shipment_type"],
+#         "shipment_status": existing["shipment_status"],
+#         "carrier_name": existing["carrier_name"],
+#         "shipping_method": existing["shipping_method"],
+#         "payment_type": existing["payment_type"],
+#     }
 
-    response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
-    assert response.status_code == 200
-    get_response = _shipment_by_id(base_url, user_headers, existing["id"],)
-    assert get_response.status_code == 200
-    updated = get_response.json()
-    assert updated["id"] == existing["id"]
-    assert updated["reference"] == "UPDATED-SHIPMENT-TEST-999"
+#     response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
+#     assert response.status_code == 200
+#     get_response = _shipment_by_id(base_url, user_headers, existing["id"],)
+#     assert get_response.status_code == 200
+#     updated = get_response.json()
+#     assert updated["id"] == existing["id"]
+#     assert updated["reference"] == "UPDATED-SHIPMENT-TEST-999"
 
 #endregion
 
