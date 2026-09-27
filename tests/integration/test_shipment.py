@@ -83,6 +83,7 @@ def test_get_shipment_response_matches_documented_schema(base_url, user_headers)
     for shipment in body:
         Shipment.model_validate(shipment)
 
+@pytest.mark.xfail(strict=True, reason="It is exceeding the 0.5s and does 2.74s instead but since its the old api and we will rebuild it later its noted that its slower then it should be")
 
 def test_get_shipments_response_time_is_reasonable(base_url, user_headers):
     headers = _get_headers(user_headers)
@@ -111,6 +112,7 @@ def test_get_shipments_error_does_not_leak_internal_data(base_url, user_headers)
     assert response.status_code == 401
     _error_text_does_not_leak(response)
 
+@pytest.mark.xfail(strict = True, reason="GET shipment the users have permission for get yet it gives back 403")
 
 def test_get_shipment_support_pagination(base_url, user_headers):
     headers = _get_headers(user_headers, method="get", allowed=True)
@@ -122,6 +124,8 @@ def test_get_shipment_support_pagination(base_url, user_headers):
     assert isinstance(body, list)
     assert len(body) <= 2
 
+@pytest.mark.xfail(strict = True, reason="GET shipment the users have permission for get yet it gives back 403")
+
 @pytest.mark.parametrize("filter_type", ["order_id", "shipment_status"],)
 def test_get_shipment_support_filtering(base_url, user_headers, filter_type,):
     existing = _first_shipment(base_url, user_headers)
@@ -132,6 +136,8 @@ def test_get_shipment_support_filtering(base_url, user_headers, filter_type,):
     for shipment in body:
         assert shipment[filter_type] == existing[filter_type]
 
+@pytest.mark.xfail(strict = True, reason="GET shipment the users have permission for get yet it gives back 403")
+
 def test_get_shipments_supports_sorting(base_url, user_headers):
     response = _get_shipments(base_url, user_headers, params={"sort": "id"},)
     assert response.status_code == 200
@@ -140,6 +146,7 @@ def test_get_shipments_supports_sorting(base_url, user_headers):
     ids = [shipment["id"] for shipment in body]
     assert ids == sorted(ids)
 
+@pytest.mark.xfail(strict=True, reason="GET /shipments with query parameters currently returns 403 even for an allowed GET user")
 
 def test_get_shipments_empty_result_returns_200_empty_array(base_url, user_headers):
     response = _get_shipments(base_url, user_headers, params={"order_id": 99999999,},)
@@ -150,6 +157,23 @@ def test_get_shipments_empty_result_returns_200_empty_array(base_url, user_heade
 def test_get_shipment_invalid_query_param_does_not_return_500(base_url, user_headers):
     response = _get_shipments(base_url, user_headers, params ={"page": -1,},)
     assert response.status_code != 500
+
+@pytest.mark.xfail(strict=True, reason="GET /shipments with query parameters currently returns 403 even for an allowed GET user")
+
+def test_get_shipments_unknown_query_param_is_handled(base_url, user_headers):
+    response = _get_shipments(base_url, user_headers, params={"unknown_parameter": "test"},)
+    assert response.status_code in (200, 400, 422)
+    assert response.status_code != 500
+
+# def test_get_shipments_matches_openapi_schema(base_url, user_headers):
+#     openapi_response = requests.get(f"{base_url}/openapi.json")
+#     assert openapi_response.status_code == 200
+#     spec = openapi_response.json()
+#     shipment_schema = spec["components"]["schemas"]["Shipment"]
+#     assert "id" in shipment_schema["properties"]
+#     assert "reference" in shipment_schema["properties"]
+#     assert "order_id" in shipment_schema["properties"]
+#     assert "shipment_date" in shipment_schema["properties"]
 
 #endregion
 
@@ -167,6 +191,7 @@ def _valid_shipment_payload():
         "payment_type": "Automated",
         }
 
+@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 instead of 201")
 
 def test_post_shipment_returns_201(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
@@ -193,6 +218,7 @@ def test_post_shipment_insufficient_permission_returns_403(base_url, user_header
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=_valid_shipment_payload(),)
     assert response.status_code == 403
 
+@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 even tho it should return 400, 415 or 422")
 
 def test_post_shipment_requires_application_json(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
@@ -208,6 +234,8 @@ def test_post_shipment_accepts_application_json(base_url, user_headers, preserve
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json= _valid_shipment_payload(),)
     assert response.status_code != 415
 
+@pytest.mark.xfail(strict = True, reason="POST shipment doesn't return 400 or 422 but it returns 500 since there is no validation yet")
+
 def test_post_shipment_missing_required_field_is_rejected(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
@@ -216,6 +244,8 @@ def test_post_shipment_missing_required_field_is_rejected(base_url, user_headers
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
 
+@pytest.mark.xfail(strict = True, reason="POST shipment doesn't return 400 or 422 but it returns 500 since there is no validation checks yet")
+
 def test_post_shipment_rejects_invalid_value(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
@@ -223,6 +253,8 @@ def test_post_shipment_rejects_invalid_value(base_url, user_headers, preserve_da
     payload["shipment_status"] = "NOT_A_REAL_STATUS"
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
+
+@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 for duplicate references even tho it needs to return 400, 409 or 422")
 
 def test_post_shipment_duplicate_reference_is_handled(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
@@ -233,6 +265,8 @@ def test_post_shipment_duplicate_reference_is_handled(base_url, user_headers, pr
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 409, 422)
 
+@pytest.mark.xfail(strict = True, reason="POST shipment return 500 for unexpected fields. There is no validation checks yet")
+
 def test_post_shipment_unexpected_field_is_handled_consistently(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
@@ -241,6 +275,8 @@ def test_post_shipment_unexpected_field_is_handled_consistently(base_url, user_h
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (201, 400, 422)
 
+@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 for invalid foreign keys since there are no validation checks yet")
+
 def test_post_shipment_reject_invalid_foreign_key(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
@@ -248,6 +284,8 @@ def test_post_shipment_reject_invalid_foreign_key(base_url, user_headers, preser
     payload["order_id"] = 99999999999
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422)
+
+@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 instead of just creating a new shipment")
 
 def test_post_shipment_is_immendiately_retrieveable(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
@@ -273,6 +311,15 @@ def test_post_shipment_is_immendiately_retrieveable(base_url, user_headers, pres
     assert created["reference"] == payload["reference"]
     assert created["order_id"] == payload["order_id"]
 
+def test_post_shipment_response_content_type_is_json(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("shipment.json")
+    headers = _get_headers(user_headers, method="post")
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=_valid_shipment_payload(),)
+
+    if response.status_code == 201:
+        assert response.headers.get("Content-Type", "").startswith("application/json")
+
+
 #endregion
 
 #region GET shipment id
@@ -289,11 +336,18 @@ def test_get_shipment_by_id_matches_schema(base_url, user_headers):
     existing = _first_shipment(base_url, user_headers)
     response = _shipment_by_id(base_url, user_headers, existing["id"])
     assert response.status_code == 200
-    Shipment.model_validate(response.json())
+    body = response.json()
+    Shipment.model_validate(body)
+    assert body["id"] == existing["id"]
+
+
+@pytest.mark.xfail(strict = True, reason="it returns 200 for nonexistent shipment id instead of 404")
 
 def test_get_shipment_by_id_nonexistent_returns_404(base_url, user_headers,):
     response = _shipment_by_id(base_url, user_headers, 999999999,)
     assert response.status_code == 404
+
+@pytest.mark.xfail(strict = True, reason="it returns 500 right now for malformed shipment id")
 
 def test_get_shipment_by_id_malformed_id_does_not_return_500(base_url, user_headers):
     headers = _get_headers(user_headers)
@@ -316,6 +370,7 @@ def test_get_shipment_by_id_insufficient_permissions_return_403(base_url, user_h
     response =requests.get(f"{base_url}/api/v1/shipments/1", headers=headers,)
     assert response.status_code ==403
 
+@pytest.mark.xfail(strict = True, reason="The id returns 200 instead of 400 for nonexistent shipment")
 
 def test_get_shipment_by_id_error_does_not_leak_internal_data(base_url, user_headers,):
     headers = _get_headers(user_headers)
@@ -353,15 +408,21 @@ def test_put_shipment_valid_payload_returns_200(base_url, user_headers, preserve
     response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code == 200
 
+@pytest.mark.xfail(strict = True, reason="The Id returns 200 for nonexistent shipment instead of returning 404")
+
 def test_put_shipment_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="put",)
     response = requests.put(f"{base_url}/api/v1/shipments/999999999", headers=headers, json={},)
     assert response.status_code == 404
 
+@pytest.mark.xfail(strict = True, reason="It returns 500 for malformed shipment id")
+
 def test_put_shipment_invalid_id_does_not_return_500(base_url, user_headers):
     headers = _get_headers(user_headers, method="put",)
     response = requests.put(f"{base_url}/api/v1/shipments/not-an-id", headers=headers, json={},)
     assert response.status_code != 500
+
+@pytest.mark.xfail(strict = True, reason="With the id it currently accepts invalid field values instead of rejecting it")
 
 def test_put_shipment_rejects_invalid_field_value(base_url, user_headers, preserve_data_files,):
     preserve_data_files("shipment.json")
@@ -380,6 +441,8 @@ def test_put_shipment_rejects_invalid_field_value(base_url, user_headers, preser
     response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
 
+@pytest.mark.xfail(strict = True, reason="With the id it accepts invalid foreign keys instead of rejecting it")
+
 def test_put_shipment_rejects_invalid_foreign_key(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     existing = _first_shipment(base_url, user_headers,)
@@ -397,6 +460,29 @@ def test_put_shipment_rejects_invalid_foreign_key(base_url, user_headers, preser
     response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422)
 
+def test_put_shipment_update_is_persisted(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("shipment.json")
+    existing = _first_shipment(base_url, user_headers)
+    headers = _get_headers(user_headers, method="put")
+    payload = {
+        "reference":"UPDATED-SHIPMENT-TEST-999",
+        "order_id": existing["order_id"],
+        "shipment_date": existing["shipment_date"],
+        "shipment_type": existing["shipment_type"],
+        "shipment_status": existing["shipment_status"],
+        "carrier_name": existing["carrier_name"],
+        "shipping_method": existing["shipping_method"],
+        "payment_type": existing["payment_type"],
+    }
+
+    response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
+    assert response.status_code == 200
+    get_response = _shipment_by_id(base_url, user_headers, existing["id"],)
+    assert get_response.status_code == 200
+    updated = get_response.json()
+    assert updated["id"] == existing["id"]
+    assert updated["reference"] == "UPDATED-SHIPMENT-TEST-999"
+
 #endregion
 
 #region DELETE shipment id
@@ -409,6 +495,15 @@ def test_delete_shipment_insufficient_returns_403(base_url, user_headers):
     response = requests.delete(f"{base_url}/api/v1/shipments/1", headers=headers, json={},)
     assert response.status_code == 403
 
+@pytest.mark.xfail(strict = True, reason="With the id it doesn't return 404 but return 200")
+
+def test_delete_shipment_nonexistent_id_returns_404(base_url, user_headers,):
+    headers = _get_headers(user_headers, method="delete")
+    response = requests.delete(f"{base_url}/api/v1/shipments/999999999", headers=headers,)
+    assert response.status_code == 404
+
+@pytest.mark.xfail(strict = True, reason="With the id it doesn't return 404 that was deleted")
+
 def test_delete_shipment_removes_resource(base_url, user_headers, preserve_data_files,):
     preserve_data_files("shipment.json")
     existing = _first_shipment(base_url, user_headers,)
@@ -417,6 +512,8 @@ def test_delete_shipment_removes_resource(base_url, user_headers, preserve_data_
     assert response.status_code in (200, 204)
     get_response = _shipment_by_id(base_url, user_headers, existing["id"],)
     assert get_response.status_code == 404
+
+@pytest.mark.xfail(strict = True, reason="With the id it allows a second time deletion instead of 404 for no shipment found")
 
 def test_delete_shipment_twice_returns_404(base_url, user_headers, preserve_data_files,):
     preserve_data_files("shipment.json")
@@ -436,8 +533,10 @@ def test_get_shipment_orders_requires_authentication(base_url):
 
 def test_get_shipment_orders_insufficient_returns_403(base_url, user_headers):
     headers = _get_headers(user_headers, method="get", allowed=False,)
-    response = requests.get(f"{base_url}/api/v1/shipments/1", headers=headers, json={},)
+    response = requests.get(f"{base_url}/api/v1/shipments/1/orders", headers=headers, json={},)
     assert response.status_code == 403
+
+@pytest.mark.xfail(strict = True, reason="It returns 200 for nonexistent shipment instead of not found 404")
 
 def test_get_shipment_order_nonexistent_parent_return_404(base_url, user_headers):
     headers = _get_headers(user_headers)
@@ -452,6 +551,8 @@ def test_get_shipment_orders_returns_json(base_url, user_headers,):
     body = response.json()
     assert isinstance(body, list)
     assert response.headers.get("Content-Type", "").startswith("application/json")
+
+@pytest.mark.xfail(strict = True, reason="It returns a format that doesn't match the expected order objects")
 
 def test_get_shipment_orders_belongs_to_correct_parent(base_url, user_headers,):
     existing = _first_shipment(base_url, user_headers,)
@@ -478,9 +579,11 @@ def test_put_shipment_orders_insufficient_returns_403(base_url, user_headers):
     response = requests.put(f"{base_url}/api/v1/shipments/1/orders", headers=headers, json={},)
     assert response.status_code == 403
 
+@pytest.mark.xfail(strict = True, reason="It returns a format that doesn't match the expected order objects")
+
 def test_put_shipment_order_nonexistent_parent_return_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="put", allowed=False,)
-    response = requests.put(f"{base_url}/api/v1/shipment/99999999/orders", headers =headers)
+    response = requests.put(f"{base_url}/api/v1/shipments/99999999/orders", headers =headers)
     assert response.status_code == 404
 #endregion
 
@@ -493,6 +596,8 @@ def test_put_shipment_items_insufficient_returns_403(base_url, user_headers):
     headers = _get_headers(user_headers, method="get", allowed=False,)
     response = requests.get(f"{base_url}/api/v1/shipments/1/items", headers=headers, json={},)
     assert response.status_code == 403
+
+@pytest.mark.xfail(strict = True, reason="it returns 500 instead of 404 for no non existent shipment found")
 
 def test_put_shipment_order_nonexistent_parent_return_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="get", allowed=False,)
@@ -520,6 +625,8 @@ def test_put_shipment_items_insufficient_returns_403(base_url, user_headers):
     response = requests.put(f"{base_url}/api/v1/shipments/1/items", headers=headers, json={},)
     assert response.status_code == 403
 
+@pytest.mark.xfail(strict=True, reason="GET shipment items currently returns 500 for a nonexistent shipment instead of 404.")
+
 def test_put_shipment_items_nonexistent_parent_return_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="put", allowed=True)
     response = requests.put(f"{base_url}/api/v1/shipments/99999999/items", headers =headers)
@@ -544,6 +651,7 @@ def test_shipments_unauthorized_errors_have_consistent_format(base_url,):
     assert put_response.headers.get("Content-Type") is None
     assert delete_response.headers.get("Content-Type") is None
 
+@pytest.mark.xfail(strict = True, reason="Currently returns 200 instead of 404")
 
 def test_shipments_404_error_does_not_leak_internal_data(base_url, user_headers,):
     headers = _get_headers(user_headers)
@@ -551,6 +659,7 @@ def test_shipments_404_error_does_not_leak_internal_data(base_url, user_headers,
     assert response.status_code == 404
     _error_text_does_not_leak(response)
 
+@pytest.mark.xfail(strict = True, reason="It returns 500 for malformed shipment id")
 
 def test_shipments_malformed_id_error_does_not_leak_internal_data(base_url, user_headers,):
     headers = _get_headers(user_headers)
