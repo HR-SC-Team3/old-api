@@ -18,32 +18,29 @@ class Shipment(BaseModel):
     reference: str
     order_id: int
     shipment_date: datetime
-    shipment: type
+    shipment_type: str
     shipment_status: str
     carrier_name: str
     shipping_method: str
     payment_type: str
     created_at: datetime
-    update_at: datetime
+    updated_at: datetime
 
 def _get_headers(user_headers, method="get", allowed=True):
     return user_headers(resource="shipments", method=method, allowed=allowed)
 
-def _get_shipment(base_url, user_headers):
+def _get_shipments(base_url, user_headers, params=None):
     headers = _get_headers(user_headers)
-    body = requests.get(f"{base_url}/api/v1/shipments", headers=headers).json()
-    assert body, "fixture data/inventory.json is expected to be non-empty"
-    return body[0]
+    return requests.get(f"{base_url}/api/v1/shipments", headers=headers, params=params,)
+
 
 def _first_shipment(base_url, user_headers):
-    response = _get_shipment(base_url, user_headers)
-
+    response = _get_shipments(base_url, user_headers)
     assert response.status_code == 200
     body = response.json()
-
     assert isinstance(body, list)
-    assert body, "fixture shipment.json is expected not to be empty"
-    return body [0]
+    assert body, "fixture data/shipment.json is expected to be non-empty"
+    return body[0]
 
 def _shipment_by_id(base_url, user_headers, shipment_id):
     headers= _get_headers(user_headers)
@@ -58,12 +55,13 @@ def _error_text_does_not_leak(response):
 #region GET shipment
 
 def test_get_shipment_returns_200_with_valid_response(base_url, user_headers):
-    response = _get_shipment(base_url, user_headers)
-    assert response.status == 200
+    response = _get_shipments(base_url, user_headers)
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
 
 def test_get_shipments_response_matches_documented_schema(base_url, user_headers):
-    response = _get_shipment(base_url, user_headers)
-    assert response.status == 200
+    response = _get_shipments(base_url, user_headers)
+    assert response.status_code == 200
 
     body = response.json()
 
@@ -76,8 +74,8 @@ def test_get_shipments_response_matches_documented_schema(base_url, user_headers
 
 
 def test_get_shipment_response_matches_documented_schema(base_url, user_headers):
-    response = _get_shipment(base_url, user_headers)
-    assert response.status == 200
+    response = _get_shipments(base_url, user_headers)
+    assert response.status_code == 200
 
     body = response.json()
 
@@ -89,7 +87,7 @@ def test_get_shipment_response_matches_documented_schema(base_url, user_headers)
 def test_get_shipments_response_time_is_reasonable(base_url, user_headers):
     headers = _get_headers(user_headers)
     start = time.monotonic()
-    response = requests.get(f"{base_url}/api/1/shipments", headers = headers)
+    response = requests.get(f"{base_url}/api/v1/shipments", headers = headers)
     elapsed = time.monotonic() - start
     assert response.status_code != 500
     assert elapsed < 0.5, (f"GET /shipments took {elapsed:.2f}s")
@@ -100,56 +98,57 @@ def test_get_shipments_requires_authentiction(base_url):
 
 def test_get_shipment_insufficient_permissions_returns_403(base_url, user_headers):
     headers= _get_headers(user_headers, method = "get", allowed = False)
-    response = requests.get(f"{base_url}/api/1/shipments", headers = headers)
+    response = requests.get(f"{base_url}/api/v1/shipments", headers = headers)
     assert response.status_code== 403
 
 def test_get_shipment_response_content_type_is_json(base_url, user_headers):
-    response = _get_headers(base_url, user_headers)
+    response = _get_shipments(base_url, user_headers)
     assert response.status_code == 200
     assert response.headers.get("Content-type","",).startswith("application/json")
 
 def test_get_shipments_error_does_not_leak_internal_data(base_url, user_headers):
     response = requests.get(f"{base_url}/api/v1/shipments")
     assert response.status_code == 401
+    _error_text_does_not_leak(response)
+
 
 def test_get_shipment_support_pagination(base_url, user_headers):
-    headers= _get_headers(user_headers, method = "get", allowed = False)
-    response = requests.get(f"{base_url}/api/1/shipments", headers = headers, params = {"page": 1, "limit": 2},)
+    headers = _get_headers(user_headers, method="get", allowed=True)
+    response = requests.get(
+    f"{base_url}/api/v1/shipments", headers=headers, params={"page": 1, "limit": 2},)
+
     assert response.status_code == 200
     body = response.json()
     assert isinstance(body, list)
     assert len(body) <= 2
 
-@pytest.mark.parametrize(
-    "filter_type", ["order_id", "shipment_status",],)
-
-def test_get_shipment_support_filtering(base_url, user_headers, filter_type):
+@pytest.mark.parametrize("filter_type", ["order_id", "shipment_status"],)
+def test_get_shipment_support_filtering(base_url, user_headers, filter_type,):
     existing = _first_shipment(base_url, user_headers)
-    response = _get_shipment(base_url, user_headers, params ={"sort": "id"})
+    response = _get_shipments(base_url, user_headers,params={filter_type: existing[filter_type]},) 
     assert response.status_code == 200
     body = response.json()
     assert isinstance(body, list)
     for shipment in body:
         assert shipment[filter_type] == existing[filter_type]
 
-
-def test_get_shipments_supports_sorting(base_url, user_headers,):
-    response = _get_shipment(base_url, user_headers, params={"sort": "id",},)
-
+def test_get_shipments_supports_sorting(base_url, user_headers):
+    response = _get_shipments(base_url, user_headers, params={"sort": "id"},)
     assert response.status_code == 200
     body = response.json()
     assert isinstance(body, list)
     ids = [shipment["id"] for shipment in body]
     assert ids == sorted(ids)
 
+
 def test_get_shipments_empty_result_returns_200_empty_array(base_url, user_headers):
-    response = _get_shipment(base_url, user_headers, params={"order_id": 99999999,},)
+    response = _get_shipments(base_url, user_headers, params={"order_id": 99999999,},)
     assert response.status_code == 200
     assert response.json() == []
 
 
 def test_get_shipment_invalid_query_param_does_not_return_500(base_url, user_headers):
-    response = _get_shipment(base_url, user_headers, params ={"page": -1,},)
+    response = _get_shipments(base_url, user_headers, params ={"page": -1,},)
     assert response.status_code != 500
 
 #endregion
@@ -173,7 +172,7 @@ def test_post_shipment_returns_201(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
 
     headers = _get_headers(user_headers, method="post")
-    payload = _valid_shipment_payload
+    payload = _valid_shipment_payload()
 
     response = requests.post( f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code == 201
@@ -206,7 +205,7 @@ def test_post_shipment_accepts_application_json(base_url, user_headers, preserve
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
     headers["Content-Type"] ="application/json"
-    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json= _valid_shipment_payload,)
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json= _valid_shipment_payload(),)
     assert response.status_code != 415
 
 def test_post_shipment_missing_required_field_is_rejected(base_url, user_headers, preserve_data_files):
@@ -238,7 +237,7 @@ def test_post_shipment_unexpected_field_is_handled_consistently(base_url, user_h
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
     payload = _valid_shipment_payload()
-    payload.pop["reference"] = "should-not-be-accepted"
+    payload["unexpected_field"] = "should-not-be-accepted"
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (201, 400, 422)
 
@@ -246,7 +245,7 @@ def test_post_shipment_reject_invalid_foreign_key(base_url, user_headers, preser
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
     payload = _valid_shipment_payload()
-    payload.pop["order_id"] = 99999999999
+    payload["order_id"] = 99999999999
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422)
 
@@ -298,7 +297,7 @@ def test_get_shipment_by_id_nonexistent_returns_404(base_url, user_headers,):
 
 def test_get_shipment_by_id_malformed_id_does_not_return_500(base_url, user_headers):
     headers = _get_headers(user_headers)
-    response = requests.get(f"{base_url}/api/v1/shipment/not-an-id", headers = headers)
+    response = requests.get(f"{base_url}/api/v1/shipments/not-an-id", headers = headers)
     assert response.status_code != 500
 
 def test_get_shipment_by_id_response_content_type_is_json(base_url, user_headers):
@@ -340,7 +339,7 @@ def test_put_shipment_insufficient_permissions_returns_403(base_url, user_header
 def test_put_shipment_valid_payload_returns_200(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     existing = _first_shipment(base_url, user_headers)
-    headers = _get_headers(user_headers, user_headers)
+    headers = _get_headers(user_headers, method ="put")
     payload = {
         "reference": existing["reference"],
         "order_id": existing["order_id"],
@@ -351,7 +350,7 @@ def test_put_shipment_valid_payload_returns_200(base_url, user_headers, preserve
         "shipping_method": existing["shipping_method"],
         "payment_type": existing["payment_type"],
     }
-    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
+    response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code == 200
 
 def test_put_shipment_nonexistent_id_returns_404(base_url, user_headers):
@@ -401,6 +400,162 @@ def test_put_shipment_rejects_invalid_foreign_key(base_url, user_headers, preser
 #endregion
 
 #region DELETE shipment id
+def test_delete_shipment_requires_authentication(base_url):
+    response = requests.delete(f"{base_url}/api/v1/shipments/1", json={},)
+    assert response.status_code == 401
 
+def test_delete_shipment_insufficient_returns_403(base_url, user_headers):
+    headers = _get_headers(user_headers, method="delete", allowed=False,)
+    response = requests.delete(f"{base_url}/api/v1/shipments/1", headers=headers, json={},)
+    assert response.status_code == 403
+
+def test_delete_shipment_removes_resource(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("shipment.json")
+    existing = _first_shipment(base_url, user_headers,)
+    headers = _get_headers(user_headers, method="delete",)
+    response = requests.delete(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers)
+    assert response.status_code in (200, 204)
+    get_response = _shipment_by_id(base_url, user_headers, existing["id"],)
+    assert get_response.status_code == 404
+
+def test_delete_shipment_twice_returns_404(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("shipment.json")
+    existing = _first_shipment(base_url, user_headers,)
+    headers = _get_headers(user_headers, method="delete",)
+    first_response = requests.delete(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers,)
+    assert first_response.status_code in (200, 204)
+    second_response = requests.delete(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers,)
+    assert second_response.status_code == 404
+
+#endregion
+
+#region GET shipment id orders
+def test_get_shipment_orders_requires_authentication(base_url):
+    response = requests.get(f"{base_url}/api/v1/shipments/1/orders")
+    assert response.status_code == 401
+
+def test_get_shipment_orders_insufficient_returns_403(base_url, user_headers):
+    headers = _get_headers(user_headers, method="get", allowed=False,)
+    response = requests.get(f"{base_url}/api/v1/shipments/1", headers=headers, json={},)
+    assert response.status_code == 403
+
+def test_get_shipment_order_nonexistent_parent_return_404(base_url, user_headers):
+    headers = _get_headers(user_headers)
+    response = requests.get(f"{base_url}/api/v1/shipments/99999999/orders", headers =headers)
+    assert response.status_code == 404
+
+def test_get_shipment_orders_returns_json(base_url, user_headers,):
+    existing = _first_shipment(base_url, user_headers,)
+    headers = _get_headers(user_headers)
+    response = requests.get(f"{base_url}/api/v1/shipments/{existing['id']}/orders", headers=headers,)
+    assert response.status_code == 200
+    body = response.json()
+    assert isinstance(body, list)
+    assert response.headers.get("Content-Type", "").startswith("application/json")
+
+def test_get_shipment_orders_belongs_to_correct_parent(base_url, user_headers,):
+    existing = _first_shipment(base_url, user_headers,)
+    headers = _get_headers(user_headers)
+    response = requests.get(f"{base_url}/api/v1/shipments/{existing['id']}/orders", headers=headers,)
+    assert response.status_code == 200
+    body = response.json()
+    assert isinstance(body, list)
+    for order in body:
+        assert order["id"] == existing["order_id"]
+
+
+
+#endregion
+
+
+#region PUT shipment id orders
+def test_put_shipment_orders_requires_authentication(base_url):
+    response = requests.put(f"{base_url}/api/v1/shipments/1/orders")
+    assert response.status_code == 401
+
+def test_put_shipment_orders_insufficient_returns_403(base_url, user_headers):
+    headers = _get_headers(user_headers, method="put", allowed=False,)
+    response = requests.put(f"{base_url}/api/v1/shipments/1/orders", headers=headers, json={},)
+    assert response.status_code == 403
+
+def test_put_shipment_order_nonexistent_parent_return_404(base_url, user_headers):
+    headers = _get_headers(user_headers, method="put", allowed=False,)
+    response = requests.put(f"{base_url}/api/v1/shipment/99999999/orders", headers =headers)
+    assert response.status_code == 404
+#endregion
+
+#region GET shipment id items
+def test_get_shipment_items_requires_authentication(base_url):
+    response = requests.get(f"{base_url}/api/v1/shipments/1/items")
+    assert response.status_code == 401
+
+def test_put_shipment_items_insufficient_returns_403(base_url, user_headers):
+    headers = _get_headers(user_headers, method="get", allowed=False,)
+    response = requests.get(f"{base_url}/api/v1/shipments/1/items", headers=headers, json={},)
+    assert response.status_code == 403
+
+def test_put_shipment_order_nonexistent_parent_return_404(base_url, user_headers):
+    headers = _get_headers(user_headers, method="get", allowed=False,)
+    response = requests.get(f"{base_url}/api/v1/shipments/99999999/items", headers =headers)
+    assert response.status_code == 404
+
+def test_get_shipment_items_returns_json(base_url, user_headers,):
+    existing = _first_shipment(base_url, user_headers,)
+    headers = _get_headers(user_headers)
+    response = requests.get(f"{base_url}/api/v1/shipments/{existing['id']}/items", headers=headers,)
+    assert response.status_code == 200
+    body = response.json()
+    assert isinstance(body, list)
+    assert response.headers.get("Content-Type", "",).startswith("application/json")
+
+#endregion
+
+#PUT shipment id items
+def test_put_shipment_items_requires_authentication(base_url):
+    response = requests.put(f"{base_url}/api/v1/shipments/1/items")
+    assert response.status_code == 401
+
+def test_put_shipment_items_insufficient_returns_403(base_url, user_headers):
+    headers = _get_headers(user_headers, method="put", allowed=False,)
+    response = requests.put(f"{base_url}/api/v1/shipments/1/items", headers=headers, json={},)
+    assert response.status_code == 403
+
+def test_put_shipment_items_nonexistent_parent_return_404(base_url, user_headers):
+    headers = _get_headers(user_headers, method="put", allowed=True)
+    response = requests.put(f"{base_url}/api/v1/shipments/99999999/items", headers =headers)
+    assert response.status_code == 404
+
+#endregion
+
+#region Cross-cutting checks
+def test_shipments_unauthorized_errors_have_consistent_format(base_url,):
+    get_response = requests.get(f"{base_url}/api/v1/shipments")
+    post_response = requests.post(f"{base_url}/api/v1/shipments", json={},)
+    put_response = requests.put(f"{base_url}/api/v1/shipments/1", json={},)
+    delete_response = requests.delete(f"{base_url}/api/v1/shipments/1")
+
+    assert get_response.status_code == 401
+    assert post_response.status_code == 401
+    assert put_response.status_code == 401
+    assert delete_response.status_code == 401
+
+    assert get_response.headers.get("Content-Type") is None
+    assert post_response.headers.get("Content-Type") is None
+    assert put_response.headers.get("Content-Type") is None
+    assert delete_response.headers.get("Content-Type") is None
+
+
+def test_shipments_404_error_does_not_leak_internal_data(base_url, user_headers,):
+    headers = _get_headers(user_headers)
+    response = requests.get(f"{base_url}/api/v1/shipments/999999999", headers=headers,)
+    assert response.status_code == 404
+    _error_text_does_not_leak(response)
+
+
+def test_shipments_malformed_id_error_does_not_leak_internal_data(base_url, user_headers,):
+    headers = _get_headers(user_headers)
+    response = requests.get(f"{base_url}/api/v1/shipments/not-an-id", headers=headers,)
+    assert response.status_code != 500
+    _error_text_does_not_leak(response)
 
 #endregion
