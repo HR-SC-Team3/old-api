@@ -584,7 +584,7 @@ def test_put_shipment_items_insufficient_returns_403(base_url, user_headers):
 
 @pytest.mark.xfail(strict = True, reason="it returns 500 instead of 404 for no non existent shipment found")
 
-def test_put_shipment_order_nonexistent_parent_return_404(base_url, user_headers):
+def test_get_shipment_order_nonexistent_parent_return_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="get", allowed=False,)
     response = requests.get(f"{base_url}/api/v1/shipments/99999999/items", headers =headers)
     assert response.status_code == 404
