@@ -106,3 +106,23 @@ class Transfer(BaseModel):
     created_at: datetime
     updated_at: datetime
     items: list[ItemAmount]
+
+class Item(BaseModel):
+    id: int
+    code: str
+    description: str
+    barcode: str
+    model_number: str
+    commodity_code: int
+    unit_weight: float
+    item_line_id: int
+    item_group_id: int
+    item_type_id: int
+    min_purchase_qty: int
+    case_size: int
+    packaging_type: str
+    order_multiple: int
+    supplier_id: int
+    supplier_sku: str
+    created_at: datetime
+    updated_at: datetime
