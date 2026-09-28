@@ -1,11 +1,12 @@
 """
 /suppliers endpoint tests: GET (collection), GET /{id}, POST, PUT /{id},
-DELETE /{id}.
+DELETE /{id}, GET /{id}/items.
 
 These tests exercise the checklist for "As a developer I want to know what
 each endpoint does" (sub-issues: GET /suppliers, GET /suppliers/{id},
-POST /suppliers, PUT /suppliers/{id}, DELETE /suppliers/{id}). Several tests
-are written against the *documented*/expected behavior and are marked
+POST /suppliers, PUT /suppliers/{id}, DELETE /suppliers/{id},
+GET /suppliers/{id}/items). Several tests are written against the
+*documented*/expected behavior and are marked
 `xfail(strict=True)` where the live server currently does something else.
 This pins the actual, observed behavior so it shows up clearly in test
 output and turns into a loud XPASS failure the moment someone "fixes" it,
@@ -28,12 +29,12 @@ request for everyone, regardless of what that query string would even do.
 
 import json
 import time
-from datetime import datetime
 from pathlib import Path
 
 import pytest
 import requests
-from pydantic import BaseModel
+
+from schemas import Supplier
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SUPPLIERS_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "suppliers.py").read_text(
@@ -42,22 +43,6 @@ SUPPLIERS_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "suppliers.py").read_te
 
 
 # region Shared helpers
-class Supplier(BaseModel):
-    id: int
-    code: str
-    name: str
-    address: str
-    city: str
-    zip_code: str
-    province: str
-    country: str
-    contact_name: str
-    phone_number: str
-    reference: str
-    created_at: datetime
-    updated_at: datetime
-
-
 def _url(base_url, path=""):
     return f"{base_url}/api/v1/suppliers{path}"
 
@@ -308,30 +293,6 @@ def test_get_supplier_by_malformed_id_returns_400(base_url, user_headers):
     assert response.status_code == 400
 
 
-def test_get_supplier_items_are_consistent_with_items_endpoint(base_url, user_headers):
-    """
-    The only "related object" GET /suppliers/{id} has is its /items sub-resource.
-    Every item it returns should reference this supplier and match the standalone /items/{id} record.
-    """
-    existing = _first_supplier(base_url, user_headers)
-    supplier_headers = _get_headers(user_headers)
-    item_headers = user_headers(resource="items", method="get", allowed=True)
-
-    items_response = requests.get(
-        _url(base_url, f"/{existing['id']}/items"), headers=supplier_headers
-    )
-    assert items_response.status_code == 200
-    items = items_response.json()
-
-    for item in items:
-        assert item["supplier_id"] == existing["id"]
-        direct = requests.get(
-            f"{base_url}/api/v1/items/{item['id']}", headers=item_headers
-        )
-        assert direct.status_code == 200
-        assert direct.json() == item
-
-
 def test_get_supplier_by_id_requires_authentication(base_url):
     response = requests.get(_url(base_url, f"/1"))
 
@@ -367,6 +328,91 @@ def test_get_supplier_by_malformed_id_error_leaks_no_internal_details(
     text_lower = response.text.lower()
     for leak_indicator in ("traceback", "exception", "valueerror", 'file "', "line "):
         assert leak_indicator not in text_lower
+
+
+# endregion
+
+
+# region GET /suppliers/{id}/items
+# Items.get_items_for_supplier() has no existence check on the parent
+# supplier at all, so a nonexistent parent id returns 200 with an empty
+# array (indistinguishable from a real supplier that simply has no items)
+# instead of 404.
+
+
+def test_get_supplier_items_returns_200(base_url, user_headers):
+    existing = _first_supplier(base_url, user_headers)
+    headers = _get_headers(user_headers)
+
+    response = requests.get(_url(base_url, f"/{existing['id']}/items"), headers=headers)
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
+def test_get_supplier_items_are_consistent_with_items_endpoint(base_url, user_headers):
+    """
+    The only "related object" a supplier has is its /items sub-resource.
+    Every item it returns should reference this supplier and match the
+    standalone /items/{id} record.
+    """
+    existing = _first_supplier(base_url, user_headers)
+    supplier_headers = _get_headers(user_headers)
+    item_headers = user_headers(resource="items", method="get", allowed=True)
+
+    items_response = requests.get(
+        _url(base_url, f"/{existing['id']}/items"), headers=supplier_headers
+    )
+    assert items_response.status_code == 200
+    items = items_response.json()
+
+    for item in items:
+        assert item["supplier_id"] == existing["id"]
+        direct = requests.get(
+            f"{base_url}/api/v1/items/{item['id']}", headers=item_headers
+        )
+        assert direct.status_code == 200
+        assert direct.json() == item
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "get_items_for_supplier() filters Items by supplier_id with no "
+        "existence check on the parent supplier at all. A nonexistent "
+        "parent id returns 200 with an empty array instead of 404."
+    ),
+)
+def test_get_supplier_items_nonexistent_parent_returns_404(base_url, user_headers):
+    headers = _get_headers(user_headers)
+
+    response = requests.get(_url(base_url, "/999999/items"), headers=headers)
+
+    assert response.status_code == 404
+
+
+def test_get_supplier_items_requires_authentication(base_url):
+    response = requests.get(_url(base_url, "/1/items"))
+
+    assert response.status_code == 401
+
+
+def test_get_supplier_items_insufficient_permissions_returns_403(
+    base_url, user_headers
+):
+    headers = _get_headers(user_headers, allowed=False)
+    response = requests.get(_url(base_url, "/1/items"), headers=headers)
+
+    assert response.status_code == 403
+
+
+def test_get_supplier_items_response_content_type_is_json(base_url, user_headers):
+    existing = _first_supplier(base_url, user_headers)
+    headers = _get_headers(user_headers)
+
+    response = requests.get(_url(base_url, f"/{existing['id']}/items"), headers=headers)
+
+    assert response.headers.get("Content-Type", "").startswith("application/json")
 
 
 # endregion
