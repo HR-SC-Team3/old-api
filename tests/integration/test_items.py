@@ -557,10 +557,6 @@ def test_post_item_duplicate_id_returns_conflict(
     assert response.status_code in (400, 409, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Created item cannot be immediately retrieved successfully",
-)
 def test_post_item_is_immediately_retrievable(
     base_url, user_headers, preserve_data_files
 ):
