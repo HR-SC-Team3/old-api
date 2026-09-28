@@ -942,7 +942,7 @@ def test_delete_item_valid_id_returns_200(
     assert response.status_code in (200, 204)
 
 
-pytest.mark.skip(
+@pytest.mark.skip(
     reason="No current test user has DELETE permission for items, so successful DELETE behavior cannot currently be tested.",
 )
 def test_delete_item_resource_is_actually_gone(
