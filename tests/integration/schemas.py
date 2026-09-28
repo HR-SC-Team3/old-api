@@ -106,3 +106,17 @@ class Transfer(BaseModel):
     created_at: datetime
     updated_at: datetime
     items: list[ItemAmount]
+    
+class Client(BaseModel):
+    id: int
+    name: str
+    address: str
+    city: str
+    zip_code: str
+    province: str
+    country: str
+    contact_name: str
+    contact_phone: str
+    contact_email: str
+    created_at: datetime
+    updated_at: datetime
