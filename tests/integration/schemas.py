@@ -106,3 +106,16 @@ class Transfer(BaseModel):
     created_at: datetime
     updated_at: datetime
     items: list[ItemAmount]
+
+class Shipment(BaseModel):
+    id: int
+    reference: str
+    order_id: int
+    shipment_date: datetime
+    shipment_type: str
+    shipment_status: str
+    carrier_name: str
+    shipping_method: str
+    payment_type: str
+    created_at: datetime
+    updated_at: datetime

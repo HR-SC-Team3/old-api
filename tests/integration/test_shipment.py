@@ -6,25 +6,13 @@ from urllib import response
 
 import pytest
 import requests
-from pydantic import BaseModel
+from schemas import Shipment
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 INVENTORIES_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "shipments.py").read_text(
     encoding="utf-8"
 )
 
-class Shipment(BaseModel):
-    id: int
-    reference: str
-    order_id: int
-    shipment_date: datetime
-    shipment_type: str
-    shipment_status: str
-    carrier_name: str
-    shipping_method: str
-    payment_type: str
-    created_at: datetime
-    updated_at: datetime
 
 def _get_headers(user_headers, method="get", allowed=True):
     return user_headers(resource="shipments", method=method, allowed=allowed)
@@ -51,6 +39,10 @@ def _error_text_does_not_leak(response):
 
     for leak in ("traceback", "stack trace", "exception", "internal server", "sql", "file","line"):
         assert leak not in text_lower
+
+def _request_shipment(base_url, user_headers, method, path, allowed=True, **kwargs,):
+    headers = _get_headers(user_headers, method=method, allowed=allowed,)
+    return requests.request(method, f"{base_url}{path}", headers=headers, **kwargs,)
 
 #region GET shipment
 
@@ -98,8 +90,7 @@ def test_get_shipments_requires_authentiction(base_url):
     assert response.status_code == 401
 
 def test_get_shipment_insufficient_permissions_returns_403(base_url, user_headers):
-    headers= _get_headers(user_headers, method = "get", allowed = False)
-    response = requests.get(f"{base_url}/api/v1/shipments", headers = headers)
+    response = _request_shipment(base_url, user_headers, method="get", path="/api/v1/shipments", allowed=False,)
     assert response.status_code== 403
 
 def test_get_shipment_response_content_type_is_json(base_url, user_headers):
@@ -366,8 +357,7 @@ def test_get_shipment_by_id_requires_authentication(base_url):
     assert response.status_code == 401
 
 def test_get_shipment_by_id_insufficient_permissions_return_403(base_url, user_headers):
-    headers =_get_headers(user_headers, method="get", allowed=False)
-    response =requests.get(f"{base_url}/api/v1/shipments/1", headers=headers,)
+    response = _request_shipment(base_url, user_headers, method="get", path="/api/v1/shipments/1", allowed=False,)
     assert response.status_code ==403
 
 @pytest.mark.xfail(strict = True, reason="The id returns 200 instead of 400 for nonexistent shipment")
@@ -387,8 +377,7 @@ def test_put_shipment_requires_authentication(base_url):
 
 
 def test_put_shipment_insufficient_permissions_returns_403(base_url, user_headers):
-    headers = _get_headers(user_headers, method="put", allowed=False,)
-    response = requests.put(f"{base_url}/api/v1/shipments/1", headers=headers, json={},)
+    response = _request_shipment(base_url, user_headers, method="put", path="/api/v1/shipments/1", allowed=False, json={},)
     assert response.status_code == 403
 
 def test_put_shipment_valid_payload_returns_200(base_url, user_headers, preserve_data_files):
@@ -491,8 +480,7 @@ def test_delete_shipment_requires_authentication(base_url):
     assert response.status_code == 401
 
 def test_delete_shipment_insufficient_returns_403(base_url, user_headers):
-    headers = _get_headers(user_headers, method="delete", allowed=False,)
-    response = requests.delete(f"{base_url}/api/v1/shipments/1", headers=headers, json={},)
+    response = _request_shipment(base_url, user_headers, method="delete", path="/api/v1/shipments/1", allowed=False, json={},)
     assert response.status_code == 403
 
 @pytest.mark.xfail(strict = True, reason="With the id it doesn't return 404 but return 200")
@@ -532,8 +520,7 @@ def test_get_shipment_orders_requires_authentication(base_url):
     assert response.status_code == 401
 
 def test_get_shipment_orders_insufficient_returns_403(base_url, user_headers):
-    headers = _get_headers(user_headers, method="get", allowed=False,)
-    response = requests.get(f"{base_url}/api/v1/shipments/1/orders", headers=headers, json={},)
+    response = _request_shipment(base_url, user_headers, method="get", path="/api/v1/shipments/1/orders", allowed=False, json={},)
     assert response.status_code == 403
 
 @pytest.mark.xfail(strict = True, reason="It returns 200 for nonexistent shipment instead of not found 404")
@@ -575,8 +562,7 @@ def test_put_shipment_orders_requires_authentication(base_url):
     assert response.status_code == 401
 
 def test_put_shipment_orders_insufficient_returns_403(base_url, user_headers):
-    headers = _get_headers(user_headers, method="put", allowed=False,)
-    response = requests.put(f"{base_url}/api/v1/shipments/1/orders", headers=headers, json={},)
+    response = _request_shipment(base_url, user_headers, method="put", path="/api/v1/shipments/1/orders", allowed=False, json={},)
     assert response.status_code == 403
 
 @pytest.mark.xfail(strict = True, reason="It returns a format that doesn't match the expected order objects")
@@ -593,8 +579,7 @@ def test_get_shipment_items_requires_authentication(base_url):
     assert response.status_code == 401
 
 def test_put_shipment_items_insufficient_returns_403(base_url, user_headers):
-    headers = _get_headers(user_headers, method="get", allowed=False,)
-    response = requests.get(f"{base_url}/api/v1/shipments/1/items", headers=headers, json={},)
+    response = _request_shipment(base_url, user_headers, method="get", path="/api/v1/shipments/1/items", allowed=False, json={},)
     assert response.status_code == 403
 
 @pytest.mark.xfail(strict = True, reason="it returns 500 instead of 404 for no non existent shipment found")
