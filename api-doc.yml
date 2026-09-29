@@ -440,6 +440,9 @@ paths:
             tags:
                 - item_groups
             summary: List item groups
+            description: |-
+                Known issues:
+                - Any query string returns 403 for everyone, even with valid permissions
             responses:
                 "200":
                     description: OK
@@ -457,6 +460,10 @@ paths:
             tags:
                 - item_groups
             summary: Create an item group
+            description: |-
+                Known issues:
+                - No data validation, any shape is accepted and stored
+                - A missing id is accepted and stored; every later lookup that has to scan to the end (e.g. an unknown ID) then crashes the app
             requestBody:
                 required: true
                 content:
@@ -477,6 +484,10 @@ paths:
             tags:
                 - item_groups
             summary: Get an item group
+            description: |-
+                Known issues:
+                - Non numeric ID crashes the app
+                - Non existing ID returns 200 with null
             responses:
                 "200":
                     description: OK
@@ -492,6 +503,11 @@ paths:
             tags:
                 - item_groups
             summary: Replace an item group
+            description: |-
+                Known issues:
+                - No validation, a record is replaced no matter what
+                - Non numeric ID crashes the app
+                - No existence check, an unknown ID does not return 404
             requestBody:
                 required: true
                 content:
@@ -509,6 +525,11 @@ paths:
             tags:
                 - item_groups
             summary: Delete an item group
+            description: |-
+                Known issues:
+                - Non numeric ID crashes the app
+                - No existence check, an unknown ID returns 200 without doing anything
+                - Items that still reference the group are not blocked or updated, they keep a dangling item_group_id
             responses:
                 "200":
                     description: OK
@@ -524,6 +545,11 @@ paths:
                 - item_groups
                 - items
             summary: List item ids belonging to this item group
+            description: |-
+                Known issues:
+                - Non numeric ID crashes the app
+                - Non existing ID returns 200 with an empty list
+                - Returns bare item ids, unlike GET /suppliers/{id}/items which returns full Item objects
             responses:
                 "200":
                     description: OK
@@ -1249,6 +1275,10 @@ paths:
             tags:
                 - transfers
             summary: List transfers, each with its line items embedded
+            description: |-
+                Known issues:
+                - Any query string returns 403 for everyone, even with valid permissions
+                - Fails with 500 if a stored transfer has no id (see POST)
             responses:
                 "200":
                     description: OK
@@ -1266,9 +1296,15 @@ paths:
             tags:
                 - transfers
             summary: Schedule a batch transfer
-            description: >-
+            description: |-
                 Server sets transfer_status to "Scheduled" regardless of the request
                 body, and pushes a notification onto the queue.
+
+                Known issues:
+                - No validation of fields, types or foreign keys, and no uniqueness check on id
+                - A missing id returns 500 (the notification crashes on it) but the row is
+                  already persisted, which then breaks every GET /transfers with a 500
+                  until the row is removed manually
             requestBody:
                 required: true
                 content:
@@ -1289,6 +1325,10 @@ paths:
             tags:
                 - transfers
             summary: Get a transfer, with its line items embedded
+            description: |-
+                Known issues:
+                - Non numeric ID crashes the app
+                - Non existing ID returns 200 with null
             responses:
                 "200":
                     description: OK
@@ -1304,6 +1344,9 @@ paths:
             tags:
                 - transfers
             summary: Replace transfer fields
+            description: |-
+                Known issues:
+                - Non numeric ID crashes the app
             requestBody:
                 required: true
                 content:
@@ -1321,6 +1364,9 @@ paths:
             tags:
                 - transfers
             summary: Delete a transfer and its line items
+            description: |-
+                Known issues:
+                - Non numeric ID crashes the app
             responses:
                 "200":
                     description: OK
@@ -1335,6 +1381,9 @@ paths:
             tags:
                 - transfers
             summary: List line items for a transfer
+            description: |-
+                Known issues:
+                - Non existing ID returns 200 with an empty list instead of 404
             responses:
                 "200":
                     description: OK
@@ -1355,11 +1404,18 @@ paths:
             tags:
                 - transfers
             summary: Commit a scheduled transfer
-            description: >-
+            description: |-
                 Moves quantity_on_hand for every line item from from_location_id to
                 to_location_id (creating the destination inventory row if it does not
                 exist), sets transfer_status to "Processed", and pushes a notification.
                 Takes no request body.
+
+                Known issues:
+                - Not idempotent, the transfer's line items are never cleared. Committing an
+                  already Processed transfer again moves the stock again and double counts
+                  quantity_on_hand at the destination
+                - Non numeric ID crashes the app
+                - Non existing ID crashes the app
             responses:
                 "200":
                     description: OK
