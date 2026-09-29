@@ -2,16 +2,10 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
-from urllib import response
 
 import pytest
 import requests
 from schemas import Shipment
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-INVENTORIES_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "shipments.py").read_text(
-    encoding="utf-8"
-)
 
 
 def _get_headers(user_headers, method="get", allowed=True):
@@ -31,7 +25,7 @@ def _first_shipment(base_url, user_headers):
     return body[0]
 
 def _shipment_by_id(base_url, user_headers, shipment_id):
-    headers= _get_headers(user_headers)
+    headers = _get_headers(user_headers)
     return requests.get(f"{base_url}/api/v1/shipments/{shipment_id}", headers= headers)
 
 def _error_text_does_not_leak(response):
@@ -91,7 +85,7 @@ def test_get_shipments_requires_authentiction(base_url):
 
 def test_get_shipment_insufficient_permissions_returns_403(base_url, user_headers):
     response = _request_shipment(base_url, user_headers, method="get", path="/api/v1/shipments", allowed=False,)
-    assert response.status_code== 403
+    assert response.status_code == 403
 
 def test_get_shipment_response_content_type_is_json(base_url, user_headers):
     response = _get_shipments(base_url, user_headers)
@@ -156,16 +150,6 @@ def test_get_shipments_unknown_query_param_is_handled(base_url, user_headers):
     assert response.status_code in (200, 400, 422)
     assert response.status_code != 500
 
-# def test_get_shipments_matches_openapi_schema(base_url, user_headers):
-#     openapi_response = requests.get(f"{base_url}/openapi.json")
-#     assert openapi_response.status_code == 200
-#     spec = openapi_response.json()
-#     shipment_schema = spec["components"]["schemas"]["Shipment"]
-#     assert "id" in shipment_schema["properties"]
-#     assert "reference" in shipment_schema["properties"]
-#     assert "order_id" in shipment_schema["properties"]
-#     assert "shipment_date" in shipment_schema["properties"]
-
 #endregion
 
 # region POST shipment
@@ -190,7 +174,7 @@ def test_post_shipment_returns_201(base_url, user_headers, preserve_data_files):
     headers = _get_headers(user_headers, method="post")
     payload = _valid_shipment_payload()
 
-    response = requests.post( f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
+    response = requests.post( f"{base_url}/api/v1/shipments", headers =headers, json=payload,)
     assert response.status_code == 201
     assert response.headers.get("Location") or response.content
 
@@ -449,29 +433,6 @@ def test_put_shipment_rejects_invalid_foreign_key(base_url, user_headers, preser
     response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422)
 
-# def test_put_shipment_update_is_persisted(base_url, user_headers, preserve_data_files,):
-#     preserve_data_files("shipment.json")
-#     existing = _first_shipment(base_url, user_headers)
-#     headers = _get_headers(user_headers, method="put")
-#     payload = {
-#         "reference":"UPDATED-SHIPMENT-TEST-999",
-#         "order_id": existing["order_id"],
-#         "shipment_date": existing["shipment_date"],
-#         "shipment_type": existing["shipment_type"],
-#         "shipment_status": existing["shipment_status"],
-#         "carrier_name": existing["carrier_name"],
-#         "shipping_method": existing["shipping_method"],
-#         "payment_type": existing["payment_type"],
-#     }
-
-#     response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
-#     assert response.status_code == 200
-#     get_response = _shipment_by_id(base_url, user_headers, existing["id"],)
-#     assert get_response.status_code == 200
-#     updated = get_response.json()
-#     assert updated["id"] == existing["id"]
-#     assert updated["reference"] == "UPDATED-SHIPMENT-TEST-999"
-
 #endregion
 
 #region DELETE shipment id
@@ -578,13 +539,13 @@ def test_get_shipment_items_requires_authentication(base_url):
     response = requests.get(f"{base_url}/api/v1/shipments/1/items")
     assert response.status_code == 401
 
-def test_put_shipment_items_insufficient_returns_403(base_url, user_headers):
+def test_get_shipment_items_insufficient_returns_403(base_url, user_headers):
     response = _request_shipment(base_url, user_headers, method="get", path="/api/v1/shipments/1/items", allowed=False, json={},)
     assert response.status_code == 403
 
 @pytest.mark.xfail(strict = True, reason="it returns 500 instead of 404 for no non existent shipment found")
 
-def test_get_shipment_order_nonexistent_parent_return_404(base_url, user_headers):
+def test_get_shipment_items_nonexistent_parent_return_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="get", allowed=False,)
     response = requests.get(f"{base_url}/api/v1/shipments/99999999/items", headers =headers)
     assert response.status_code == 404
