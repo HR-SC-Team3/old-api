@@ -79,6 +79,16 @@ Test files documenting current behavior should still be maintainable:
 - Remove commented-out test functions rather than leaving them in the file - finish them or
   delete them.
 
+### 7. Pydantic response models belong in `schemas.py`
+
+`tests/integration/schemas.py` is the single shared location for the Pydantic models used to
+validate API responses (e.g. `Transfer`, `Client`, `Item`, `ItemType`).
+
+- Do not define a new `BaseModel` subclass inline inside a `test_*.py` file - add it to
+  `schemas.py` and `from schemas import Whatever` instead.
+- Before adding a class, check `schemas.py` doesn't already define one for that resource
+  (including one added by another currently-open PR - see the merge-coordination note below).
+
 ## Where else these rules live
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) - human contributor guide.

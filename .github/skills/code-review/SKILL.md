@@ -74,6 +74,16 @@ user on demand, and the fixture's own docstring documents this fallback.
   from disk but never asserted against) should be removed, not left as copy-paste leftovers.
 - Commented-out test functions should be finished or deleted, not left commented out.
 
+## 7. Pydantic response models belong in `schemas.py`
+
+`tests/integration/schemas.py` is the single shared location for the Pydantic models used to
+validate API responses (e.g. `Transfer`, `Client`, `Item`, `ItemType`).
+
+- Reject a diff that defines a new `BaseModel` subclass inline inside a `test_*.py` file -
+  it should be added to `schemas.py` and imported (`from schemas import Whatever`) instead.
+- Check `schemas.py` doesn't already define a model for that resource before approving a new
+  one - including one added by another currently-open PR (see the note below).
+
 ## Additional things worth flagging
 
 - **Shared-file collisions across concurrent PRs.** If a PR adds a class/model to a shared
