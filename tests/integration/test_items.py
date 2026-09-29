@@ -965,6 +965,7 @@ def test_delete_item_resource_is_actually_gone(
 
 
 @pytest.mark.xfail(
+    strict=True,
     reason="Return the code 200 when it should reurn 404.",
 )
 def test_delete_item_nonexistent_id_returns_404(
@@ -981,6 +982,7 @@ def test_delete_item_nonexistent_id_returns_404(
 
 
 @pytest.mark.xfail(
+    strict=True,
     reason="Returns the code 200 when it should return 400",
 )
 def test_delete_item_malformed_id_returns_400(
@@ -997,6 +999,7 @@ def test_delete_item_malformed_id_returns_400(
 
 
 @pytest.mark.xfail(
+    strict=True,
     reason="Returns 200 despite item being deleted already",
 )
 def test_delete_item_repeated_delete_returns_404(
