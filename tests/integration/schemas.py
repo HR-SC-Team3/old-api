@@ -107,6 +107,15 @@ class Transfer(BaseModel):
     updated_at: datetime
     items: list[ItemAmount]
 
+
+class Location(BaseModel):
+    id: int
+    warehouse_id: int
+    code: str
+    name: str
+    created_at: datetime
+    updated_at: datetime
+
 class Shipment(BaseModel):
     id: int
     reference: str
