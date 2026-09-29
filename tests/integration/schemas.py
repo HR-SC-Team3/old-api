@@ -160,3 +160,10 @@ class Item(BaseModel):
     supplier_sku: str
     created_at: datetime
     updated_at: datetime
+
+class ItemLine(BaseModel):
+    id: int
+    name: str
+    description: str
+    created_at: datetime
+    updated_at: datetime
