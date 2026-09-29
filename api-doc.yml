@@ -136,6 +136,10 @@ paths:
             tags:
                 - locations
             summary: List locations
+            description: |-
+                Known Issues:
+                - No support on query parameters
+                - returns 403 even with permission
             responses:
                 "200":
                     description: OK
@@ -153,6 +157,10 @@ paths:
             tags:
                 - locations
             summary: Create a location
+            description: |-
+                Known Issues:
+                - No validation checks
+                - when returning with 201 it returns empty body or no header
             requestBody:
                 required: true
                 content:
@@ -173,6 +181,11 @@ paths:
             tags:
                 - locations
             summary: Get a location
+            description: |-
+                Known Issues:
+                - Returns 200 for non existent ids
+                - Malformed ids return 500
+                - Internal leaks return 200 and 500
             responses:
                 "200":
                     description: OK
@@ -188,6 +201,11 @@ paths:
             tags:
                 - locations
             summary: Replace a location
+            description: |-
+                Known issues:
+                - non existent id returns 200 
+                - malformed id returns 500
+                - no validation checks
             requestBody:
                 required: true
                 content:
@@ -205,6 +223,11 @@ paths:
             tags:
                 - locations
             summary: Delete a location
+            description:  |-
+                Known issues:
+                - non existent id returns 200 
+                - deleting again returns 200
+                - Get doesnt return 404
             responses:
                 "200":
                     description: OK
@@ -1101,6 +1124,10 @@ paths:
             tags:
                 - shipments
             summary: List shipments, each with its line items embedded
+            description: |-
+                Known issues:
+                - non existent id dont return correct response
+                - malformed id dont return correct response
             responses:
                 "200":
                     description: OK
@@ -1118,6 +1145,9 @@ paths:
             tags:
                 - shipments
             summary: Create a shipment and its line items
+            description: |-
+                Known issues:
+                - it returns 500 and doesn't update correctly
             requestBody:
                 required: true
                 content:
@@ -1138,6 +1168,10 @@ paths:
             tags:
                 - shipments
             summary: Get a shipment, with its line items embedded
+            description: |-
+                Known issues:
+                - parent validation doesn't return correct response
+                - relationship- content doesn't return correct response
             responses:
                 "200":
                     description: OK
@@ -1153,6 +1187,9 @@ paths:
             tags:
                 - shipments
             summary: Replace shipment fields
+            description: |-
+                Known issues:
+                - non-existent parent doesn't return 404
             requestBody:
                 required: true
                 content:
@@ -1170,6 +1207,9 @@ paths:
             tags:
                 - shipments
             summary: Delete a shipment and its line items
+            description:  |-
+                Known issues:
+                - doesn't return 404 responses
             responses:
                 "200":
                     description: OK
@@ -1187,9 +1227,9 @@ paths:
             summary: >-
                 Get the order linked to this shipment, as a single-element (or empty)
                 list
-            description: >-
-                Kept list-shaped for v1 compatibility; the underlying schema is a 1:1
-                shipment.order_id.
+            description: |-
+                Known issues:
+                -  parent validation and relationship-content don't return correct response
             responses:
                 "200":
                     description: OK
@@ -1209,9 +1249,9 @@ paths:
                 - shipments
                 - orders
             summary: Set (or clear) the order linked to this shipment
-            description: >-
-                Accepts a list for v1 compatibility; only the first id is kept as
-                shipment.order_id, or the link is cleared if the list is empty.
+            description: |-
+                Known issues:
+                -  non-existent parent doesn't return 404 response
             requestBody:
                 required: true
                 content:
@@ -1234,6 +1274,9 @@ paths:
             tags:
                 - shipments
             summary: List line items for a shipment
+            description: |-
+                Known issues:
+                -  non-existent parent doesn't return correct response
             responses:
                 "200":
                     description: OK
@@ -1251,10 +1294,9 @@ paths:
             tags:
                 - shipments
             summary: Replace line items for a shipment
-            description: >-
-                Diffs old vs. new amounts per item_id and pushes the delta into
-                Inventories.quantity_ordered on the inventory row with the most stock on
-                hand for that item, clamped at 0.
+            description: |-
+                Known issues:
+                -  non-existent parent doesn't return 404 response
             requestBody:
                 required: true
                 content:
