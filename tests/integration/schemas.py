@@ -115,3 +115,57 @@ class Location(BaseModel):
     name: str
     created_at: datetime
     updated_at: datetime
+
+class Shipment(BaseModel):
+    id: int
+    reference: str
+    order_id: int
+    shipment_date: datetime
+    shipment_type: str
+    shipment_status: str
+    carrier_name: str
+    shipping_method: str
+    payment_type: str
+    created_at: datetime
+    updated_at: datetime
+    
+class Client(BaseModel):
+    id: int
+    name: str
+    address: str
+    city: str
+    zip_code: str
+    province: str
+    country: str
+    contact_name: str
+    contact_phone: str
+    contact_email: str
+    created_at: datetime
+    updated_at: datetime
+    
+class ItemType(BaseModel):
+    id: int
+    name: str
+    description: str
+    created_at: datetime
+    updated_at: datetime
+    
+class Item(BaseModel):
+    id: int
+    code: str
+    description: str
+    barcode: str
+    model_number: str
+    commodity_code: int
+    unit_weight: float
+    item_line_id: int
+    item_group_id: int
+    item_type_id: int
+    min_purchase_qty: int
+    case_size: int
+    packaging_type: str
+    order_multiple: int
+    supplier_id: int
+    supplier_sku: str
+    created_at: datetime
+    updated_at: datetime
