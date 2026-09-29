@@ -107,6 +107,40 @@ class Transfer(BaseModel):
     updated_at: datetime
     items: list[ItemAmount]
 
+class Shipment(BaseModel):
+    id: int
+    reference: str
+    order_id: int
+    shipment_date: datetime
+    shipment_type: str
+    shipment_status: str
+    carrier_name: str
+    shipping_method: str
+    payment_type: str
+    created_at: datetime
+    updated_at: datetime
+    
+class Client(BaseModel):
+    id: int
+    name: str
+    address: str
+    city: str
+    zip_code: str
+    province: str
+    country: str
+    contact_name: str
+    contact_phone: str
+    contact_email: str
+    created_at: datetime
+    updated_at: datetime
+    
+class ItemType(BaseModel):
+    id: int
+    name: str
+    description: str
+    created_at: datetime
+    updated_at: datetime
+    
 class Item(BaseModel):
     id: int
     code: str
@@ -124,19 +158,5 @@ class Item(BaseModel):
     order_multiple: int
     supplier_id: int
     supplier_sku: str
-    created_at: datetime
-    updated_at: datetime
-    
-class Client(BaseModel):
-    id: int
-    name: str
-    address: str
-    city: str
-    zip_code: str
-    province: str
-    country: str
-    contact_name: str
-    contact_phone: str
-    contact_email: str
     created_at: datetime
     updated_at: datetime
