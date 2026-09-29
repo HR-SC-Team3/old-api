@@ -1,18 +1,18 @@
-import json
 import time
 
 from pathlib import Path
 
 import pytest
+
 import requests
 
-from schemas import ItemAmount, Order
+from schemas import Client, Order
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-ORDERS_MODEL_SOURCE = (
-    REPO_ROOT / "api" / "models" / "orders.py"
+CLIENTS_MODEL_SOURCE = (
+    REPO_ROOT / "api" / "models" / "clients.py"
 ).read_text(encoding="utf-8")
 
 
@@ -21,17 +21,17 @@ ORDERS_MODEL_SOURCE = (
 
 def _get_headers(user_headers, method="get", allowed=True):
     return user_headers(
-        resource="orders",
+        resource="clients",
         method=method,
         allowed=allowed
     )
 
 
-def _first_order(base_url, user_headers):
+def _first_client(base_url, user_headers):
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers
     )
 
@@ -40,57 +40,49 @@ def _first_order(base_url, user_headers):
     body = response.json()
 
     assert body, (
-        "fixture data/order.json is expected to be non-empty"
+        "fixture data/client.json is expected to be non-empty"
     )
 
     return body[0]
 
 
-def _order_payload(order_id=999999):
+def _client_payload(client_id=999999):
     return {
-        "id": order_id,
-        "client_id": 1,
-        "order_date": "2026-09-21T10:42:25.283Z",
-        "request_date": "2026-09-21T10:42:25.283Z",
-        "reference": "TEST-ORDER",
-        "customer_po_number": "PO-TEST",
-        "order_status": "Pending",
-        "shipping_notes": "Test order",
-        "warehouse_id": 1,
-        "ship_to_client_id": 1,
-        "bill_to_client_id": 1,
-        "items": [
-            {
-                "item_id": 1,
-                "amount": 2,
-                "unit_price": 10
-            }
-        ]
+        "id": client_id,
+        "name": "Test Client",
+        "address": "Test Street 1",
+        "city": "Amersfoort",
+        "zip_code": "1234AB",
+        "province": "Utrecht",
+        "country": "Netherlands",
+        "contact_name": "Test Person",
+        "contact_phone": "0612345678",
+        "contact_email": "test@example.com"
     }
 
 
 # endregion
 
 
-# region GET /orders
+# region GET /clients
 
 
-def test_get_orders_returns_200(base_url, user_headers):
+def test_get_clients_returns_200(base_url, user_headers):
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers
     )
 
     assert response.status_code == 200
 
 
-def test_get_orders_returns_list(base_url, user_headers):
+def test_get_clients_returns_list(base_url, user_headers):
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers
     )
 
@@ -101,15 +93,28 @@ def test_get_orders_returns_list(base_url, user_headers):
     assert isinstance(body, list)
 
 
+def test_get_clients_schema(base_url, user_headers):
+    headers = _get_headers(user_headers)
 
-def test_get_orders_content_type_is_json(
+    response = requests.get(
+        f"{base_url}/api/v1/clients",
+        headers=headers
+    )
+
+    assert response.status_code == 200
+
+    for client in response.json():
+        Client.model_validate(client)
+
+
+def test_get_clients_content_type_is_json(
     base_url,
     user_headers
 ):
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers
     )
 
@@ -119,7 +124,7 @@ def test_get_orders_content_type_is_json(
     ).startswith("application/json")
 
 
-def test_get_orders_response_time(
+def test_get_clients_response_time(
     base_url,
     user_headers
 ):
@@ -128,7 +133,7 @@ def test_get_orders_response_time(
     start = time.monotonic()
 
     response = requests.get(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers
     )
 
@@ -138,17 +143,17 @@ def test_get_orders_response_time(
     assert elapsed < 5
 
 
-def test_get_orders_without_api_key_returns_401(base_url):
+def test_get_clients_without_api_key_returns_401(base_url):
     response = requests.get(
-        f"{base_url}/api/v1/orders"
+        f"{base_url}/api/v1/clients"
     )
 
     assert response.status_code == 401
 
 
-def test_get_orders_invalid_api_key_returns_401(base_url):
+def test_get_clients_invalid_api_key_returns_401(base_url):
     response = requests.get(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers={
             "API_KEY": "invalid-api-key"
         }
@@ -157,7 +162,7 @@ def test_get_orders_invalid_api_key_returns_401(base_url):
     assert response.status_code == 401
 
 
-def test_get_orders_without_permission_returns_403(
+def test_get_clients_without_permission_returns_403(
     base_url,
     user_headers
 ):
@@ -167,7 +172,7 @@ def test_get_orders_without_permission_returns_403(
     )
 
     response = requests.get(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers
     )
 
@@ -177,67 +182,63 @@ def test_get_orders_without_permission_returns_403(
 # endregion
 
 
-# region GET /orders/{id}
+# region GET /clients/{id}
 
 
-def test_get_order_returns_200(base_url, user_headers):
-    order = _first_order(base_url, user_headers)
+def test_get_client_returns_200(base_url, user_headers):
+    client = _first_client(base_url, user_headers)
 
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders/{order['id']}",
+        f"{base_url}/api/v1/clients/{client['id']}",
         headers=headers
     )
 
     assert response.status_code == 200
 
 
-
-def test_get_order_contains_items(base_url, user_headers):
-    order = _first_order(base_url, user_headers)
+def test_get_client_schema(base_url, user_headers):
+    client = _first_client(base_url, user_headers)
 
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders/{order['id']}",
+        f"{base_url}/api/v1/clients/{client['id']}",
         headers=headers
     )
 
     assert response.status_code == 200
 
-    body = response.json()
-
-    assert "items" in body
-    assert isinstance(body["items"], list)
+    Client.model_validate(response.json())
 
 
 @pytest.mark.xfail(
     strict=True,
     reason="Current API returns 200 with null instead of 404."
 )
-def test_get_nonexistent_order_returns_404(
+def test_get_nonexistent_client_returns_404(
     base_url,
     user_headers
 ):
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders/999999999",
+        f"{base_url}/api/v1/clients/999999999",
         headers=headers
     )
 
     assert response.status_code == 404
 
 
-def test_get_nonexistent_order_current_behavior(
+def test_get_nonexistent_client_current_behavior(
     base_url,
     user_headers
 ):
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders/999999999",
+        f"{base_url}/api/v1/clients/999999999",
         headers=headers
     )
 
@@ -249,43 +250,43 @@ def test_get_nonexistent_order_current_behavior(
     strict=True,
     reason="Current API converts malformed IDs to 500."
 )
-def test_get_order_malformed_id_returns_400(
+def test_get_client_malformed_id_returns_400(
     base_url,
     user_headers
 ):
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders/not-an-id",
+        f"{base_url}/api/v1/clients/not-an-id",
         headers=headers
     )
 
     assert response.status_code == 400
 
 
-def test_get_order_malformed_id_current_behavior(
+def test_get_client_malformed_id_current_behavior(
     base_url,
     user_headers
 ):
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders/not-an-id",
+        f"{base_url}/api/v1/clients/not-an-id",
         headers=headers
     )
 
     assert response.status_code == 500
 
 
-def test_get_order_without_api_key_returns_401(base_url):
+def test_get_client_without_api_key_returns_401(base_url):
     response = requests.get(
-        f"{base_url}/api/v1/orders/1"
+        f"{base_url}/api/v1/clients/1"
     )
 
     assert response.status_code == 401
 
 
-def test_get_order_without_permission_returns_403(
+def test_get_client_without_permission_returns_403(
     base_url,
     user_headers
 ):
@@ -295,7 +296,7 @@ def test_get_order_without_permission_returns_403(
     )
 
     response = requests.get(
-        f"{base_url}/api/v1/orders/1",
+        f"{base_url}/api/v1/clients/1",
         headers=headers
     )
 
@@ -305,15 +306,15 @@ def test_get_order_without_permission_returns_403(
 # endregion
 
 
-# region POST /orders
+# region POST /clients
 
 
-def test_post_order_returns_201(
+def test_post_client_returns_201(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
 
     headers = _get_headers(
         user_headers,
@@ -321,9 +322,9 @@ def test_post_order_returns_201(
     )
 
     response = requests.post(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers,
-        json=_order_payload()
+        json=_client_payload()
     )
 
     assert response.status_code == 201
@@ -333,12 +334,12 @@ def test_post_order_returns_201(
     strict=True,
     reason="Current POST endpoint returns 201 with an empty body."
 )
-def test_post_order_returns_created_order(
+def test_post_client_returns_created_client(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
 
     headers = _get_headers(
         user_headers,
@@ -346,9 +347,9 @@ def test_post_order_returns_created_order(
     )
 
     response = requests.post(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers,
-        json=_order_payload()
+        json=_client_payload()
     )
 
     assert response.status_code == 201
@@ -358,12 +359,12 @@ def test_post_order_returns_created_order(
     assert body["id"] == 999999
 
 
-def test_post_order_is_saved(
+def test_post_client_is_saved(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
 
     headers = _get_headers(
         user_headers,
@@ -371,15 +372,15 @@ def test_post_order_is_saved(
     )
 
     response = requests.post(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers,
-        json=_order_payload(999998)
+        json=_client_payload(999998)
     )
 
     assert response.status_code == 201
 
     get_response = requests.get(
-        f"{base_url}/api/v1/orders/999998",
+        f"{base_url}/api/v1/clients/999998",
         headers=_get_headers(user_headers)
     )
 
@@ -390,47 +391,49 @@ def test_post_order_is_saved(
     assert body["id"] == 999998
 
 
-def test_post_order_adds_timestamps(
+def test_post_client_adds_timestamps(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
 
     headers = _get_headers(
         user_headers,
         method="post"
     )
 
-    requests.post(
-        f"{base_url}/api/v1/orders",
+    response = requests.post(
+        f"{base_url}/api/v1/clients",
         headers=headers,
-        json=_order_payload(999997)
+        json=_client_payload(999997)
     )
 
-    response = requests.get(
-        f"{base_url}/api/v1/orders/999997",
+    assert response.status_code == 201
+
+    get_response = requests.get(
+        f"{base_url}/api/v1/clients/999997",
         headers=_get_headers(user_headers)
     )
 
-    assert response.status_code == 200
+    assert get_response.status_code == 200
 
-    body = response.json()
+    body = get_response.json()
 
     assert "created_at" in body
     assert "updated_at" in body
 
 
-def test_post_order_without_api_key_returns_401(base_url):
+def test_post_client_without_api_key_returns_401(base_url):
     response = requests.post(
-        f"{base_url}/api/v1/orders",
-        json=_order_payload()
+        f"{base_url}/api/v1/clients",
+        json=_client_payload()
     )
 
     assert response.status_code == 401
 
 
-def test_post_order_without_permission_returns_403(
+def test_post_client_without_permission_returns_403(
     base_url,
     user_headers
 ):
@@ -441,9 +444,9 @@ def test_post_order_without_permission_returns_403(
     )
 
     response = requests.post(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers,
-        json=_order_payload()
+        json=_client_payload()
     )
 
     assert response.status_code == 403
@@ -453,12 +456,12 @@ def test_post_order_without_permission_returns_403(
     strict=True,
     reason="Current handler does not validate missing fields."
 )
-def test_post_order_missing_fields_returns_400(
+def test_post_client_missing_fields_returns_400(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
 
     headers = _get_headers(
         user_headers,
@@ -466,7 +469,7 @@ def test_post_order_missing_fields_returns_400(
     )
 
     response = requests.post(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers,
         json={
             "id": 999996
@@ -480,23 +483,23 @@ def test_post_order_missing_fields_returns_400(
     strict=True,
     reason="Current handler does not validate field types."
 )
-def test_post_order_invalid_field_type_returns_400(
+def test_post_client_invalid_field_type_returns_400(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
 
     headers = _get_headers(
         user_headers,
         method="post"
     )
 
-    payload = _order_payload(999995)
-    payload["client_id"] = "not-an-integer"
+    payload = _client_payload(999995)
+    payload["id"] = "not-an-integer"
 
     response = requests.post(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers,
         json=payload
     )
@@ -508,7 +511,7 @@ def test_post_order_invalid_field_type_returns_400(
     strict=True,
     reason="Current handler returns 500 for malformed JSON."
 )
-def test_post_order_malformed_json_returns_400(
+def test_post_client_malformed_json_returns_400(
     base_url,
     user_headers
 ):
@@ -518,7 +521,7 @@ def test_post_order_malformed_json_returns_400(
     )
 
     response = requests.post(
-        f"{base_url}/api/v1/orders",
+        f"{base_url}/api/v1/clients",
         headers=headers,
         data="{ invalid json"
     )
@@ -529,84 +532,84 @@ def test_post_order_malformed_json_returns_400(
 # endregion
 
 
-# region PUT /orders/{id}
+# region PUT /clients/{id}
 
 
-def test_put_order_returns_200(
+def test_put_client_returns_200(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
 
-    order = _first_order(base_url, user_headers)
+    client = _first_client(base_url, user_headers)
 
     headers = _get_headers(
         user_headers,
         method="put"
     )
 
-    updated_order = dict(order)
-    updated_order["reference"] = "UPDATED-ORDER"
+    updated_client = dict(client)
+    updated_client["name"] = "Updated Client"
 
     response = requests.put(
-        f"{base_url}/api/v1/orders/{order['id']}",
+        f"{base_url}/api/v1/clients/{client['id']}",
         headers=headers,
-        json=updated_order
+        json=updated_client
     )
 
     assert response.status_code == 200
 
-def test_put_order_update_is_persisted(
-        base_url,
-        user_headers,
-        preserve_data_files
-    ):
-        preserve_data_files("order.json")
-        order = _first_order(base_url, user_headers)
 
-        headers = _get_headers(
-            user_headers,
-            method="put"
-        )
-
-        updated_order = dict(order)
-        updated_order["reference"] = "UPDATED-REFERENCE"
-
-        response = requests.put(
-            f"{base_url}/api/v1/orders/{order['id']}",
-            headers=headers,
-            json=updated_order
-        )
-
-        print("STATUS:", response.status_code)
-        print("BODY:", response.text)
-
-        assert response.status_code == 200
-
-        get_response = requests.get(
-            f"{base_url}/api/v1/orders/{order['id']}",
-            headers=_get_headers(user_headers)
-        )
-
-        assert get_response.status_code == 200
-        assert get_response.json()["reference"] == "UPDATED-REFERENCE"
-
-
-def test_put_order_uses_full_replace():
-    assert "self.data[i] = order" in ORDERS_MODEL_SOURCE
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when order does not exist."
-)
-def test_put_nonexistent_order_returns_404(
+def test_put_client_update_is_persisted(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
+
+    client = _first_client(base_url, user_headers)
+
+    headers = _get_headers(
+        user_headers,
+        method="put"
+    )
+
+    updated_client = dict(client)
+    updated_client["name"] = "UPDATED-CLIENT"
+
+    response = requests.put(
+        f"{base_url}/api/v1/clients/{client['id']}",
+        headers=headers,
+        json=updated_client
+    )
+
+    assert response.status_code == 200
+
+    get_response = requests.get(
+        f"{base_url}/api/v1/clients/{client['id']}",
+        headers=_get_headers(user_headers)
+    )
+
+    assert get_response.status_code == 200
+
+    assert get_response.json()["name"] == "UPDATED-CLIENT"
+
+
+def test_put_client_uses_full_replace():
+    assert "self.data[i] = client" in CLIENTS_MODEL_SOURCE
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Current API returns 200 when client does not exist."
+)
+def test_put_nonexistent_client_returns_404(
+    base_url,
+    user_headers,
+    preserve_data_files
+):
+    preserve_data_files("client.json")
 
     headers = _get_headers(
         user_headers,
@@ -614,20 +617,20 @@ def test_put_nonexistent_order_returns_404(
     )
 
     response = requests.put(
-        f"{base_url}/api/v1/orders/999999999",
+        f"{base_url}/api/v1/clients/999999999",
         headers=headers,
-        json=_order_payload(999999999)
+        json=_client_payload(999999999)
     )
 
     assert response.status_code == 404
 
 
-def test_put_nonexistent_order_current_behavior(
+def test_put_nonexistent_client_current_behavior(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
 
     headers = _get_headers(
         user_headers,
@@ -635,9 +638,9 @@ def test_put_nonexistent_order_current_behavior(
     )
 
     response = requests.put(
-        f"{base_url}/api/v1/orders/999999999",
+        f"{base_url}/api/v1/clients/999999999",
         headers=headers,
-        json=_order_payload(999999999)
+        json=_client_payload(999999999)
     )
 
     assert response.status_code == 200
@@ -647,7 +650,7 @@ def test_put_nonexistent_order_current_behavior(
     strict=True,
     reason="Current API converts malformed IDs to 500."
 )
-def test_put_order_malformed_id_returns_400(
+def test_put_client_malformed_id_returns_400(
     base_url,
     user_headers
 ):
@@ -657,15 +660,15 @@ def test_put_order_malformed_id_returns_400(
     )
 
     response = requests.put(
-        f"{base_url}/api/v1/orders/not-an-id",
+        f"{base_url}/api/v1/clients/not-an-id",
         headers=headers,
-        json=_order_payload()
+        json=_client_payload()
     )
 
     assert response.status_code == 400
 
 
-def test_put_order_malformed_id_current_behavior(
+def test_put_client_malformed_id_current_behavior(
     base_url,
     user_headers
 ):
@@ -675,24 +678,24 @@ def test_put_order_malformed_id_current_behavior(
     )
 
     response = requests.put(
-        f"{base_url}/api/v1/orders/not-an-id",
+        f"{base_url}/api/v1/clients/not-an-id",
         headers=headers,
-        json=_order_payload()
+        json=_client_payload()
     )
 
     assert response.status_code == 500
 
 
-def test_put_order_without_api_key_returns_401(base_url):
+def test_put_client_without_api_key_returns_401(base_url):
     response = requests.put(
-        f"{base_url}/api/v1/orders/1",
-        json=_order_payload(1)
+        f"{base_url}/api/v1/clients/1",
+        json=_client_payload(1)
     )
 
     assert response.status_code == 401
 
 
-def test_put_order_without_permission_returns_403(
+def test_put_client_without_permission_returns_403(
     base_url,
     user_headers
 ):
@@ -703,9 +706,9 @@ def test_put_order_without_permission_returns_403(
     )
 
     response = requests.put(
-        f"{base_url}/api/v1/orders/1",
+        f"{base_url}/api/v1/clients/1",
         headers=headers,
-        json=_order_payload(1)
+        json=_client_payload(1)
     )
 
     assert response.status_code == 403
@@ -714,17 +717,17 @@ def test_put_order_without_permission_returns_403(
 # endregion
 
 
-# region DELETE /orders/{id}
+# region DELETE /clients/{id}
 
 
-def test_delete_order_returns_200(
+def test_delete_client_returns_200(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
 
-    order = _first_order(base_url, user_headers)
+    client = _first_client(base_url, user_headers)
 
     headers = _get_headers(
         user_headers,
@@ -732,21 +735,21 @@ def test_delete_order_returns_200(
     )
 
     response = requests.delete(
-        f"{base_url}/api/v1/orders/{order['id']}",
+        f"{base_url}/api/v1/clients/{client['id']}",
         headers=headers
     )
 
     assert response.status_code == 200
 
 
-def test_delete_order_removes_order(
+def test_delete_client_removes_client(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
 
-    order = _first_order(base_url, user_headers)
+    client = _first_client(base_url, user_headers)
 
     headers = _get_headers(
         user_headers,
@@ -754,14 +757,14 @@ def test_delete_order_removes_order(
     )
 
     response = requests.delete(
-        f"{base_url}/api/v1/orders/{order['id']}",
+        f"{base_url}/api/v1/clients/{client['id']}",
         headers=headers
     )
 
     assert response.status_code == 200
 
     get_response = requests.get(
-        f"{base_url}/api/v1/orders/{order['id']}",
+        f"{base_url}/api/v1/clients/{client['id']}",
         headers=_get_headers(user_headers)
     )
 
@@ -771,14 +774,14 @@ def test_delete_order_removes_order(
 
 @pytest.mark.xfail(
     strict=True,
-    reason="Current API returns 200 when order does not exist."
+    reason="Current API returns 200 when client does not exist."
 )
-def test_delete_nonexistent_order_returns_404(
+def test_delete_nonexistent_client_returns_404(
     base_url,
     user_headers,
     preserve_data_files
 ):
-    preserve_data_files("order.json")
+    preserve_data_files("client.json")
 
     headers = _get_headers(
         user_headers,
@@ -786,22 +789,22 @@ def test_delete_nonexistent_order_returns_404(
     )
 
     response = requests.delete(
-        f"{base_url}/api/v1/orders/999999999",
+        f"{base_url}/api/v1/clients/999999999",
         headers=headers
     )
 
     assert response.status_code == 404
 
 
-def test_delete_order_without_api_key_returns_401(base_url):
+def test_delete_client_without_api_key_returns_401(base_url):
     response = requests.delete(
-        f"{base_url}/api/v1/orders/1"
+        f"{base_url}/api/v1/clients/1"
     )
 
     assert response.status_code == 401
 
 
-def test_delete_order_without_permission_returns_403(
+def test_delete_client_without_permission_returns_403(
     base_url,
     user_headers
 ):
@@ -812,7 +815,7 @@ def test_delete_order_without_permission_returns_403(
     )
 
     response = requests.delete(
-        f"{base_url}/api/v1/orders/1",
+        f"{base_url}/api/v1/clients/1",
         headers=headers
     )
 
@@ -822,76 +825,71 @@ def test_delete_order_without_permission_returns_403(
 # endregion
 
 
-# region GET /orders/{id}/items
+# region GET /clients/{id}/orders
 
 
-def test_get_order_items_returns_200(
+def test_get_client_orders_returns_200(
     base_url,
     user_headers
 ):
-    order = _first_order(base_url, user_headers)
+    client = _first_client(base_url, user_headers)
 
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders/{order['id']}/items",
+        f"{base_url}/api/v1/clients/{client['id']}/orders",
         headers=headers
     )
 
     assert response.status_code == 200
+
+
+def test_get_client_orders_returns_list(
+    base_url,
+    user_headers
+):
+    client = _first_client(base_url, user_headers)
+
+    headers = _get_headers(user_headers)
+
+    response = requests.get(
+        f"{base_url}/api/v1/clients/{client['id']}/orders",
+        headers=headers
+    )
+
+    assert response.status_code == 200
+
     assert isinstance(response.json(), list)
 
 
-def test_get_order_items_schema(
+def test_get_client_orders_schema(
     base_url,
     user_headers
 ):
-    order = _first_order(base_url, user_headers)
+    client = _first_client(base_url, user_headers)
 
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/orders/{order['id']}/items",
+        f"{base_url}/api/v1/clients/{client['id']}/orders",
         headers=headers
     )
 
     assert response.status_code == 200
 
-    for item in response.json():
-        ItemAmount.model_validate(item)
+    for order in response.json():
+        Order.model_validate(order)
 
 
-def test_get_order_items_only_contains_expected_fields(
-    base_url,
-    user_headers
-):
-    order = _first_order(base_url, user_headers)
-
-    headers = _get_headers(user_headers)
-
+def test_get_client_orders_without_api_key(base_url):
     response = requests.get(
-        f"{base_url}/api/v1/orders/{order['id']}/items",
-        headers=headers
-    )
-
-    assert response.status_code == 200
-
-    for item in response.json():
-        assert set(item.keys()) == {
-            "item_id",
-            "amount"
-        }
-
-
-def test_get_order_items_without_api_key(base_url):
-    response = requests.get(
-        f"{base_url}/api/v1/orders/1/items"
+        f"{base_url}/api/v1/clients/1/orders"
     )
 
     assert response.status_code == 401
 
 
-def test_get_order_items_without_permission(
+def test_get_client_orders_without_permission(
     base_url,
     user_headers
 ):
@@ -901,111 +899,8 @@ def test_get_order_items_without_permission(
     )
 
     response = requests.get(
-        f"{base_url}/api/v1/orders/1/items",
+        f"{base_url}/api/v1/clients/1/orders",
         headers=headers
-    )
-
-    assert response.status_code == 403
-
-
-# endregion
-
-
-# region PUT /orders/{id}/items
-
-
-def test_put_order_items_returns_200(
-    base_url,
-    user_headers,
-    preserve_data_files
-):
-    preserve_data_files("order.json")
-
-    order = _first_order(base_url, user_headers)
-
-    headers = _get_headers(
-        user_headers,
-        method="put"
-    )
-
-    items = [
-        {
-            "item_id": 1,
-            "amount": 2
-        }
-    ]
-
-    response = requests.put(
-        f"{base_url}/api/v1/orders/{order['id']}/items",
-        headers=headers,
-        json=items
-    )
-
-    assert response.status_code == 200
-
-
-def test_put_order_items_is_persisted(
-    base_url,
-    user_headers,
-    preserve_data_files
-):
-    preserve_data_files("order.json")
-
-    order = _first_order(base_url, user_headers)
-
-    headers = _get_headers(
-        user_headers,
-        method="put"
-    )
-
-    items = [
-        {
-            "item_id": 1,
-            "amount": 5
-        }
-    ]
-
-    response = requests.put(
-        f"{base_url}/api/v1/orders/{order['id']}/items",
-        headers=headers,
-        json=items
-    )
-
-    assert response.status_code == 200
-
-    get_response = requests.get(
-        f"{base_url}/api/v1/orders/{order['id']}/items",
-        headers=_get_headers(user_headers)
-    )
-
-    assert get_response.status_code == 200
-
-    assert get_response.json() == items
-
-
-def test_put_order_items_without_api_key(base_url):
-    response = requests.put(
-        f"{base_url}/api/v1/orders/1/items",
-        json=[]
-    )
-
-    assert response.status_code == 401
-
-
-def test_put_order_items_without_permission(
-    base_url,
-    user_headers
-):
-    headers = _get_headers(
-        user_headers,
-        method="put",
-        allowed=False
-    )
-
-    response = requests.put(
-        f"{base_url}/api/v1/orders/1/items",
-        headers=headers,
-        json=[]
     )
 
     assert response.status_code == 403
