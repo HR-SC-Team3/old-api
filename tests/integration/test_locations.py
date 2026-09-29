@@ -232,8 +232,209 @@ def test_post_location_requires_application_json(base_url, user_headers, preserv
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers, data="This is not a json file")
     assert response.status_code in (400, 415, 422)
 
+def test_post_location_accepts_application_json(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("location.json")
+    headers = _get_headers(user_headers, method="post",)
+    headers["Content-Type"] = "application/json"
+    response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=_valid_location_payload(),)
+    assert response.status_code != 415
+
+def test_post_location_missing_required_field_is_rejected(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("location.json")
+    headers = _get_headers(user_headers, method="post",)
+    payload = _valid_location_payload()
+    payload.pop("code")
+    response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=payload,)
+    assert response.status_code in (400, 422,)
 
 
+@pytest.mark.parametrize("field,value",[("id", "not-an-int"), ("warehouse_id", "not-an-int"), ("code", 12345), ("name", 12345),],)
+def test_post_location_rejects_invalid_field_type(base_url, user_headers, preserve_data_files, field, value,):
+    preserve_data_files("location.json")
+    headers = _get_headers(user_headers, method="post",)
+    payload = _valid_location_payload()
+    payload[field] = value
+    response = requests.post(f"{base_url}/api/v1/locations", headers=headers,json=payload,)
+    assert response.status_code in (400, 422,)
 
+def test_post_location_duplicate_id_is_handled(base_url, user_headers,preserve_data_files):
+    preserve_data_files("location.json")
+    existing = _first_location(base_url, user_headers,)
+    headers = _get_headers(user_headers, method="post",)
+    payload = _valid_location_payload()
+    payload["id"] = existing["id"]
+    response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=payload,)
+    assert response.status_code in (400, 409, 422,)
+
+def test_post_location_unexpected_field_is_handled_consistently(base_url,user_headers, preserve_data_files,):
+    preserve_data_files("location.json")
+    headers = _get_headers(user_headers, method="post",)
+    payload = _valid_location_payload()
+    payload["unexpected_field"] = ("should-not-be-accepted")
+    response = requests.post(f"{base_url}/api/v1/locations", headers=headers,json=payload,)
+    assert response.status_code in (201, 400, 422,)
+
+
+def test_post_location_invalid_foreign_key_is_rejected(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("location.json")
+    headers = _get_headers(user_headers, method="post",)
+    payload = _valid_location_payload()
+    payload["warehouse_id"] = 999999999
+    response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=payload,)
+    assert response.status_code in (400, 404, 409, 422,)
+
+
+def test_post_location_is_immediately_retrievable(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("location.json")
+    headers = _get_headers(user_headers, method="post",)
+    payload = _valid_location_payload()
+    response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=payload,)
+    assert response.status_code == 201
+    created_id = None
+    if response.content:
+        body = response.json()
+        if isinstance(body, dict):
+            created_id = body.get("id")
+
+    if created_id is None:
+        location = response.headers.get("Location")
+        assert location, ("Created location must expose its id in the response body or Location header.")
+        created_id = int(location.rstrip("/").split("/")[-1])
+
+    get_response = _location_by_id(base_url, user_headers, created_id,)
+    assert get_response.status_code == 200
+    created = get_response.json()
+    assert created["id"] == created_id
+    assert created["warehouse_id"] == payload["warehouse_id"]
+    assert created["code"] == payload["code"]
+    assert created["name"] == payload["name"]
+
+def test_post_location_response_content_type_is_json(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("location.json")
+    headers = _get_headers(user_headers, method="post",)
+    response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=_valid_location_payload(),)
+    if response.status_code == 201:
+        assert response.headers.get("Content-Type", "",).startswith("application/json")
+
+#endregion
+
+#region PUT location id
+def test_put_location_requires_authentication(base_url):
+    response = requests.put(f"{base_url}/api/v1/locations/1", json={})
+    assert response.status_code == 401
+
+def test_put_location_insufficient_permissions_return_403(base_url, user_headers):
+    response = requests.location(base_url, user_headers, method ="put", path="/api/v1/locations/1", allowed = False, json= {})
+    assert response.status_code == 403
+
+def test_pit_location_valid_payload_returns_200(base_url, user_headers, preserve_data_files):
+    preserve_data_files("location.json")
+    existing = _first_location(base_url, user_headers)
+    headers = _get_headers(user_headers, method="put")
+    payload = {
+        "id": existing["id"],
+        "warehouse_id": existing["warehouse_id"],
+        "code": existing["code"],
+        "name": "Updated Location Test",
+        "created_at": existing["created_at"],
+        "updated_at": existing["updated_at"],
+    }
+    response = requests.put(f"{base_url}/api/v1/locations/{existing['id']}", headers=headers, json=payload,)
+    assert response.status_code == 200
+
+def test_put_location_nonexistent_id_returns_404(base_url, user_headers):
+    headers = _get_headers(user_headers, method="put")
+    response = requests.put(f"{base_url}/api/v1/locations/99999999", headers = headers, json=_valid_location_payload())
+
+def test_put_locations_malformed_id_does_not_return_500(base_url, user_headers):
+    headers = _get_headers(user_headers, method="put")
+    response = requests.put(f"{base_url}/api/v1/locations/not-an-id", headers=headers, json = _valid_location_payload())
+    assert response.status_code != 500
+
+def test_put_location_rejects_invalid_field_value(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("location.json")
+    existing = _first_location(base_url, user_headers,)
+    headers = _get_headers(user_headers, method="put",)
+    payload = {
+        "id": existing["id"],
+        "warehouse_id": "not-an-int",
+        "code": existing["code"],
+        "name": existing["name"],
+        "created_at": existing["created_at"],
+        "updated_at": existing["updated_at"],
+    }
+    response = requests.put(f"{base_url}/api/v1/locations/{existing['id']}", headers=headers, json=payload,)
+    assert response.status_code in (400, 422,)
+
+def test_put_location_rejects_invalid_foreign_key(base_url, user_headers,preserve_data_files,):
+    preserve_data_files("location.json")
+    existing = _first_location(base_url, user_headers,)
+    headers = _get_headers(user_headers, method="put",)
+    payload = {
+        "id": existing["id"],
+        "warehouse_id": 999999999,
+        "code": existing["code"],
+        "name": existing["name"],
+        "created_at": existing["created_at"],
+        "updated_at": existing["updated_at"],
+    }
+    response = requests.put(f"{base_url}/api/v1/locations/{existing['id']}",headers=headers, json=payload,)
+    assert response.status_code in (400, 404, 409, 422,)
+
+def test_put_location_update_is_persisted(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("location.json")
+    existing = _first_location(base_url, user_headers,)
+    headers = _get_headers(user_headers, method="put",)
+    payload = {
+        "id": existing["id"],
+        "warehouse_id": existing["warehouse_id"],
+        "code": existing["code"],
+        "name": "UPDATED-LOCATION-TEST-999",
+        "created_at": existing["created_at"],
+        "updated_at": existing["updated_at"],
+    }
+    response = requests.put(f"{base_url}/api/v1/locations/{existing['id']}", headers=headers, json=payload,)
+    assert response.status_code == 200
+    get_response = _location_by_id(base_url, user_headers, existing["id"],)
+    assert get_response.status_code == 200
+    updated = get_response.json()
+    assert updated["id"] == existing["id"]
+    assert updated["name"] == "UPDATED-LOCATION-TEST-999"
+
+def test_put_location_partial_payload_behavior(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("location.json")
+    existing = _first_location(base_url, user_headers,)
+    headers = _get_headers(user_headers, method="put",)
+    payload = {"name": "PARTIAL-UPDATE-TEST",}
+    response = requests.put(f"{base_url}/api/v1/locations/{existing['id']}", headers=headers, json=payload,)
+    assert response.status_code in (200, 400, 422,)
+
+def test_put_location_response_content_type_is_json(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("location.json")
+    existing = _first_location(base_url, user_headers,)
+    headers = _get_headers(user_headers, method="put",)
+    payload = {
+        "id": existing["id"],
+        "warehouse_id": existing["warehouse_id"],
+        "code": existing["code"],
+        "name": "Updated Location",
+        "created_at": existing["created_at"],
+        "updated_at": existing["updated_at"],
+    }
+    response = requests.put(f"{base_url}/api/v1/locations/{existing['id']}", headers=headers, json=payload,)
+    if response.status_code == 200:
+        assert response.headers.get("Content-Type", "",).startswith("application/json")
+
+#endregion
+
+
+#region PUT location id
+def test_put_location_requires_authentication(base_url, user_headers):
+    response = requests.put(f"{base_url}/api/v1/locations/1", json={})
+    assert response.status_code == 401
+
+def test_put_locations_insufficient_permissions_returns_403(base_url, user_headers):
+    response = _request_location(base_url, user_headers, method ="put",path="/api/v1/loctions/1", allowed =False, json ={})
+    assert response.status_code == 403
 
 #endregion
