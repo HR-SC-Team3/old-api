@@ -119,3 +119,17 @@ class Shipment(BaseModel):
     payment_type: str
     created_at: datetime
     updated_at: datetime
+    
+class Client(BaseModel):
+    id: int
+    name: str
+    address: str
+    city: str
+    zip_code: str
+    province: str
+    country: str
+    contact_name: str
+    contact_phone: str
+    contact_email: str
+    created_at: datetime
+    updated_at: datetime
