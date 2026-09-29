@@ -924,9 +924,6 @@ def test_put_item_insufficient_permissions_returns_403(
 
 # region DELETE /items/{id}
 
-@pytest.mark.skip(
-    reason="No current test user has DELETE permission for items, so successful DELETE behavior cannot currently be tested.",
-)
 def test_delete_item_valid_id_returns_200(
     base_url, user_headers, preserve_data_files
 ):
@@ -942,9 +939,6 @@ def test_delete_item_valid_id_returns_200(
     assert response.status_code in (200, 204)
 
 
-@pytest.mark.skip(
-    reason="No current test user has DELETE permission for items, so successful DELETE behavior cannot currently be tested.",
-)
 def test_delete_item_resource_is_actually_gone(
     base_url, user_headers, preserve_data_files
 ):
@@ -967,8 +961,8 @@ def test_delete_item_resource_is_actually_gone(
     assert get_response.status_code == 404
 
 
-@pytest.mark.skip(
-    reason="No current test user has DELETE permission for items, so DELETE behavior for nonexistent IDs cannot currently be tested.",
+@pytest.mark.xfail(
+    reason="Return the code 200 when it should reurn 404.",
 )
 def test_delete_item_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
@@ -983,8 +977,8 @@ def test_delete_item_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.skip(
-    reason="No current test user has DELETE permission for items, so DELETE behavior for malformed IDs cannot currently be tested.",
+@pytest.mark.xfail(
+    reason="Returns the code 200 when it should return 400",
 )
 def test_delete_item_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
@@ -999,8 +993,8 @@ def test_delete_item_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.skip(
-    reason="No current test user has DELETE permission for items, so repeated DELETE behavior cannot currently be tested.",
+@pytest.mark.xfail(
+    reason="Returns 200 despite item being deleted already",
 )
 def test_delete_item_repeated_delete_returns_404(
     base_url, user_headers, preserve_data_files
