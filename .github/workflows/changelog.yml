@@ -15,11 +15,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Use a PAT that's on the "Protect Main" ruleset's bypass list - the default
+          # GITHUB_TOKEN can't push to main (not selectable as a ruleset bypass actor).
+          token: ${{ secrets.CHANGELOG_PAT }}
 
       - name: Generate changelog and tag release
         uses: TriPSs/conventional-changelog-action@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.CHANGELOG_PAT }}
           # No package.json in this repo - nothing to bump, we only want the tag + changelog.
           skip-version-file: "true"
           output-file: "CHANGELOG.md"
