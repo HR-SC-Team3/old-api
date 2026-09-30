@@ -10,32 +10,16 @@ permissions:
 
 jobs:
   changelog:
-    # Skip the commit this workflow itself creates, to avoid an infinite loop.
-    if: "!contains(github.event.head_commit.message, '[skip changelog]')"
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - name: Generate changelog and tag release
+        uses: TriPSs/conventional-changelog-action@v6
         with:
-          node-version: 24
-
-      - name: Install deps
-        run: npm install --no-save conventional-changelog-cli conventional-changelog-conventionalcommits
-
-      - name: Generate changelog
-        run: |
-          [ -f CHANGELOG.md ] || echo "# Changelog" > CHANGELOG.md
-          npx conventional-changelog -p conventionalcommits -i CHANGELOG.md -s -r 0
-
-      - name: Commit changelog
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add CHANGELOG.md
-          git commit -m "docs(changelog): update CHANGELOG.md [skip changelog]" || exit 0
-          git push origin HEAD:${{ github.ref_name }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # No package.json in this repo - nothing to bump, we only want the tag + changelog.
+          skip-version-file: "true"
+          output-file: "CHANGELOG.md"
