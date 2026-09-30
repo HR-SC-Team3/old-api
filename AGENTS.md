@@ -48,6 +48,47 @@ test data, not to fix a typo, not to support a new test case.
 - If a test needs data that doesn't exist yet, create it at runtime (e.g. via the API, or via
   helpers like `scripts/permission_users.py`) rather than editing the seed files.
 
+### 4. Test function names must be unique within a file
+
+Python silently keeps only the last definition when two functions in the same module share a
+name - pytest never warns about this. The earlier test simply never runs again, and its
+coverage claim (in the PR description or elsewhere) becomes false with no error to signal it.
+
+- When adding or renaming a test, check the whole file for name collisions, not just
+  neighboring tests - fixing one collision by renaming can silently create a new one
+  elsewhere in the same file.
+- A quick sanity check before pushing: `grep "^def test_" file.py | sort | uniq -d` should be
+  empty.
+
+### 5. Don't skip a test because "no user has that permission" - generate one
+
+`scripts/permission_users.py`'s `make_user_for_permutation`, wired into the `user_headers`
+fixture (see rule 2), synthesizes a user for any `(resource, method, allowed)` combination
+that doesn't already have a hand-authored match. A test marked
+`@pytest.mark.skip(reason="no user has DELETE permission for X")` is treating a
+non-limitation as a blocker - `user_headers(resource=..., method=..., allowed=...)` already
+produces that user on demand. Prefer running the test (or `xfail`ing it if the endpoint
+itself misbehaves) over skipping it for a permission reason.
+
+### 6. Remove dead code before merging
+
+Test files documenting current behavior should still be maintainable:
+
+- Remove unused imports and unused module-level variables (e.g. a `*_MODEL_SOURCE` constant
+  that's read from disk but never asserted against).
+- Remove commented-out test functions rather than leaving them in the file - finish them or
+  delete them.
+
+### 7. Pydantic response models belong in `schemas.py`
+
+`tests/integration/schemas.py` is the single shared location for the Pydantic models used to
+validate API responses (e.g. `Transfer`, `Client`, `Item`, `ItemType`).
+
+- Do not define a new `BaseModel` subclass inline inside a `test_*.py` file - add it to
+  `schemas.py` and `from schemas import Whatever` instead.
+- Before adding a class, check `schemas.py` doesn't already define one for that resource
+  (including one added by another currently-open PR - see the merge-coordination note below).
+
 ## Where else these rules live
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) - human contributor guide.
