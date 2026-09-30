@@ -19,6 +19,12 @@ jobs:
           # GITHUB_TOKEN can't push to main (not selectable as a ruleset bypass actor).
           token: ${{ secrets.CHANGELOG_PAT }}
 
+      - name: Install custom changelog preset
+        # Version pinned to match what the action's bundled conventional-changelog@3.1.24
+        # expects - see changelog.preset.js for why. node_modules/package-lock.json are
+        # gitignored so they never get swept into the release commit below.
+        run: npm install --no-save conventional-changelog-conventionalcommits@4
+
       - name: Generate changelog and tag release
         uses: TriPSs/conventional-changelog-action@v6
         with:
@@ -26,3 +32,4 @@ jobs:
           # No package.json in this repo - nothing to bump, we only want the tag + changelog.
           skip-version-file: "true"
           output-file: "CHANGELOG.md"
+          config-file-path: "./changelog.preset.js"

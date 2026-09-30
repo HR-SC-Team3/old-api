@@ -1,3 +1,7 @@
+# Node deps (used only by .github/workflows/changelog.yml's custom preset config)
+node_modules/
+package-lock.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
