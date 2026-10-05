@@ -34,6 +34,10 @@ paths:
             tags:
                 - warehouses
             summary: List warehouses
+            description: |-
+                Known Issues:
+                - No support on query parameters
+                - Query parameters return 403 even with permission
             responses:
                 "200":
                     description: OK
@@ -51,6 +55,15 @@ paths:
             tags:
                 - warehouses
             summary: Create a warehouse
+            description: |-
+                Known Issues:
+                - No validation checks
+                - Empty payloads are accepted
+                - Invalid field types are accepted
+                - Duplicate warehouse ids are accepted
+                - text/plain content type is accepted
+                - Malformed JSON returns 500
+                - When returning 201 it returns an empty body
             requestBody:
                 required: true
                 content:
@@ -71,6 +84,10 @@ paths:
             tags:
                 - warehouses
             summary: Get a warehouse
+            description: |-
+                Known Issues:
+                - Returns 200 for non existent ids
+                - Malformed ids return 500
             responses:
                 "200":
                     description: OK
@@ -86,6 +103,11 @@ paths:
             tags:
                 - warehouses
             summary: Replace a warehouse
+            description: |-
+                Known issues:
+                - Non existent id returns 200
+                - Malformed id returns 500
+                - No validation checks
             requestBody:
                 required: true
                 content:
@@ -103,6 +125,12 @@ paths:
             tags:
                 - warehouses
             summary: Delete a warehouse
+            description: |-
+                Known issues:
+                - Non existent id returns 200
+                - Malformed id returns 500
+                - Deleting again returns 200
+                - Delete does not persist the removal
             responses:
                 "200":
                     description: OK
@@ -240,6 +268,13 @@ paths:
             tags:
                 - items
             summary: List items
+            description: |-
+                Known Issues:
+                - No support on query parameters
+                - Query parameters return 403 even with permission
+                - No support for supplier_id filtering
+                - No support for item_group_id filtering
+                - Error responses do not use the same JSON schema as successful responses
             responses:
                 "200":
                     description: OK
@@ -257,6 +292,17 @@ paths:
             tags:
                 - items
             summary: Create an item
+            description: |-
+                Known Issues:
+                - No validation checks
+                - Empty payloads are accepted
+                - Invalid field types are accepted
+                - Duplicate item ids are accepted
+                - Invalid foreign keys are accepted
+                - text/plain content type is accepted
+                - Malformed JSON returns 500
+                - When returning 201 it returns an empty body
+                - When returning 201 it does not return a Location header
             requestBody:
                 required: true
                 content:
@@ -277,6 +323,10 @@ paths:
             tags:
                 - items
             summary: Get an item
+            description: |-
+                Known Issues:
+                - Returns 200 for non existent ids
+                - Malformed ids return 500
             responses:
                 "200":
                     description: OK
@@ -292,6 +342,12 @@ paths:
             tags:
                 - items
             summary: Replace an item
+            description: |-
+                Known issues:
+                - Non existent id returns 500
+                - Malformed id returns 500
+                - Invalid field types are accepted
+                - Invalid foreign keys are accepted
             requestBody:
                 required: true
                 content:
@@ -309,6 +365,12 @@ paths:
             tags:
                 - items
             summary: Delete an item
+            description: |-
+                Known issues:
+                - Deleted item can still be returned with 200
+                - Non existent id returns 200
+                - Malformed id returns 200
+                - Deleting again returns 200
             responses:
                 "200":
                     description: OK
@@ -324,6 +386,9 @@ paths:
                 - items
                 - inventories
             summary: List inventory rows for an item, across all locations
+            description: |-
+                Known Issues:
+                - Returns 200 for a nonexistent item instead of 404
             responses:
                 "200":
                     description: OK
@@ -345,6 +410,9 @@ paths:
                 - items
                 - inventories
             summary: Summed inventory quantities for an item, across all locations
+            description: |-
+                Known Issues:
+                - Returns 200 for a nonexistent item instead of 404
             responses:
                 "200":
                     description: OK
@@ -361,6 +429,14 @@ paths:
             tags:
                 - item_lines
             summary: List item lines
+            description: |-
+                Known Issues:
+                - Query parameters are not supported.
+                - Name filtering is not supported.
+                - Description filtering is not supported.
+                - Sorting is not supported.
+                - Filtering does not return an empty result set as expected.
+                - Error responses do not use the same JSON error schema as successful responses.
             responses:
                 "200":
                     description: OK
@@ -378,6 +454,15 @@ paths:
             tags:
                 - item_lines
             summary: Create an item line
+            description: |-
+                Known Issues:
+                - No validation for missing required fields.
+                - Invalid field types are accepted.
+                - Duplicate item line IDs are accepted.
+                - text/plain content is accepted.
+                - Malformed JSON returns 500 instead of 400.
+                - The response returns 201 with an empty body.
+                - No Location header or created resource is returned in the response.
             requestBody:
                 required: true
                 content:
@@ -398,6 +483,10 @@ paths:
             tags:
                 - item_lines
             summary: Get an item line
+            description: |-
+                Known Issues:
+                - A nonexistent item line ID returns 200 instead of 404.
+                - A malformed item line ID returns 500 instead of 400.
             responses:
                 "200":
                     description: OK
@@ -413,6 +502,11 @@ paths:
             tags:
                 - item_lines
             summary: Replace an item line
+            description: |-
+                Known Issues:
+                - A nonexistent item line ID returns 200 instead of 404.
+                - A malformed item line ID returns 500 instead of 400.
+                - Invalid field types are accepted.
             requestBody:
                 required: true
                 content:
@@ -430,6 +524,12 @@ paths:
             tags:
                 - item_lines
             summary: Delete an item line
+            description: |-
+                Known Issues:
+                - A deleted item line can still be retrieved with GET.
+                - Deleting a nonexistent item line returns 200 instead of 404.
+                - Deleting an item line with a malformed ID returns 200 instead of 400.
+                - Repeated deletion of an item line returns 200 instead of 404.
             responses:
                 "200":
                     description: OK
@@ -445,6 +545,9 @@ paths:
                 - item_lines
                 - items
             summary: List item ids belonging to this item line
+            description: |-
+                Known Issues:
+                - A nonexistent item line ID returns 200 instead of 404.
             responses:
                 "200":
                     description: OK
