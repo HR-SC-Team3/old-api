@@ -591,6 +591,9 @@ paths:
             tags:
                 - item_types
             summary: List item types
+            description: |-
+                Known issues:
+                - Any query string returns 403 even with valid permissions
             responses:
                 "200":
                     description: OK
@@ -608,6 +611,10 @@ paths:
             tags:
                 - item_types
             summary: Create an item type
+            description: |-
+                Known issues:
+                - No validation of fields or types
+                - No uniqueness check on id
             requestBody:
                 required: true
                 content:
@@ -621,6 +628,7 @@ paths:
                     $ref: "#/components/responses/Unauthorized"
                 "403":
                     $ref: "#/components/responses/Forbidden"
+
     /item_types/{id}:
         parameters:
             - $ref: "#/components/parameters/IdPathParam"
@@ -628,6 +636,10 @@ paths:
             tags:
                 - item_types
             summary: Get an item type
+            description: |-
+                Known issues:
+                - Non numeric ID crashes the app
+                - Non existing ID returns 200 with null
             responses:
                 "200":
                     description: OK
@@ -643,6 +655,11 @@ paths:
             tags:
                 - item_types
             summary: Replace an item type
+            description: |-
+                Known issues:
+                - Non numeric ID crashes the app
+                - Non existing ID returns 200
+                - No validation of fields or types
             requestBody:
                 required: true
                 content:
@@ -660,6 +677,10 @@ paths:
             tags:
                 - item_types
             summary: Delete an item type
+            description: |-
+                Known issues:
+                - Non numeric ID crashes the app
+                - Non existing ID returns 200 without doing anything
             responses:
                 "200":
                     description: OK
@@ -667,6 +688,7 @@ paths:
                     $ref: "#/components/responses/Unauthorized"
                 "403":
                     $ref: "#/components/responses/Forbidden"
+
     /item_types/{id}/items:
         parameters:
             - $ref: "#/components/parameters/IdPathParam"
@@ -675,6 +697,10 @@ paths:
                 - item_types
                 - items
             summary: List item ids of this item type
+            description: |-
+                Known issues:
+                - Non numeric ID crashes the app
+                - Non existing ID returns 200 with an empty list
             responses:
                 "200":
                     description: OK
@@ -688,6 +714,7 @@ paths:
                     $ref: "#/components/responses/Unauthorized"
                 "403":
                     $ref: "#/components/responses/Forbidden"
+
     /inventories:
         get:
             tags:
@@ -895,6 +922,9 @@ paths:
             tags:
                 - orders
             summary: List orders, each with its line items embedded
+            description: >-
+                Known issues:
+                - Adding a query parameter such as ?page=1 results in 403 even with valid permissions.
             responses:
                 "200":
                     description: OK
@@ -912,6 +942,11 @@ paths:
             tags:
                 - orders
             summary: Create an order and its line items
+            description: >-
+                Known issues:
+                - Invalid order data is not consistently rejected.
+                - Duplicate order IDs are accepted.
+                - A successful creation returns 201 without a response body or Location header.
             requestBody:
                 required: true
                 content:
@@ -925,6 +960,7 @@ paths:
                     $ref: "#/components/responses/Unauthorized"
                 "403":
                     $ref: "#/components/responses/Forbidden"
+
     /orders/{id}:
         parameters:
             - $ref: "#/components/parameters/IdPathParam"
@@ -932,6 +968,10 @@ paths:
             tags:
                 - orders
             summary: Get an order, with its line items embedded
+            description: >-
+                Known issues:
+                - A non-existent order ID returns 200 with a null response instead of 404.
+                - A malformed order ID causes a 500 error instead of 400.
             responses:
                 "200":
                     description: OK
@@ -950,6 +990,10 @@ paths:
             description: >-
                 Replaces the order record itself. If the body includes items they are
                 applied via the same reconciliation as PUT /orders/{id}/items.
+
+                Known issues:
+                - A non-existent order ID returns 200 instead of 404.
+                - The order is treated as a full replacement rather than a partial update.
             requestBody:
                 required: true
                 content:
@@ -967,6 +1011,9 @@ paths:
             tags:
                 - orders
             summary: Delete an order and its line items
+            description: >-
+                Known issues:
+                - Deleting a non-existent order returns 200 instead of 404.
             responses:
                 "200":
                     description: OK
@@ -974,6 +1021,7 @@ paths:
                     $ref: "#/components/responses/Unauthorized"
                 "403":
                     $ref: "#/components/responses/Forbidden"
+
     /orders/{id}/items:
         parameters:
             - $ref: "#/components/parameters/IdPathParam"
@@ -1022,6 +1070,9 @@ paths:
             tags:
                 - clients
             summary: List clients
+            description: >-
+                Known issues:
+                - No known functional issues were found for listing clients.
             responses:
                 "200":
                     description: OK
@@ -1039,6 +1090,11 @@ paths:
             tags:
                 - clients
             summary: Create a client
+            description: >-
+                Known issues:
+                - An empty request body is accepted instead of being rejected.
+                - Invalid or missing fields are not consistently rejected.
+                - Malformed JSON is not handled correctly.
             requestBody:
                 required: true
                 content:
@@ -1052,6 +1108,7 @@ paths:
                     $ref: "#/components/responses/Unauthorized"
                 "403":
                     $ref: "#/components/responses/Forbidden"
+
     /clients/{id}:
         parameters:
             - $ref: "#/components/parameters/IdPathParam"
@@ -1059,6 +1116,10 @@ paths:
             tags:
                 - clients
             summary: Get a client
+            description: >-
+                Known issues:
+                - A non-existent client ID returns 200 with null instead of 404.
+                - A malformed client ID returns 500 instead of 400.
             responses:
                 "200":
                     description: OK
@@ -1074,6 +1135,10 @@ paths:
             tags:
                 - clients
             summary: Replace a client
+            description: >-
+                Known issues:
+                - A malformed client ID returns 500 instead of 400.
+                - A non-existent client ID returns 200 instead of 404.
             requestBody:
                 required: true
                 content:
@@ -1091,6 +1156,9 @@ paths:
             tags:
                 - clients
             summary: Delete a client
+            description: >-
+                Known issues:
+                - A non-existent client ID returns 200 instead of 404.
             responses:
                 "200":
                     description: OK
@@ -1098,6 +1166,7 @@ paths:
                     $ref: "#/components/responses/Unauthorized"
                 "403":
                     $ref: "#/components/responses/Forbidden"
+
     /clients/{id}/orders:
         parameters:
             - $ref: "#/components/parameters/IdPathParam"
