@@ -1,0 +1,2289 @@
+# @format
+
+openapi: 3.0.3
+info:
+    title: Voorraadbeheer-API
+    description: >-
+        REST-API bovenop een Python-stdlib HTTP-server met platte JSON-bestanden als opslag (zie
+        /data). Elke route vereist een API_KEY-header; toegang wordt verder per
+        resource en HTTP-methode begrensd door de endpoint_access-rechten van die sleutel (zie
+        auth_provider.has_access). Gereconstrueerd uit api/main.py, api/models,
+        api/providers en de voorbeeldbestanden /data/*.json, en gecontroleerd tegen
+        elke gedocumenteerde route tijdens een live run van de server.
+    version: 1.0.0
+servers:
+    - url: http://localhost:3000/api/v1
+security:
+    - ApiKeyAuth: []
+tags:
+    - name: warehouses
+    - name: locations
+    - name: items
+    - name: item_lines
+    - name: item_groups
+    - name: item_types
+    - name: inventories
+    - name: suppliers
+    - name: orders
+    - name: clients
+    - name: shipments
+    - name: transfers
+paths:
+    /warehouses:
+        get:
+            tags:
+                - warehouses
+            summary: Magazijnen ophalen
+            description: |-
+                Bekende problemen:
+                - Geen ondersteuning voor queryparameters
+                - Queryparameters geven 403, ook mét toestemming
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Warehouse"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - warehouses
+            summary: Een magazijn aanmaken
+            description: |-
+                Bekende problemen:
+                - Geen validatiecontroles
+                - Lege payloads worden geaccepteerd
+                - Ongeldige veldtypes worden geaccepteerd
+                - Dubbele magazijn-id's worden geaccepteerd
+                - Het content-type text/plain wordt geaccepteerd
+                - Misvormde JSON geeft 500
+                - Bij 201 wordt een lege body teruggegeven
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/WarehouseInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /warehouses/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - warehouses
+            summary: Een magazijn ophalen
+            description: |-
+                Bekende problemen:
+                - Geeft 200 voor niet-bestaande id's
+                - Misvormde id's geven 500
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Warehouse"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - warehouses
+            summary: Een magazijn vervangen
+            description: |-
+                Bekende problemen:
+                - Niet-bestaand id geeft 200
+                - Misvormd id geeft 500
+                - Geen validatiecontroles
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/WarehouseInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        delete:
+            tags:
+                - warehouses
+            summary: Een magazijn verwijderen
+            description: |-
+                Bekende problemen:
+                - Niet-bestaand id geeft 200
+                - Misvormd id geeft 500
+                - Opnieuw verwijderen geeft 200
+                - Verwijderen wordt niet permanent opgeslagen
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /warehouses/{id}/locations:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - warehouses
+                - locations
+            summary: Locaties binnen een magazijn ophalen
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Location"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /locations:
+        get:
+            tags:
+                - locations
+            summary: Locaties ophalen
+            description: |-
+                Bekende problemen:
+                - Geen ondersteuning voor queryparameters
+                - geeft 403, ook mét toestemming
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Location"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - locations
+            summary: Een locatie aanmaken
+            description: |-
+                Bekende problemen:
+                - Geen validatiecontroles
+                - bij 201 wordt een lege body of geen header teruggegeven
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/LocationInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /locations/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - locations
+            summary: Een locatie ophalen
+            description: |-
+                Bekende problemen:
+                - Geeft 200 voor niet-bestaande id's
+                - Misvormde id's geven 500
+                - Interne lekken geven 200 en 500
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Location"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - locations
+            summary: Een locatie vervangen
+            description: |-
+                Bekende problemen:
+                - niet-bestaand id geeft 200
+                - misvormd id geeft 500
+                - geen validatiecontroles
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/LocationInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        delete:
+            tags:
+                - locations
+            summary: Een locatie verwijderen
+            description:  |-
+                Bekende problemen:
+                - niet-bestaand id geeft 200
+                - opnieuw verwijderen geeft 200
+                - Get geeft geen 404
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /items:
+        get:
+            tags:
+                - items
+            summary: Artikelen ophalen
+            description: |-
+                Bekende problemen:
+                - Geen ondersteuning voor queryparameters
+                - Queryparameters geven 403, ook mét toestemming
+                - Geen ondersteuning voor filteren op supplier_id
+                - Geen ondersteuning voor filteren op item_group_id
+                - Foutresponses gebruiken niet hetzelfde JSON-schema als succesvolle responses
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Item"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - items
+            summary: Een artikel aanmaken
+            description: |-
+                Bekende problemen:
+                - Geen validatiecontroles
+                - Lege payloads worden geaccepteerd
+                - Ongeldige veldtypes worden geaccepteerd
+                - Dubbele artikel-id's worden geaccepteerd
+                - Ongeldige foreign keys worden geaccepteerd
+                - Het content-type text/plain wordt geaccepteerd
+                - Misvormde JSON geeft 500
+                - Bij 201 wordt een lege body teruggegeven
+                - Bij 201 wordt geen Location-header teruggegeven
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ItemInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /items/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - items
+            summary: Een artikel ophalen
+            description: |-
+                Bekende problemen:
+                - Geeft 200 voor niet-bestaande id's
+                - Misvormde id's geven 500
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Item"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - items
+            summary: Een artikel vervangen
+            description: |-
+                Bekende problemen:
+                - Niet-bestaand id geeft 500
+                - Misvormd id geeft 500
+                - Ongeldige veldtypes worden geaccepteerd
+                - Ongeldige foreign keys worden geaccepteerd
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ItemInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        delete:
+            tags:
+                - items
+            summary: Een artikel verwijderen
+            description: |-
+                Bekende problemen:
+                - Een verwijderd artikel kan nog steeds met 200 worden opgehaald
+                - Niet-bestaand id geeft 200
+                - Misvormd id geeft 200
+                - Opnieuw verwijderen geeft 200
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /items/{id}/inventory:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - items
+                - inventories
+            summary: Voorraadrijen van een artikel ophalen, over alle locaties
+            description: |-
+                Bekende problemen:
+                - Geeft 200 voor een niet-bestaand artikel in plaats van 404
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Inventory"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /items/{id}/inventory/totals:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - items
+                - inventories
+            summary: Opgetelde voorraadhoeveelheden van een artikel, over alle locaties
+            description: |-
+                Bekende problemen:
+                - Geeft 200 voor een niet-bestaand artikel in plaats van 404
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/InventoryTotals"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /item_lines:
+        get:
+            tags:
+                - item_lines
+            summary: Artikellijnen ophalen
+            description: |-
+                Bekende problemen:
+                - Queryparameters worden niet ondersteund.
+                - Filteren op naam wordt niet ondersteund.
+                - Filteren op beschrijving wordt niet ondersteund.
+                - Sorteren wordt niet ondersteund.
+                - Filteren geeft niet de verwachte lege resultatenset terug.
+                - Foutresponses gebruiken niet hetzelfde JSON-schema als succesvolle responses.
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/TaxonomyEntry"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - item_lines
+            summary: Een artikellijn aanmaken
+            description: |-
+                Bekende problemen:
+                - Geen validatie voor ontbrekende verplichte velden.
+                - Ongeldige veldtypes worden geaccepteerd.
+                - Dubbele artikellijn-id's worden geaccepteerd.
+                - Content van het type text/plain wordt geaccepteerd.
+                - Misvormde JSON geeft 500 in plaats van 400.
+                - De response geeft 201 met een lege body.
+                - De response bevat geen Location-header en geen aangemaakte resource.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/TaxonomyEntryInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /item_lines/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - item_lines
+            summary: Een artikellijn ophalen
+            description: |-
+                Bekende problemen:
+                - Een niet-bestaand artikellijn-id geeft 200 in plaats van 404.
+                - Een misvormd artikellijn-id geeft 500 in plaats van 400.
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/TaxonomyEntry"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - item_lines
+            summary: Een artikellijn vervangen
+            description: |-
+                Bekende problemen:
+                - Een niet-bestaand artikellijn-id geeft 200 in plaats van 404.
+                - Een misvormd artikellijn-id geeft 500 in plaats van 400.
+                - Ongeldige veldtypes worden geaccepteerd.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/TaxonomyEntryInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        delete:
+            tags:
+                - item_lines
+            summary: Een artikellijn verwijderen
+            description: |-
+                Bekende problemen:
+                - Een verwijderde artikellijn kan nog steeds met GET worden opgehaald.
+                - Het verwijderen van een niet-bestaande artikellijn geeft 200 in plaats van 404.
+                - Het verwijderen van een artikellijn met een misvormd id geeft 200 in plaats van 400.
+                - Herhaald verwijderen van een artikellijn geeft 200 in plaats van 404.
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /item_lines/{id}/items:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - item_lines
+                - items
+            summary: Artikel-id's ophalen die bij deze artikellijn horen
+            description: |-
+                Bekende problemen:
+                - Een niet-bestaand artikellijn-id geeft 200 in plaats van 404.
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    type: integer
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /item_groups:
+        get:
+            tags:
+                - item_groups
+            summary: Artikelgroepen ophalen
+            description: |-
+                Bekende problemen:
+                - Elke querystring geeft 403 voor iedereen, ook met geldige rechten
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/TaxonomyEntry"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - item_groups
+            summary: Een artikelgroep aanmaken
+            description: |-
+                Bekende problemen:
+                - Geen datavalidatie, elke vorm wordt geaccepteerd en opgeslagen
+                - Een ontbrekend id wordt geaccepteerd en opgeslagen; elke latere opzoeking die tot het einde moet scannen (bijv. een onbekend id) laat de app dan crashen
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/TaxonomyEntryInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /item_groups/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - item_groups
+            summary: Een artikelgroep ophalen
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+                - Een niet-bestaand id geeft 200 met null
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/TaxonomyEntry"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - item_groups
+            summary: Een artikelgroep vervangen
+            description: |-
+                Bekende problemen:
+                - Geen validatie, een record wordt hoe dan ook vervangen
+                - Een niet-numeriek id laat de app crashen
+                - Geen bestaanscontrole, een onbekend id geeft geen 404
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/TaxonomyEntryInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        delete:
+            tags:
+                - item_groups
+            summary: Een artikelgroep verwijderen
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+                - Geen bestaanscontrole, een onbekend id geeft 200 zonder iets te doen
+                - Artikelen die nog naar de groep verwijzen worden niet geblokkeerd of bijgewerkt, ze houden een hangend item_group_id
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /item_groups/{id}/items:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - item_groups
+                - items
+            summary: Artikel-id's ophalen die bij deze artikelgroep horen
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+                - Een niet-bestaand id geeft 200 met een lege lijst
+                - Geeft kale artikel-id's terug, in tegenstelling tot GET /suppliers/{id}/items dat volledige Item-objecten teruggeeft
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    type: integer
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /item_types:
+        get:
+            tags:
+                - item_types
+            summary: Artikeltypes ophalen
+            description: |-
+                Bekende problemen:
+                - Elke querystring geeft 403, ook met geldige rechten
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/TaxonomyEntry"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - item_types
+            summary: Een artikeltype aanmaken
+            description: |-
+                Bekende problemen:
+                - Geen validatie van velden of types
+                - Geen uniciteitscontrole op id
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/TaxonomyEntryInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+
+    /item_types/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - item_types
+            summary: Een artikeltype ophalen
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+                - Een niet-bestaand id geeft 200 met null
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/TaxonomyEntry"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - item_types
+            summary: Een artikeltype vervangen
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+                - Een niet-bestaand id geeft 200
+                - Geen validatie van velden of types
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/TaxonomyEntryInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        delete:
+            tags:
+                - item_types
+            summary: Een artikeltype verwijderen
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+                - Een niet-bestaand id geeft 200 zonder iets te doen
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+
+    /item_types/{id}/items:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - item_types
+                - items
+            summary: Artikel-id's van dit artikeltype ophalen
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+                - Een niet-bestaand id geeft 200 met een lege lijst
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    type: integer
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+
+    /inventories:
+        get:
+            tags:
+                - inventories
+            summary: Geeft alle voorraadrijen terug
+            description: |-
+                Bekende problemen:
+                - Geen ondersteuning voor queryparameters
+                - lege resultaten geven geen 404
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Inventory"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - inventories
+            summary: Maakt een voorraadrij aan of werkt deze bij (upsert)
+            description: |-
+                Bekende problemen:
+                - inventory geeft geen 201 bij het aanmaken van nieuwe data
+                - Validatiecontroles worden niet ondersteund
+                - Bij het aanvragen met content-type json ondervindt de server een probleem
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/InventoryInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /inventories/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - inventories
+            summary: Zou een rij moeten teruggeven voor een specifiek id, maar dit wordt momenteel niet ondersteund.
+            description: |-
+                Bekend probleem:
+                - Id wordt niet ondersteund
+            responses:
+                "404":
+                    description: Niet gevonden
+        put:
+            tags:
+                - inventories
+            summary: Zou een rij met een specifiek id moeten overschrijven, maar dit wordt momenteel niet ondersteund.
+            description: |-
+                Bekend probleem:
+                - Id wordt niet ondersteund
+            responses:
+                "404":
+                    description: Niet gevonden
+        delete:
+            tags:
+                - inventories
+            summary: Zou een voorraadrij met een id moeten verwijderen, maar dit wordt momenteel niet ondersteund.
+            description: |-
+                Bekend probleem:
+                - Id wordt niet ondersteund
+            responses:
+                "404":
+                    description: Niet gevonden
+    /suppliers:
+        get:
+            tags:
+                - suppliers
+            summary: Leveranciers ophalen. Een leverancier is het bedrijf dat een product produceert.
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Supplier"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - suppliers
+            summary: Een leverancier aanmaken.
+            description: |-
+                Bekende problemen:
+                - Geen datavalidatie, elke vorm wordt geaccepteerd en opgeslagen.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/SupplierInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /suppliers/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - suppliers
+            summary: Een leverancier ophalen op id.
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+                - Een niet-bestaand id geeft 200 met null
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Supplier"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - suppliers
+            summary: Een leverancier vervangen.
+            description: |-
+                Bekende problemen:
+                - Geen validatie, een record wordt hoe dan ook vervangen
+                - Niet-numerieke id's laten de app crashen
+                - Ongeldige id's worden gezien als een post
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/SupplierInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        delete:
+            tags:
+                - suppliers
+            summary: Een leverancier verwijderen
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+                - Een ongeldig id geeft 200 zonder iets te doen
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /suppliers/{id}/items:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - suppliers
+                - items
+            summary: Artikelen ophalen die van deze leverancier komen
+            description: |-
+                In tegenstelling tot de varianten item_lines/item_groups/item_types geeft dit volledige
+                Item-objecten terug in plaats van kale id's.
+
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+                - Een ongeldig id geeft 200 met null
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Item"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /orders:
+        get:
+            tags:
+                - orders
+            summary: Orders ophalen, elk met ingesloten orderregels
+            description: >-
+                Bekende problemen:
+                - Het toevoegen van een queryparameter zoals ?page=1 geeft 403, ook met geldige rechten.
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Order"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - orders
+            summary: Een order met bijbehorende orderregels aanmaken
+            description: >-
+                Bekende problemen:
+                - Ongeldige orderdata wordt niet consequent afgewezen.
+                - Dubbele order-id's worden geaccepteerd.
+                - Een succesvolle aanmaak geeft 201 zonder response-body of Location-header.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/OrderInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+
+    /orders/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - orders
+            summary: Een order ophalen, met ingesloten orderregels
+            description: >-
+                Bekende problemen:
+                - Een niet-bestaand order-id geeft 200 met een null-response in plaats van 404.
+                - Een misvormd order-id veroorzaakt een 500-fout in plaats van 400.
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Order"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - orders
+            summary: Ordervelden vervangen
+            description: >-
+                Vervangt het orderrecord zelf. Als de body items bevat, worden deze
+                verwerkt via dezelfde afstemming als PUT /orders/{id}/items.
+
+                Bekende problemen:
+                - Een niet-bestaand order-id geeft 200 in plaats van 404.
+                - De order wordt behandeld als volledige vervanging in plaats van een gedeeltelijke update.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/OrderInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        delete:
+            tags:
+                - orders
+            summary: Een order en bijbehorende orderregels verwijderen
+            description: >-
+                Bekende problemen:
+                - Het verwijderen van een niet-bestaande order geeft 200 in plaats van 404.
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+
+    /orders/{id}/items:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - orders
+            summary: Orderregels van een order ophalen
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/OrderLineItem"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - orders
+            summary: Orderregels van een order vervangen
+            description: >-
+                Vergelijkt oude en nieuwe aantallen per item_id en verwerkt het verschil in
+                Inventories.quantity_allocated op de voorraadrij met de meeste voorraad
+                voor dat artikel, begrensd op minimaal 0.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: array
+                            items:
+                                $ref: "#/components/schemas/OrderLineItemInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /clients:
+        get:
+            tags:
+                - clients
+            summary: Klanten ophalen
+            description: >-
+                Bekende problemen:
+                - Er zijn geen functionele problemen gevonden bij het ophalen van klanten.
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Client"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - clients
+            summary: Een klant aanmaken
+            description: >-
+                Bekende problemen:
+                - Een lege request-body wordt geaccepteerd in plaats van afgewezen.
+                - Ongeldige of ontbrekende velden worden niet consequent afgewezen.
+                - Misvormde JSON wordt niet correct afgehandeld.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ClientInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+
+    /clients/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - clients
+            summary: Een klant ophalen
+            description: >-
+                Bekende problemen:
+                - Een niet-bestaand klant-id geeft 200 met null in plaats van 404.
+                - Een misvormd klant-id geeft 500 in plaats van 400.
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Client"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - clients
+            summary: Een klant vervangen
+            description: >-
+                Bekende problemen:
+                - Een misvormd klant-id geeft 500 in plaats van 400.
+                - Een niet-bestaand klant-id geeft 200 in plaats van 404.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ClientInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        delete:
+            tags:
+                - clients
+            summary: Een klant verwijderen
+            description: >-
+                Bekende problemen:
+                - Een niet-bestaand klant-id geeft 200 in plaats van 404.
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+
+    /clients/{id}/orders:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - clients
+                - orders
+            summary: Orders ophalen waarbij deze klant de besteller, afleveradres- of factuuradrespartij is
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Order"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /shipments:
+        get:
+            tags:
+                - shipments
+            summary: Zendingen ophalen, elk met ingesloten zendingregels
+            description: |-
+                Bekende problemen:
+                - niet-bestaand id geeft geen correcte response
+                - misvormd id geeft geen correcte response
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Shipment"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - shipments
+            summary: Een zending met bijbehorende zendingregels aanmaken
+            description: |-
+                Bekende problemen:
+                - geeft 500 en werkt niet correct bij
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ShipmentInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /shipments/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - shipments
+            summary: Een zending ophalen, met ingesloten zendingregels
+            description: |-
+                Bekende problemen:
+                - validatie van de parent geeft geen correcte response
+                - inhoud van de relatie geeft geen correcte response
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Shipment"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - shipments
+            summary: Zendingvelden vervangen
+            description: |-
+                Bekende problemen:
+                - niet-bestaande parent geeft geen 404
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ShipmentInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        delete:
+            tags:
+                - shipments
+            summary: Een zending en bijbehorende zendingregels verwijderen
+            description:  |-
+                Bekende problemen:
+                - geeft geen 404-responses
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /shipments/{id}/orders:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - shipments
+                - orders
+            summary: >-
+                De order ophalen die aan deze zending is gekoppeld, als lijst met één element (of leeg)
+            description: |-
+                Bekende problemen:
+                - validatie van de parent en inhoud van de relatie geven geen correcte response
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    type: integer
+                                maxItems: 1
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - shipments
+                - orders
+            summary: De aan deze zending gekoppelde order instellen (of wissen)
+            description: |-
+                Bekende problemen:
+                - niet-bestaande parent geeft geen 404-response
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: array
+                            items:
+                                type: integer
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /shipments/{id}/items:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - shipments
+            summary: Zendingregels van een zending ophalen
+            description: |-
+                Bekende problemen:
+                - niet-bestaande parent geeft geen correcte response
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/ShipmentLineItem"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - shipments
+            summary: Zendingregels van een zending vervangen
+            description: |-
+                Bekende problemen:
+                - niet-bestaande parent geeft geen 404-response
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: array
+                            items:
+                                $ref: "#/components/schemas/ShipmentLineItemInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /transfers:
+        get:
+            tags:
+                - transfers
+            summary: Transfers ophalen, elk met ingesloten transferregels
+            description: |-
+                Bekende problemen:
+                - Elke querystring geeft 403 voor iedereen, ook met geldige rechten
+                - Faalt met 500 als een opgeslagen transfer geen id heeft (zie POST)
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Transfer"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        post:
+            tags:
+                - transfers
+            summary: Een batchtransfer inplannen
+            description: |-
+                De server zet transfer_status op "Scheduled", ongeacht de request-
+                body, en plaatst een notificatie in de wachtrij.
+
+                Bekende problemen:
+                - Geen validatie van velden, types of foreign keys, en geen uniciteitscontrole op id
+                - Een ontbrekend id geeft 500 (de notificatie crasht erop) maar de rij is
+                  dan al opgeslagen, waardoor elke GET /transfers daarna 500 geeft
+                  totdat de rij handmatig wordt verwijderd
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/TransferInput"
+            responses:
+                "201":
+                    description: Aangemaakt
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /transfers/{id}:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - transfers
+            summary: Een transfer ophalen, met ingesloten transferregels
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+                - Een niet-bestaand id geeft 200 met null
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Transfer"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        put:
+            tags:
+                - transfers
+            summary: Transfervelden vervangen
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/TransferInput"
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+        delete:
+            tags:
+                - transfers
+            summary: Een transfer en bijbehorende transferregels verwijderen
+            description: |-
+                Bekende problemen:
+                - Een niet-numeriek id laat de app crashen
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /transfers/{id}/items:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        get:
+            tags:
+                - transfers
+            summary: Transferregels van een transfer ophalen
+            description: |-
+                Bekende problemen:
+                - Een niet-bestaand id geeft 200 met een lege lijst in plaats van 404
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/TransferLineItem"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+    /transfers/{id}/commit:
+        parameters:
+            - $ref: "#/components/parameters/IdPathParam"
+        put:
+            tags:
+                - transfers
+            summary: Een ingeplande transfer doorvoeren
+            description: |-
+                Verplaatst quantity_on_hand voor elke regel van from_location_id naar
+                to_location_id (en maakt de voorraadrij op de bestemming aan als die niet
+                bestaat), zet transfer_status op "Processed" en plaatst een notificatie.
+                Neemt geen request-body aan.
+
+                Bekende problemen:
+                - Niet idempotent, de regels van de transfer worden nooit gewist. Een al
+                  verwerkte transfer opnieuw doorvoeren verplaatst de voorraad opnieuw en telt
+                  quantity_on_hand op de bestemming dubbel
+                - Een niet-numeriek id laat de app crashen
+                - Een niet-bestaand id laat de app crashen
+            responses:
+                "200":
+                    description: OK
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
+components:
+    securitySchemes:
+        ApiKeyAuth:
+            type: apiKey
+            in: header
+            name: API_KEY
+            description: >-
+                Wordt opgezocht in /data/user.json via auth_provider.get_user(); de
+                endpoint_access-map van de gevonden gebruiker bepaalt vervolgens per resource+methode de toegang via
+                auth_provider.has_access().
+    parameters:
+        IdPathParam:
+            name: id
+            in: path
+            required: true
+            schema:
+                type: integer
+            description: Surrogaat-id van de resource.
+    responses:
+        Unauthorized:
+            description: Ontbrekende of onbekende API_KEY-header.
+        Forbidden:
+            description: >-
+                De API-sleutel is geldig, maar de endpoint_access staat deze
+                resource/methode niet toe.
+    schemas:
+        Warehouse:
+            type: object
+            properties:
+                id:
+                    type: integer
+                code:
+                    type: string
+                name:
+                    type: string
+                address:
+                    type: string
+                city:
+                    type: string
+                zip_code:
+                    type: string
+                province:
+                    type: string
+                country:
+                    type: string
+                contact_name:
+                    type: string
+                contact_phone:
+                    type: string
+                contact_email:
+                    type: string
+                    format: email
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        WarehouseInput:
+            type: object
+            properties:
+                id:
+                    type: integer
+                code:
+                    type: string
+                name:
+                    type: string
+                address:
+                    type: string
+                city:
+                    type: string
+                zip_code:
+                    type: string
+                province:
+                    type: string
+                country:
+                    type: string
+                contact_name:
+                    type: string
+                contact_phone:
+                    type: string
+                contact_email:
+                    type: string
+                    format: email
+            required:
+                - id
+                - code
+                - name
+        Location:
+            type: object
+            properties:
+                id:
+                    type: integer
+                warehouse_id:
+                    type: integer
+                code:
+                    type: string
+                name:
+                    type: string
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        LocationInput:
+            type: object
+            properties:
+                id:
+                    type: integer
+                warehouse_id:
+                    type: integer
+                code:
+                    type: string
+                name:
+                    type: string
+            required:
+                - id
+                - warehouse_id
+                - code
+        TaxonomyEntry:
+            description: Vorm die gedeeld wordt door item_lines, item_groups en item_types.
+            type: object
+            properties:
+                id:
+                    type: integer
+                name:
+                    type: string
+                description:
+                    type: string
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        TaxonomyEntryInput:
+            type: object
+            properties:
+                id:
+                    type: integer
+                name:
+                    type: string
+                description:
+                    type: string
+            required:
+                - id
+                - name
+        Item:
+            type: object
+            properties:
+                id:
+                    type: integer
+                code:
+                    type: string
+                description:
+                    type: string
+                barcode:
+                    type: string
+                model_number:
+                    type: string
+                commodity_code:
+                    type: integer
+                unit_weight:
+                    type: number
+                item_line_id:
+                    type: integer
+                item_group_id:
+                    type: integer
+                item_type_id:
+                    type: integer
+                min_purchase_qty:
+                    type: integer
+                case_size:
+                    type: integer
+                packaging_type:
+                    type: string
+                order_multiple:
+                    type: integer
+                supplier_id:
+                    type: integer
+                supplier_sku:
+                    type: string
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        ItemInput:
+            type: object
+            properties:
+                id:
+                    type: integer
+                code:
+                    type: string
+                description:
+                    type: string
+                barcode:
+                    type: string
+                model_number:
+                    type: string
+                commodity_code:
+                    type: integer
+                unit_weight:
+                    type: number
+                item_line_id:
+                    type: integer
+                item_group_id:
+                    type: integer
+                item_type_id:
+                    type: integer
+                min_purchase_qty:
+                    type: integer
+                case_size:
+                    type: integer
+                packaging_type:
+                    type: string
+                order_multiple:
+                    type: integer
+                supplier_id:
+                    type: integer
+                supplier_sku:
+                    type: string
+            required:
+                - id
+                - code
+        Inventory:
+            type: object
+            description: Gesleuteld op de samengestelde sleutel (item_id, location_id), niet op een surrogaat-id.
+            properties:
+                item_id:
+                    type: integer
+                location_id:
+                    type: integer
+                quantity_on_hand:
+                    type: integer
+                quantity_expected:
+                    type: integer
+                quantity_ordered:
+                    type: integer
+                quantity_allocated:
+                    type: integer
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        InventoryInput:
+            type: object
+            properties:
+                item_id:
+                    type: integer
+                location_id:
+                    type: integer
+                quantity_on_hand:
+                    type: integer
+                quantity_expected:
+                    type: integer
+                quantity_ordered:
+                    type: integer
+                quantity_allocated:
+                    type: integer
+            required:
+                - item_id
+                - location_id
+        InventoryTotals:
+            type: object
+            properties:
+                total_expected:
+                    type: integer
+                total_ordered:
+                    type: integer
+                total_allocated:
+                    type: integer
+                total_available:
+                    type: integer
+                    description: Som van (quantity_on_hand - quantity_allocated) over alle locaties.
+        Supplier:
+            type: object
+            properties:
+                id:
+                    type: integer
+                code:
+                    type: string
+                name:
+                    type: string
+                address:
+                    type: string
+                city:
+                    type: string
+                zip_code:
+                    type: string
+                province:
+                    type: string
+                country:
+                    type: string
+                contact_name:
+                    type: string
+                phone_number:
+                    type: string
+                reference:
+                    type: string
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        SupplierInput:
+            type: object
+            properties:
+                id:
+                    type: integer
+                code:
+                    type: string
+                name:
+                    type: string
+                address:
+                    type: string
+                city:
+                    type: string
+                zip_code:
+                    type: string
+                province:
+                    type: string
+                country:
+                    type: string
+                contact_name:
+                    type: string
+                phone_number:
+                    type: string
+                reference:
+                    type: string
+            required:
+                - id
+                - code
+                - name
+        Client:
+            type: object
+            properties:
+                id:
+                    type: integer
+                name:
+                    type: string
+                address:
+                    type: string
+                city:
+                    type: string
+                zip_code:
+                    type: string
+                province:
+                    type: string
+                country:
+                    type: string
+                contact_name:
+                    type: string
+                contact_phone:
+                    type: string
+                contact_email:
+                    type: string
+                    format: email
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+        ClientInput:
+            type: object
+            properties:
+                id:
+                    type: integer
+                name:
+                    type: string
+                address:
+                    type: string
+                city:
+                    type: string
+                zip_code:
+                    type: string
+                province:
+                    type: string
+                country:
+                    type: string
+                contact_name:
+                    type: string
+                contact_phone:
+                    type: string
+                contact_email:
+                    type: string
+                    format: email
+            required:
+                - id
+                - name
+        OrderLineItem:
+            type: object
+            properties:
+                item_id:
+                    type: integer
+                amount:
+                    type: integer
+        OrderLineItemInput:
+            type: object
+            properties:
+                item_id:
+                    type: integer
+                amount:
+                    type: integer
+                unit_price:
+                    type: number
+            required:
+                - item_id
+                - amount
+        Order:
+            type: object
+            properties:
+                id:
+                    type: integer
+                client_id:
+                    type: integer
+                order_date:
+                    type: string
+                    format: date-time
+                request_date:
+                    type: string
+                    format: date-time
+                reference:
+                    type: string
+                customer_po_number:
+                    type: string
+                order_status:
+                    type: string
+                    enum:
+                        - Pending
+                        - Shipped
+                        - Delivered
+                        - Cancelled
+                shipping_notes:
+                    type: string
+                    nullable: true
+                warehouse_id:
+                    type: integer
+                ship_to_client_id:
+                    type: integer
+                bill_to_client_id:
+                    type: integer
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/OrderLineItem"
+        OrderInput:
+            type: object
+            properties:
+                id:
+                    type: integer
+                client_id:
+                    type: integer
+                order_date:
+                    type: string
+                    format: date-time
+                request_date:
+                    type: string
+                    format: date-time
+                reference:
+                    type: string
+                customer_po_number:
+                    type: string
+                order_status:
+                    type: string
+                shipping_notes:
+                    type: string
+                    nullable: true
+                warehouse_id:
+                    type: integer
+                ship_to_client_id:
+                    type: integer
+                bill_to_client_id:
+                    type: integer
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/OrderLineItemInput"
+                    description: Wordt alleen gelezen bij POST /orders en bij PUT /orders/{id} wanneer aanwezig.
+            required:
+                - id
+                - client_id
+        ShipmentLineItem:
+            type: object
+            properties:
+                item_id:
+                    type: integer
+                amount:
+                    type: integer
+        ShipmentLineItemInput:
+            type: object
+            properties:
+                item_id:
+                    type: integer
+                amount:
+                    type: integer
+            required:
+                - item_id
+                - amount
+        Shipment:
+            type: object
+            properties:
+                id:
+                    type: integer
+                reference:
+                    type: string
+                order_id:
+                    type: integer
+                    nullable: true
+                shipment_date:
+                    type: string
+                    format: date-time
+                shipment_type:
+                    type: string
+                    enum:
+                        - Inbound
+                        - Outgoing
+                shipment_status:
+                    type: string
+                    enum:
+                        - Scheduled
+                        - Transit
+                        - Delivered
+                        - Cancelled
+                carrier_name:
+                    type: string
+                shipping_method:
+                    type: string
+                payment_type:
+                    type: string
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ShipmentLineItem"
+        ShipmentInput:
+            type: object
+            properties:
+                id:
+                    type: integer
+                reference:
+                    type: string
+                order_id:
+                    type: integer
+                    nullable: true
+                shipment_date:
+                    type: string
+                    format: date-time
+                shipment_type:
+                    type: string
+                shipment_status:
+                    type: string
+                carrier_name:
+                    type: string
+                shipping_method:
+                    type: string
+                payment_type:
+                    type: string
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/ShipmentLineItemInput"
+                    description: >-
+                        Wordt alleen gelezen bij POST /shipments en bij PUT /shipments/{id} wanneer
+                        aanwezig.
+            required:
+                - id
+                - reference
+        TransferLineItem:
+            type: object
+            properties:
+                item_id:
+                    type: integer
+                amount:
+                    type: integer
+        TransferLineItemInput:
+            type: object
+            properties:
+                item_id:
+                    type: integer
+                amount:
+                    type: integer
+            required:
+                - item_id
+                - amount
+        Transfer:
+            type: object
+            properties:
+                id:
+                    type: integer
+                reference:
+                    type: string
+                from_location_id:
+                    type: integer
+                to_location_id:
+                    type: integer
+                transfer_status:
+                    type: string
+                    enum:
+                        - Scheduled
+                        - Processed
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TransferLineItem"
+        TransferInput:
+            type: object
+            properties:
+                id:
+                    type: integer
+                reference:
+                    type: string
+                from_location_id:
+                    type: integer
+                to_location_id:
+                    type: integer
+                items:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TransferLineItemInput"
+                    description: >-
+                        Wordt alleen gelezen bij POST /transfers; transfer_status wordt bij aanmaken
+                        altijd server-side op "Scheduled" gezet.
+            required:
+                - id
+                - reference
+                - from_location_id
+                - to_location_id
