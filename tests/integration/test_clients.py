@@ -252,7 +252,7 @@ def test_get_client_malformed_id_current_behavior(
         headers=headers
     )
 
-    assert response.status_code == 500
+    assert response.status_code == 400
 
 
 def test_get_client_without_api_key_returns_401(base_url):
@@ -631,7 +631,7 @@ def test_put_client_malformed_id_current_behavior(
         json=_client_payload()
     )
 
-    assert response.status_code == 500
+    assert response.status_code == 400
 
 
 def test_put_client_without_api_key_returns_401(base_url):

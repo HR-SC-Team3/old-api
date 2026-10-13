@@ -324,10 +324,6 @@ def test_get_item_by_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 500 for a malformed item ID instead of 400",
-)
 def test_get_item_by_malformed_id_returns_400(
     base_url, user_headers
 ):
@@ -655,10 +651,6 @@ def test_post_item_insufficient_permissions_returns_403(
     assert response.status_code == 403
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts text/plain content and returns 201",
-)
 def test_post_item_wrong_content_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -675,7 +667,7 @@ def test_post_item_wrong_content_type_is_rejected(
         data=json.dumps({"description": "Plain Text Item"}),
     )
 
-    assert response.status_code in (400, 415)
+    assert response.status_code == 415
 
 
 @pytest.mark.xfail(
@@ -806,10 +798,6 @@ def test_put_item_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 500 for a malformed item ID instead of 400",
-)
 def test_put_item_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -969,11 +957,6 @@ def test_delete_item_nonexistent_id_returns_404(
 
     assert response.status_code == 404
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="Returns the code 200 when it should return 400",
-)
 def test_delete_item_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
