@@ -328,10 +328,6 @@ def test_get_item_by_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 500 for a malformed item ID instead of 400",
-)
 def test_get_item_by_malformed_id_returns_400(
     base_url, user_headers
 ):
@@ -814,10 +810,6 @@ def test_put_item_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 500 for a malformed item ID instead of 400",
-)
 def test_put_item_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -984,11 +976,6 @@ def test_delete_item_nonexistent_id_returns_404(
 
     assert response.status_code == 404
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="Returns the code 200 when it should return 400",
-)
 def test_delete_item_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
