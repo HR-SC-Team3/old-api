@@ -464,10 +464,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 paths = self.path.split("/")
                 if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
                     self.handle_get_version_1(paths[3:], user)
+            except ValueError:
+                self.send_response(400)
+                self.end_headers()
             except Exception:
                 self.send_response(500)
                 self.end_headers()
-
+                
     def handle_post_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "post"):
             self._drain_request_body()
@@ -881,6 +884,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 paths = self.path.split("/")
                 if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
                     self.handle_put_version_1(paths[3:], user)
+            except ValueError:
+                self.send_response(400)
+                self.end_headers()
             except Exception:
                 self.send_response(500)
                 self.end_headers()
@@ -976,6 +982,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 paths = self.path.split("/")
                 if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
                     self.handle_delete_version_1(paths[3:], user)
+            except ValueError:
+                self.send_response(400)
+                self.end_headers()
             except Exception:
                 self.send_response(500)
                 self.end_headers()
