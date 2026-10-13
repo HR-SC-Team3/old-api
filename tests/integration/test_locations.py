@@ -102,7 +102,7 @@ def test_get_locations_error_does_not_leak_internal_data(base_url,):
     _error_text_does_not_leak(response)
 
 
-@pytest.mark.xfail(strict=True, reason="GET /locations with query parameters currently returns 403 even for an allowed GET user")
+@pytest.mark.xfail(strict=True, reason="Query parameters are ignored by GET /locations, so this is not honoured")
 def test_get_locations_support_pagination(base_url,user_headers,):
     response = _get_locations(base_url, user_headers, params={"page": 1, "limit": 2,},)
     assert response.status_code == 200
@@ -110,7 +110,7 @@ def test_get_locations_support_pagination(base_url,user_headers,):
     assert isinstance(body, list)
     assert len(body) <= 2
 
-@pytest.mark.xfail(strict=True, reason="GET /locations with query parameters currently returns 403 even for an allowed GET user")
+@pytest.mark.xfail(strict=True, reason="Query parameters are ignored by GET /locations, so this is not honoured")
 @pytest.mark.parametrize("filter_type",["warehouse_id", "code",],)
 def test_get_locations_support_filtering(base_url, user_headers,filter_type,):
     existing = _first_location(base_url, user_headers,)
@@ -121,26 +121,32 @@ def test_get_locations_support_filtering(base_url, user_headers,filter_type,):
     for location in body:
         assert location[filter_type] == existing[filter_type]
 
-@pytest.mark.xfail(strict=True, reason="GET /locations with query parameters currently returns 403 even for an allowed GET user")
+@pytest.mark.xfail(strict=True, reason="Query parameters are ignored by GET /locations, so this is not honoured")
 def test_get_locations_supports_sorting(base_url, user_headers,):
-    response = _get_locations(base_url, user_headers, params={"sort": "id",},)
+    response = _get_locations(base_url, user_headers, params={"sort": "id", "order": "desc",},)
     assert response.status_code == 200
     body = response.json()
     assert isinstance(body, list)
     ids = [location["id"] for location in body]
-    assert ids == sorted(ids)
+    assert ids == sorted(ids, reverse=True)
 
-@pytest.mark.xfail(strict=True, reason="it returns 403 instead of returnng 200 even when user has permissions for get")
+@pytest.mark.xfail(strict=True, reason="Query parameters are ignored by GET /locations, so filtering is not honoured")
 def test_get_locations_empty_result_returns_200_empty_array(base_url, user_headers):
     response = _get_locations(base_url, user_headers,params={"warehouse_id": 999999999,},)
     assert response.status_code == 200
     assert response.json() == []
 
+@pytest.mark.parametrize("params",[{"page": 1, "limit": 2}, {"sort": "id"}, {"warehouse_id": 1}, {"unknown_parameter": "test"}, {"page": -1}],)
+def test_get_locations_query_params_are_ignored(base_url, user_headers, params,):
+    baseline = _get_locations(base_url, user_headers)
+    response = _get_locations(base_url, user_headers, params=params,)
+    assert response.status_code == 200
+    assert response.json() == baseline.json()
+
 def test_get_locations_invalid_query_param_does_not_return_500(base_url, user_headers,):
     response = _get_locations(base_url, user_headers,params={"page": -1,},)
     assert response.status_code != 500
 
-@pytest.mark.xfail(strict=True, reason=" returns 403 instead of 200, 400 or 422 even when user is allowed get")
 def test_get_locations_unknown_query_param_is_handled(base_url, user_headers,):
     response = _get_locations(base_url, user_headers, params={"unknown_parameter": "test",},)
     assert response.status_code in (200, 400, 422)

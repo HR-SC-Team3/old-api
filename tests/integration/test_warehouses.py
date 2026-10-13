@@ -104,51 +104,59 @@ def test_response_time_is_reasonable(base_url, user_headers):
     ), f"GET /warehouses took {elapsed:.2f}s, which is unreasonably slow"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "ApiRequestHandler does not strip the query string before checking "
-        "endpoint permissions. A query string therefore changes paths[0] "
-        "from 'warehouses' to e.g. 'warehouses?page=1' and results in 403."
-    ),
-)
 @pytest.mark.parametrize(
     "params",
     [
         pytest.param({"page": 1}, id="pagination-page"),
         pytest.param({"limit": 5}, id="pagination-limit"),
         pytest.param({"sort": "name"}, id="sort-name"),
-        pytest.param(
-            {"totally_unknown_key": "x"},
-            id="unknown-key",
-        ),
+        pytest.param({"page": -1}, id="invalid-negative-page"),
+        pytest.param({"totally_unknown_key": "x"}, id="unknown-key"),
     ],
 )
-def test_query_params_are_honoured_or_gracefully_ignored(base_url, user_headers, params):
+def test_query_params_are_ignored(base_url, user_headers, params):
+    headers = _get_headers(user_headers)
+    url = f"{base_url}/api/v1/warehouses"
+
+    baseline = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, params=params)
+
+    assert response.status_code == 200
+    assert response.json() == baseline.json()
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so pagination is not honoured.",
+)
+def test_query_param_limit_is_honoured(base_url, user_headers):
     headers = _get_headers(user_headers)
 
     response = requests.get(
         f"{base_url}/api/v1/warehouses",
         headers=headers,
-        params=params
+        params={"limit": 1},
     )
 
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert len(response.json()) <= 1
 
 
-def test_query_params_currently_return_403(base_url, user_headers):
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so sorting is not honoured.",
+)
+def test_query_param_sort_is_honoured(base_url, user_headers):
     headers = _get_headers(user_headers)
 
     response = requests.get(
         f"{base_url}/api/v1/warehouses",
         headers=headers,
-        params={"page": 1}
+        params={"sort": "name"},
     )
 
-    assert response.status_code == 403
-    assert response.text == ""
-
+    names = [w["name"] for w in response.json()]
+    assert names == sorted(names)
 
 
 def test_missing_api_key_is_rejected_with_401(base_url):

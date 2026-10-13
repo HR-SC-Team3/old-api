@@ -123,7 +123,9 @@ def test_get_inventories_supports_filtering(base_url, user_headers, filter_type)
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers, params={filter_type: existing[filter_type]},
     )
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    body = response.json()
+    assert isinstance(body, list)
+    assert all(row[filter_type] == existing[filter_type] for row in body)
 
 @pytest.mark.xfail(
     strict=True,
@@ -135,9 +137,10 @@ def test_get_inventories_supports_filtering(base_url, user_headers, filter_type)
 
 def test_get_inventories_supports_sorting(base_url, user_headers):
     headers = _get_headers(user_headers)
-    response = requests.get(f"{base_url}/api/v1/inventories", headers=headers, params = {"sort": "item_id"},)
+    response = requests.get(f"{base_url}/api/v1/inventories", headers=headers, params={"sort": "item_id", "order": "desc"},)
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    ids = [row["item_id"] for row in response.json()]
+    assert ids == sorted(ids, reverse=True)
 
 @pytest.mark.xfail(strict=True, reason="The API currently returns a different status code for an empty inventory result; the documented/spec behavior is 404.",)
 
@@ -146,6 +149,15 @@ def test_get_inventories_empty_result_returns_404(base_url, user_headers):
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers, params={"item_id": 999999999},)
     assert response.status_code == 404
     assert response.json() == []
+
+
+@pytest.mark.parametrize("params", [{"page": 1, "limit": 2}, {"sort": "item_id"}, {"item_id": 1}, {"unknown_parameter": "test"}, {"page": -1}],)
+def test_get_inventories_query_params_are_ignored(base_url, user_headers, params):
+    headers = _get_headers(user_headers)
+    baseline = requests.get(f"{base_url}/api/v1/inventories", headers=headers)
+    response = requests.get(f"{base_url}/api/v1/inventories", headers=headers, params=params)
+    assert response.status_code == 200
+    assert response.json() == baseline.json()
 
 
 def test_get_inventories_invalid_query_param_does_not_return_500(base_url, user_headers):
