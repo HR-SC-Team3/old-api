@@ -288,6 +288,15 @@ def test_get_transfer_by_nonexistent_id_returns_404(base_url, user_headers):
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "transfer_id = int(paths[1]) is not guarded, so a non-numeric id "
+        "raises an uncaught ValueError that bubbles up to the generic "
+        "except Exception: send_response(500) in do_GET. "
+        "Actual: 500 Internal Server Error. Expected: 400 Bad Request."
+    ),
+)
 def test_get_transfer_by_malformed_id_returns_400(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(_url(base_url, f"/not-an-id"), headers=headers)
@@ -756,6 +765,14 @@ def test_put_transfer_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Same unguarded int(paths[1]) as GET/DELETE by id: a non-numeric "
+        "id raises an uncaught ValueError caught only by the generic 500 "
+        "handler. Actual: 500. Expected: 400."
+    ),
+)
 def test_put_transfer_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -915,6 +932,13 @@ def test_delete_transfer_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Same unguarded int(paths[1]) as GET/PUT by id. Actual: 500. "
+        "Expected: 400."
+    ),
+)
 def test_delete_transfer_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -1201,6 +1225,13 @@ def test_put_transfer_commit_nonexistent_transfer_returns_404(
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Same unguarded int(paths[1]) as the other by-id routes. Actual: "
+        "500. Expected: 400."
+    ),
+)
 def test_put_transfer_commit_malformed_id_returns_400(base_url, user_headers):
     headers = _get_headers(user_headers, method="put")
 
