@@ -532,15 +532,6 @@ def test_post_item_group_insufficient_permissions_returns_403(base_url, user_hea
     assert response.status_code == 403
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "do_POST never inspects the Content-Type header before "
-        "json.loads()-ing the body, so a request sent as text/plain is "
-        "accepted exactly like application/json. Expected: a non-JSON "
-        "Content-Type should be rejected."
-    ),
-)
 def test_post_item_group_wrong_content_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -554,7 +545,7 @@ def test_post_item_group_wrong_content_type_is_rejected(
         _url(base_url), headers=headers, data=json.dumps({"name": "Plain Text Group"})
     )
 
-    assert response.status_code in (400, 415)
+    assert response.status_code == 415
 
 
 @pytest.mark.xfail(

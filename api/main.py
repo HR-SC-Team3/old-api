@@ -474,6 +474,15 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(403)
             self.end_headers()
             return
+
+        content_type = self.headers.get("Content-Type", "")
+        media_type = content_type.split(";", 1)[0].strip().lower()
+
+        if media_type != "application/json":
+            self._drain_request_body()
+            self.send_response(415)
+            self.end_headers()
+            return
         if paths[0] == "warehouses":
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)

@@ -628,10 +628,6 @@ def test_post_item_line_insufficient_permissions_returns_403(
     assert response.status_code == 403
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts text/plain content and returns 201",
-)
 def test_post_item_line_wrong_content_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -648,7 +644,7 @@ def test_post_item_line_wrong_content_type_is_rejected(
         data=json.dumps({"name": "Plain Text Item Line"}),
     )
 
-    assert response.status_code in (400, 415)
+    assert response.status_code == 415
 
 
 @pytest.mark.xfail(
