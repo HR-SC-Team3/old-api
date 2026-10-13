@@ -227,10 +227,6 @@ def test_get_nonexistent_order_returns_404(
 
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API converts malformed IDs to 500."
-)
 def test_get_order_malformed_id_returns_400(
     base_url,
     user_headers
