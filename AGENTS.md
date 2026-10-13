@@ -13,11 +13,11 @@ change against that purpose, and refuse or flag violations of the following rule
 
 ## Rules
 
-### 1. Never change application behavior
+### 1. Never change application behavior unless it's in scope of the ticket
 
 The code under test (everything outside `tests/`, `scripts/`, and test tooling) must never be
-edited in a way that changes its behavior. Tests exist to capture and pin down what the code
-currently does - including quirks and bugs - not to make the code correct.
+edited in a way that changes its behavior unless there's a ticket allowing it.
+Tests exist to capture and pin down what the code currently does - including quirks and bugs - not to make the code correct.
 
 - Do not alter logic, fix a bug, or change an endpoint's response in the application code,
   even if the change looks like an obvious improvement.
@@ -25,6 +25,8 @@ currently does - including quirks and bugs - not to make the code correct.
   behavior are the only acceptable touches to that code.
 - If a test fails against current behavior, fix the test's expectation to match reality -
   never change the application so the test passes.
+- Only change behavior if a ticket explicitly calls for it. All branches follow conventional commits, finding the correct ticket
+  can be done with the `gh` CLI.
 
 ### 2. Use the permission helper, don't edit `data/user.json`
 

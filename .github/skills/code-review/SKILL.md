@@ -9,7 +9,7 @@ This repository exists to **document the current behavior of the code via tests*
 a place to fix bugs, refactor, or improve the application under test. Review every pull
 request against that purpose, and flag violations of the following rules.
 
-## 1. Never change application behavior
+## 1. Never change application behavior, unless the ticket explicitly calls for it
 
 The code under test (everything outside `tests/`, `scripts/`, and test tooling) must never be
 edited in a way that changes its behavior. Tests exist to capture and pin down what the code
@@ -21,6 +21,7 @@ currently does - including quirks and bugs - not to make the code correct.
   behavior are the only acceptable touches to that code.
 - If a test fails against current behavior, the fix is to correct the test's expectation to
   match reality, not to change the application so the test passes.
+- Only change behavior if a ticket explicitly calls for it. All branches follow conventional commits, finding the correct ticket can be done with the `gh` CLI.
 
 ## 2. Use the permission helper, don't edit `data/user.json`
 
