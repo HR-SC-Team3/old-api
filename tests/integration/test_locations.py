@@ -239,13 +239,12 @@ def test_post_location_insufficient_permission_returns_403(base_url, user_header
     response = _request_location(base_url, user_headers, method="post", path="/api/v1/locations", allowed=False, json=_valid_location_payload(),)
     assert response.status_code == 403
 
-@pytest.mark.xfail(strict=True, reason="Currently returns 500 when getting non-JSON requests bodies")
 def test_post_location_requires_application_json(base_url, user_headers, preserve_data_files):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post")
     headers["Content-Type"] = "text/plain"
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers, data="This is not a json file")
-    assert response.status_code in (400, 415, 422)
+    assert response.status_code == 415
 
 def test_post_location_accepts_application_json(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")

@@ -583,13 +583,6 @@ def test_post_warehouse_insufficient_permissions_returns_403(base_url, user_head
     assert response.status_code == 403
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "do_POST does not inspect Content-Type before parsing the body. "
-        "text/plain is accepted like application/json."
-    ),
-)
 def test_post_warehouse_wrong_content_type_is_rejected(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -608,7 +601,7 @@ def test_post_warehouse_wrong_content_type_is_rejected(base_url, user_headers, p
         )
     )
 
-    assert response.status_code in (400, 415)
+    assert response.status_code == 415
 
 
 @pytest.mark.xfail(
