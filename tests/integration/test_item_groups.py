@@ -278,15 +278,6 @@ def test_get_item_group_by_nonexistent_id_returns_404(base_url, user_headers):
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "item_group_id = int(paths[1]) is not guarded, so a non-numeric id "
-        "raises an uncaught ValueError that bubbles up to the generic "
-        "except Exception: send_response(500) in do_GET. "
-        "Actual: 500 Internal Server Error. Expected: 400 Bad Request."
-    ),
-)
 def test_get_item_group_by_malformed_id_returns_400(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(_url(base_url, "/not-an-id"), headers=headers)
@@ -524,15 +515,6 @@ def test_post_item_group_insufficient_permissions_returns_403(base_url, user_hea
     assert response.status_code == 403
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "do_POST never inspects the Content-Type header before "
-        "json.loads()-ing the body, so a request sent as text/plain is "
-        "accepted exactly like application/json. Expected: a non-JSON "
-        "Content-Type should be rejected."
-    ),
-)
 def test_post_item_group_wrong_content_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -546,7 +528,7 @@ def test_post_item_group_wrong_content_type_is_rejected(
         _url(base_url), headers=headers, data=json.dumps({"name": "Plain Text Group"})
     )
 
-    assert response.status_code in (400, 415)
+    assert response.status_code == 415
 
 
 @pytest.mark.xfail(
@@ -649,14 +631,6 @@ def test_put_item_group_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Same unguarded int(paths[1]) as GET/DELETE by id: a non-numeric "
-        "id raises an uncaught ValueError caught only by the generic 500 "
-        "handler. Actual: 500. Expected: 400."
-    ),
-)
 def test_put_item_group_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -755,13 +729,6 @@ def test_delete_item_group_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Same unguarded int(paths[1]) as GET/PUT by id. Actual: 500. "
-        "Expected: 400."
-    ),
-)
 def test_delete_item_group_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
