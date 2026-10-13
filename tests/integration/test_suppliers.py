@@ -103,16 +103,6 @@ def test_response_time_is_reasonable(base_url, user_headers):
     ), f"GET /suppliers took {elapsed:.2f}s, which is unreasonably slow"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Not implemented: any query string (pagination, filter, or unknown "
-        "key alike) makes `paths[0]` mismatch the 'suppliers' resource key "
-        "in endpoint_access, so a fully permitted user is rejected with 403 "
-        "instead of the query string being ignored or the params being "
-        "honoured. See module docstring."
-    ),
-)
 @pytest.mark.parametrize(
     "params",
     [
@@ -124,32 +114,50 @@ def test_response_time_is_reasonable(base_url, user_headers):
         pytest.param({"totally_unknown_key": "x"}, id="unknown-key"),
     ],
 )
-def test_query_params_are_honoured_or_gracefully_ignored(
-    base_url, user_headers, params
-):
+def test_query_params_are_ignored(base_url, user_headers, params):
     headers = user_headers(resource="suppliers", method="get", allowed=True)
-    response = requests.get(
-        _url(base_url), headers=headers, params=params
-    )
+    baseline = requests.get(_url(base_url), headers=headers)
+    response = requests.get(_url(base_url), headers=headers, params=params)
 
-    # A fully-permitted user sending an (undocumented) query string should
-    # never be worse off than sending no query string at all.
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.json() == baseline.json()
 
 
-def test_query_params_currently_return_403(base_url, user_headers):
-    """
-    Pins the *actual* behavior described above so a regression (e.g. a 500
-    instead of 403) is caught even before the underlying bug is fixed.
-    """
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so pagination is not honoured.",
+)
+def test_query_param_limit_is_honoured(base_url, user_headers):
     headers = user_headers(resource="suppliers", method="get", allowed=True)
-    response = requests.get(
-        _url(base_url), headers=headers, params={"page": 1}
-    )
+    response = requests.get(_url(base_url), headers=headers, params={"limit": 1})
 
-    assert response.status_code == 403
-    assert response.text == ""
+    assert response.status_code == 200
+    assert len(response.json()) <= 1
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so filtering is not honoured.",
+)
+def test_query_param_filter_is_honoured(base_url, user_headers):
+    headers = user_headers(resource="suppliers", method="get", allowed=True)
+    name = requests.get(_url(base_url), headers=headers).json()[0]["name"]
+    response = requests.get(_url(base_url), headers=headers, params={"name": name})
+
+    assert response.status_code == 200
+    assert all(row["name"] == name for row in response.json())
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so sorting is not honoured.",
+)
+def test_query_param_sort_is_honoured(base_url, user_headers):
+    headers = user_headers(resource="suppliers", method="get", allowed=True)
+    response = requests.get(_url(base_url), headers=headers, params={"sort": "name", "order": "desc"})
+
+    values = [row["name"] for row in response.json()]
+    assert values == sorted(values, reverse=True)
 
 
 @pytest.mark.skip(
