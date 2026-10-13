@@ -445,8 +445,6 @@ def test_post_inventory_rejects_invalid_foreign_key_references(base_url, user_he
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 422)
 
-@pytest.mark.xfail(strict=True, reason="The API should either return 400, 415 or 422 but it doesn't and returns 500 instead meaning something with the server",)
-
 def test_post_inventory_requires_json_content_type(base_url, user_headers, preserve_data_files):
     preserve_data_files("inventory.json")
 
@@ -461,9 +459,9 @@ def test_post_inventory_requires_json_content_type(base_url, user_headers, prese
         "quantity_allocated": 10,
     }
 
-    response = requests.post(f"{base_url}/api/v1/inventories", headers=headers,data=payload,)
+    response = requests.post(f"{base_url}/api/v1/inventories", headers=headers,data=json.dumps(payload),)
 
-    assert response.status_code in (400, 415, 422)
+    assert response.status_code == 415
 
 def test_post_inventory_accepts_application_json_content_type(base_url, user_headers, preserve_data_files):
     preserve_data_files("inventory.json")
