@@ -193,14 +193,27 @@ def test_post_shipment_insufficient_permission_returns_403(base_url, user_header
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=_valid_shipment_payload(),)
     assert response.status_code == 403
 
-@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 even tho it should return 400, 415 or 422")
-
 def test_post_shipment_requires_application_json(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
     headers["Content-Type"] ="text/plain"
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, data="this is not json",)
-    assert response.status_code in (400, 415, 422)
+    assert response.status_code == 415
+
+def test_post_shipment_rejects_missing_content_type(base_url, user_headers, preserve_data_files):
+    preserve_data_files("shipment.json")
+    headers = _get_headers(user_headers, method ="post")
+    headers.pop("Content-Type", None)
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, data = json.dumps(_valid_shipment_payload()))
+    assert response.status_code == 415
+
+def test_post_shipment_accepts_json_with_charset(base_url, user_headers, preserve_data_files):
+    preserve_data_files("shipment.json")
+    headers = _get_headers(user_headers, method="post")
+    headers["Content-Type"] = "application/json; charset=utf-8"
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, data=json.dumps(_valid_shipment_payload()),)
+    assert response.status_code != 415
+
 
 def test_post_shipment_accepts_application_json(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")

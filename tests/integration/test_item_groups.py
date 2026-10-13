@@ -530,7 +530,7 @@ def test_post_item_group_wrong_content_type_is_rejected(
         _url(base_url), headers=headers, data=json.dumps({"name": "Plain Text Group"})
     )
 
-    assert response.status_code == 415 
+    assert response.status_code == 415
 
 
 @pytest.mark.xfail(
