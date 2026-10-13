@@ -213,10 +213,6 @@ def test_get_client_schema(base_url, user_headers):
     Client.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 with null instead of 404."
-)
 def test_get_nonexistent_client_returns_404(
     base_url,
     user_headers
@@ -600,10 +596,6 @@ def test_put_client_uses_full_replace():
     assert "self.data[i] = client" in CLIENTS_MODEL_SOURCE
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when client does not exist."
-)
 def test_put_nonexistent_client_returns_404(
     base_url,
     user_headers,
@@ -772,10 +764,6 @@ def test_delete_client_removes_client(
     assert get_response.json() is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when client does not exist."
-)
 def test_delete_nonexistent_client_returns_404(
     base_url,
     user_headers,

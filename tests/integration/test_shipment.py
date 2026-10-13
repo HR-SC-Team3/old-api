@@ -321,7 +321,6 @@ def test_get_shipment_by_id_matches_schema(base_url, user_headers):
     assert body["id"] == existing["id"]
 
 
-@pytest.mark.xfail(strict = True, reason="it returns 200 for nonexistent shipment id instead of 404")
 
 def test_get_shipment_by_id_nonexistent_returns_404(base_url, user_headers,):
     response = _shipment_by_id(base_url, user_headers, 999999999,)
@@ -349,7 +348,6 @@ def test_get_shipment_by_id_insufficient_permissions_return_403(base_url, user_h
     response = _request_shipment(base_url, user_headers, method="get", path="/api/v1/shipments/1", allowed=False,)
     assert response.status_code ==403
 
-@pytest.mark.xfail(strict = True, reason="The id returns 200 instead of 400 for nonexistent shipment")
 
 def test_get_shipment_by_id_error_does_not_leak_internal_data(base_url, user_headers,):
     headers = _get_headers(user_headers)
@@ -386,7 +384,6 @@ def test_put_shipment_valid_payload_returns_200(base_url, user_headers, preserve
     response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code == 200
 
-@pytest.mark.xfail(strict = True, reason="The Id returns 200 for nonexistent shipment instead of returning 404")
 
 def test_put_shipment_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="put",)
@@ -449,14 +446,12 @@ def test_delete_shipment_insufficient_returns_403(base_url, user_headers):
     response = _request_shipment(base_url, user_headers, method="delete", path="/api/v1/shipments/1", allowed=False, json={},)
     assert response.status_code == 403
 
-@pytest.mark.xfail(strict = True, reason="With the id it doesn't return 404 but return 200")
 
 def test_delete_shipment_nonexistent_id_returns_404(base_url, user_headers,):
     headers = _get_headers(user_headers, method="delete")
     response = requests.delete(f"{base_url}/api/v1/shipments/999999999", headers=headers,)
     assert response.status_code == 404
 
-@pytest.mark.xfail(strict = True, reason="With the id it doesn't return 404 that was deleted")
 
 def test_delete_shipment_removes_resource(base_url, user_headers, preserve_data_files,):
     preserve_data_files("shipment.json")
@@ -467,7 +462,6 @@ def test_delete_shipment_removes_resource(base_url, user_headers, preserve_data_
     get_response = _shipment_by_id(base_url, user_headers, existing["id"],)
     assert get_response.status_code == 404
 
-@pytest.mark.xfail(strict = True, reason="With the id it allows a second time deletion instead of 404 for no shipment found")
 
 def test_delete_shipment_twice_returns_404(base_url, user_headers, preserve_data_files,):
     preserve_data_files("shipment.json")
@@ -602,7 +596,6 @@ def test_shipments_unauthorized_errors_have_consistent_format(base_url,):
     assert put_response.headers.get("Content-Type") is None
     assert delete_response.headers.get("Content-Type") is None
 
-@pytest.mark.xfail(strict = True, reason="Currently returns 200 instead of 404")
 
 def test_shipments_404_error_does_not_leak_internal_data(base_url, user_headers,):
     headers = _get_headers(user_headers)
