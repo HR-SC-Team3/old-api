@@ -13,6 +13,7 @@ from processors import notification_processor
 # when spawning this process.
 TEST_MODE = os.environ.get("API_TEST_MODE") == "1"
 
+
 class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def address_string(self):
@@ -35,6 +36,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.rfile.read(int(content_length))
 
     def handle_get_version_1(self, paths, user):
+        # Strip out the query parameters, if any. We do not support any query parameters, so we just ignore them.
+        paths[0] = paths[0].split("?")[0]
+
         if not auth_provider.has_access(user, paths, "get"):
             self._drain_request_body()
             self.send_response(403)
@@ -65,7 +69,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 3:
                     if paths[2] == "locations":
                         warehouse_id = int(paths[1])
-                        locations = data_provider.fetch_location_pool().get_locations_in_warehouse(warehouse_id)
+                        locations = data_provider.fetch_location_pool().get_locations_in_warehouse(
+                            warehouse_id
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
@@ -126,7 +132,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 3:
                     if paths[2] == "items":
                         transfer_id = int(paths[1])
-                        items = data_provider.fetch_transfer_pool().get_items_in_transfer(transfer_id)
+                        items = (
+                            data_provider.fetch_transfer_pool().get_items_in_transfer(
+                                transfer_id
+                            )
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
@@ -162,7 +172,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 3:
                     if paths[2] == "inventory":
                         item_id = int(paths[1])
-                        inventories = data_provider.fetch_inventory_pool().get_inventories_for_item(item_id)
+                        inventories = data_provider.fetch_inventory_pool().get_inventories_for_item(
+                            item_id
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
@@ -173,7 +185,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 4:
                     if paths[2] == "inventory" and paths[3] == "totals":
                         item_id = int(paths[1])
-                        totals = data_provider.fetch_inventory_pool().get_inventory_totals_for_item(item_id)
+                        totals = data_provider.fetch_inventory_pool().get_inventory_totals_for_item(
+                            item_id
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
@@ -209,7 +223,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 3:
                     if paths[2] == "items":
                         item_line_id = int(paths[1])
-                        items = data_provider.fetch_item_pool().get_items_for_item_line(item_line_id)
+                        items = data_provider.fetch_item_pool().get_items_for_item_line(
+                            item_line_id
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
@@ -224,7 +240,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             parts = len(paths)
             match parts:
                 case 1:
-                    item_groups = data_provider.fetch_item_group_pool().get_item_groups()
+                    item_groups = (
+                        data_provider.fetch_item_group_pool().get_item_groups()
+                    )
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -245,7 +263,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 3:
                     if paths[2] == "items":
                         item_group_id = int(paths[1])
-                        items = data_provider.fetch_item_pool().get_items_for_item_group(item_group_id)
+                        items = (
+                            data_provider.fetch_item_pool().get_items_for_item_group(
+                                item_group_id
+                            )
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
@@ -281,7 +303,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 3:
                     if paths[2] == "items":
                         item_type_id = int(paths[1])
-                        items = data_provider.fetch_item_pool().get_items_for_item_type(item_type_id)
+                        items = data_provider.fetch_item_pool().get_items_for_item_type(
+                            item_type_id
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
@@ -334,7 +358,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 3:
                     if paths[2] == "items":
                         supplier_id = int(paths[1])
-                        items = data_provider.fetch_item_pool().get_items_for_supplier(supplier_id)
+                        items = data_provider.fetch_item_pool().get_items_for_supplier(
+                            supplier_id
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
@@ -344,7 +370,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         self.end_headers()
                 case _:
                     self.send_response(404)
-                    self.end_headers() 
+                    self.end_headers()
         elif paths[0] == "orders":
             parts = len(paths)
             match parts:
@@ -370,7 +396,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 3:
                     if paths[2] == "items":
                         order_id = int(paths[1])
-                        items = data_provider.fetch_order_pool().get_items_in_order(order_id)
+                        items = data_provider.fetch_order_pool().get_items_in_order(
+                            order_id
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
@@ -402,11 +430,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
-                    self.wfile.write(json.dumps(client).encode("utf-8"))     
+                    self.wfile.write(json.dumps(client).encode("utf-8"))
                 case 3:
                     if paths[2] == "orders":
                         client_id = int(paths[1])
-                        orders = data_provider.fetch_order_pool().get_orders_for_client(client_id)
+                        orders = data_provider.fetch_order_pool().get_orders_for_client(
+                            client_id
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
@@ -416,7 +446,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         self.end_headers()
                 case _:
                     self.send_response(404)
-                    self.end_headers() 
+                    self.end_headers()
         elif paths[0] == "shipments":
             parts = len(paths)
             match parts:
@@ -442,14 +472,20 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 3:
                     if paths[2] == "orders":
                         shipment_id = int(paths[1])
-                        orders = data_provider.fetch_shipment_pool().get_order_ids_in_shipment(shipment_id)
+                        orders = data_provider.fetch_shipment_pool().get_order_ids_in_shipment(
+                            shipment_id
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
                         self.wfile.write(json.dumps(orders).encode("utf-8"))
                     elif paths[2] == "items":
                         shipment_id = int(paths[1])
-                        items = data_provider.fetch_shipment_pool().get_items_in_shipment(shipment_id)
+                        items = (
+                            data_provider.fetch_shipment_pool().get_items_in_shipment(
+                                shipment_id
+                            )
+                        )
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.end_headers()
@@ -510,7 +546,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             new_transfer = json.loads(post_data.decode())
             data_provider.fetch_transfer_pool().add_transfer(new_transfer)
             data_provider.fetch_transfer_pool().save()
-            notification_processor.push(f"Scheduled batch transfer {new_transfer['id']}")
+            notification_processor.push(
+                f"Scheduled batch transfer {new_transfer['id']}"
+            )
             self.send_response(201)
             self.end_headers()
         elif paths[0] == "items":
@@ -693,7 +731,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 3:
                     if paths[2] == "commit":
                         transfer_id = int(paths[1])
-                        transfer = data_provider.fetch_transfer_pool().get_transfer(transfer_id)
+                        transfer = data_provider.fetch_transfer_pool().get_transfer(
+                            transfer_id
+                        )
                         from_location_id = transfer["from_location_id"]
                         to_location_id = transfer["to_location_id"]
                         inventory_pool = data_provider.fetch_inventory_pool()
@@ -701,28 +741,40 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                             item_id = x["item_id"]
                             amount = x["amount"]
                             # decrease on-hand at the source location
-                            src = inventory_pool.get_inventory(item_id, from_location_id)
+                            src = inventory_pool.get_inventory(
+                                item_id, from_location_id
+                            )
                             if src is not None:
                                 src["quantity_on_hand"] -= amount
-                                inventory_pool.update_inventory(item_id, from_location_id, src)
+                                inventory_pool.update_inventory(
+                                    item_id, from_location_id, src
+                                )
                             # increase (or create) on-hand at the destination location
                             dst = inventory_pool.get_inventory(item_id, to_location_id)
                             if dst is not None:
                                 dst["quantity_on_hand"] += amount
-                                inventory_pool.update_inventory(item_id, to_location_id, dst)
+                                inventory_pool.update_inventory(
+                                    item_id, to_location_id, dst
+                                )
                             else:
-                                inventory_pool.add_inventory({
-                                    "item_id": item_id,
-                                    "location_id": to_location_id,
-                                    "quantity_on_hand": amount,
-                                    "quantity_expected": 0,
-                                    "quantity_ordered": 0,
-                                    "quantity_allocated": 0,
-                                })
+                                inventory_pool.add_inventory(
+                                    {
+                                        "item_id": item_id,
+                                        "location_id": to_location_id,
+                                        "quantity_on_hand": amount,
+                                        "quantity_expected": 0,
+                                        "quantity_ordered": 0,
+                                        "quantity_allocated": 0,
+                                    }
+                                )
                         transfer["transfer_status"] = "Processed"
                         transfer.pop("items", None)
-                        data_provider.fetch_transfer_pool().update_transfer(transfer_id, transfer)
-                        notification_processor.push(f"Processed batch transfer with id:{transfer['id']}")
+                        data_provider.fetch_transfer_pool().update_transfer(
+                            transfer_id, transfer
+                        )
+                        notification_processor.push(
+                            f"Processed batch transfer with id:{transfer['id']}"
+                        )
                         data_provider.fetch_transfer_pool().save()
                         data_provider.fetch_inventory_pool().save()
                         self.send_response(200)
@@ -855,7 +907,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         content_length = int(self.headers["Content-Length"])
                         post_data = self.rfile.read(content_length)
                         updated_items = json.loads(post_data.decode())
-                        data_provider.fetch_order_pool().update_items_in_order(order_id, updated_items)
+                        data_provider.fetch_order_pool().update_items_in_order(
+                            order_id, updated_items
+                        )
                         data_provider.fetch_order_pool().save()
                         self.send_response(200)
                         self.end_headers()
@@ -910,7 +964,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         content_length = int(self.headers["Content-Length"])
                         post_data = self.rfile.read(content_length)
                         updated_orders = json.loads(post_data.decode())
-                        data_provider.fetch_shipment_pool().update_orders_in_shipment(shipment_id, updated_orders)
+                        data_provider.fetch_shipment_pool().update_orders_in_shipment(
+                            shipment_id, updated_orders
+                        )
                         data_provider.fetch_shipment_pool().save()
                         self.send_response(200)
                         self.end_headers()
@@ -919,7 +975,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         content_length = int(self.headers["Content-Length"])
                         post_data = self.rfile.read(content_length)
                         updated_items = json.loads(post_data.decode())
-                        data_provider.fetch_shipment_pool().update_items_in_shipment(shipment_id, updated_items)
+                        data_provider.fetch_shipment_pool().update_items_in_shipment(
+                            shipment_id, updated_items
+                        )
                         data_provider.fetch_shipment_pool().save()
                         self.send_response(200)
                         self.end_headers()
@@ -1142,6 +1200,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             except Exception:
                 self.send_response(500)
                 self.end_headers()
+
 
 if __name__ == "__main__":
     PORT = 3000
