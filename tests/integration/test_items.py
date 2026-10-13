@@ -89,10 +89,6 @@ def test_response_time_is_reasonable(base_url, user_headers):
     ), f"GET /items took {elapsed:.2f}s, which is unreasonably slow"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 403 when query parameters are used",
-)
 @pytest.mark.parametrize(
     "params",
     [
@@ -105,19 +101,27 @@ def test_response_time_is_reasonable(base_url, user_headers):
         pytest.param({"totally_unknown_key": "x"}, id="unknown-key"),
     ],
 )
-def test_query_params_are_honoured_or_gracefully_ignored(
-    base_url, user_headers, params
-):
+def test_query_params_are_ignored(base_url, user_headers, params):
     headers = _get_headers(user_headers)
 
-    response = requests.get(
-        _url(base_url),
-        headers=headers,
-        params=params,
-    )
+    baseline = requests.get(_url(base_url), headers=headers)
+    response = requests.get(_url(base_url), headers=headers, params=params)
 
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.json() == baseline.json()
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so pagination is not honoured.",
+)
+def test_query_param_limit_is_honoured(base_url, user_headers):
+    headers = _get_headers(user_headers)
+
+    response = requests.get(_url(base_url), headers=headers, params={"limit": 1})
+
+    assert response.status_code == 200
+    assert len(response.json()) <= 1
 
 
 @pytest.mark.xfail(
@@ -164,7 +168,7 @@ def test_filter_item_group_returns_matching_items(base_url, user_headers):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="API returns 403 when query parameters are used",
+    reason="Query parameters are ignored, so this is not honoured",
 )
 def test_sort_description_returns_correctly_ordered_results(
     base_url, user_headers
@@ -192,7 +196,7 @@ def test_sort_description_returns_correctly_ordered_results(
 
 @pytest.mark.xfail(
     strict=True,
-    reason="API returns 403 when query parameters are used",
+    reason="Query parameters are ignored, so this is not honoured",
 )
 def test_empty_result_set_returns_200_with_empty_array(
     base_url, user_headers

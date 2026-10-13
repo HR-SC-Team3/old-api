@@ -97,7 +97,7 @@ def test_get_shipments_error_does_not_leak_internal_data(base_url, user_headers)
     assert response.status_code == 401
     _error_text_does_not_leak(response)
 
-@pytest.mark.xfail(strict = True, reason="GET shipment the users have permission for get yet it gives back 403")
+@pytest.mark.xfail(strict = True, reason="Query parameters are ignored by GET /shipments, so this is not honoured")
 
 def test_get_shipment_support_pagination(base_url, user_headers):
     headers = _get_headers(user_headers, method="get", allowed=True)
@@ -109,7 +109,7 @@ def test_get_shipment_support_pagination(base_url, user_headers):
     assert isinstance(body, list)
     assert len(body) <= 2
 
-@pytest.mark.xfail(strict = True, reason="GET shipment the users have permission for get yet it gives back 403")
+@pytest.mark.xfail(strict = True, reason="Query parameters are ignored by GET /shipments, so this is not honoured")
 
 @pytest.mark.parametrize("filter_type", ["order_id", "shipment_status"],)
 def test_get_shipment_support_filtering(base_url, user_headers, filter_type,):
@@ -121,17 +121,17 @@ def test_get_shipment_support_filtering(base_url, user_headers, filter_type,):
     for shipment in body:
         assert shipment[filter_type] == existing[filter_type]
 
-@pytest.mark.xfail(strict = True, reason="GET shipment the users have permission for get yet it gives back 403")
+@pytest.mark.xfail(strict = True, reason="Query parameters are ignored by GET /shipments, so this is not honoured")
 
 def test_get_shipments_supports_sorting(base_url, user_headers):
-    response = _get_shipments(base_url, user_headers, params={"sort": "id"},)
+    response = _get_shipments(base_url, user_headers, params={"sort": "id", "order": "desc"},)
     assert response.status_code == 200
     body = response.json()
     assert isinstance(body, list)
     ids = [shipment["id"] for shipment in body]
-    assert ids == sorted(ids)
+    assert ids == sorted(ids, reverse=True)
 
-@pytest.mark.xfail(strict=True, reason="GET /shipments with query parameters currently returns 403 even for an allowed GET user")
+@pytest.mark.xfail(strict=True, reason="Query parameters are ignored by GET /shipments, so filtering is not honoured")
 
 def test_get_shipments_empty_result_returns_200_empty_array(base_url, user_headers):
     response = _get_shipments(base_url, user_headers, params={"order_id": 99999999,},)
@@ -139,11 +139,16 @@ def test_get_shipments_empty_result_returns_200_empty_array(base_url, user_heade
     assert response.json() == []
 
 
+@pytest.mark.parametrize("params",[{"page": 1, "limit": 2}, {"sort": "id"}, {"order_id": 1}, {"unknown_parameter": "test"}, {"page": -1}],)
+def test_get_shipments_query_params_are_ignored(base_url, user_headers, params):
+    baseline = _get_shipments(base_url, user_headers)
+    response = _get_shipments(base_url, user_headers, params=params)
+    assert response.status_code == 200
+    assert response.json() == baseline.json()
+
 def test_get_shipment_invalid_query_param_does_not_return_500(base_url, user_headers):
     response = _get_shipments(base_url, user_headers, params ={"page": -1,},)
     assert response.status_code != 500
-
-@pytest.mark.xfail(strict=True, reason="GET /shipments with query parameters currently returns 403 even for an allowed GET user")
 
 def test_get_shipments_unknown_query_param_is_handled(base_url, user_headers):
     response = _get_shipments(base_url, user_headers, params={"unknown_parameter": "test"},)
