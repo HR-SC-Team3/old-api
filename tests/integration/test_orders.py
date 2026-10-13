@@ -226,20 +226,6 @@ def test_get_nonexistent_order_returns_404(
     assert response.status_code == 404
 
 
-def test_get_nonexistent_order_current_behavior(
-    base_url,
-    user_headers
-):
-    headers = _get_headers(user_headers)
-
-    response = requests.get(
-        f"{base_url}/api/v1/orders/999999999",
-        headers=headers
-    )
-
-    assert response.status_code == 200
-    assert response.json() is None
-
 
 @pytest.mark.xfail(
     strict=True,
@@ -614,25 +600,6 @@ def test_put_nonexistent_order_returns_404(
     assert response.status_code == 404
 
 
-def test_put_nonexistent_order_current_behavior(
-    base_url,
-    user_headers,
-    preserve_data_files
-):
-    preserve_data_files("order.json")
-
-    headers = _get_headers(
-        user_headers,
-        method="put"
-    )
-
-    response = requests.put(
-        f"{base_url}/api/v1/orders/999999999",
-        headers=headers,
-        json=_order_payload(999999999)
-    )
-
-    assert response.status_code == 200
 
 
 @pytest.mark.xfail(
