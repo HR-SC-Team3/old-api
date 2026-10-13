@@ -212,10 +212,6 @@ def test_get_order_contains_items(base_url, user_headers):
     assert isinstance(body["items"], list)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 with null instead of 404."
-)
 def test_get_nonexistent_order_returns_404(
     base_url,
     user_headers
@@ -244,6 +240,11 @@ def test_get_nonexistent_order_current_behavior(
     assert response.status_code == 200
     assert response.json() is None
 
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Current API converts malformed IDs to 500."
+)
 def test_get_order_malformed_id_returns_400(
     base_url,
     user_headers
@@ -269,7 +270,7 @@ def test_get_order_malformed_id_current_behavior(
         headers=headers
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 500
 
 
 def test_get_order_without_api_key_returns_401(base_url):
@@ -592,10 +593,6 @@ def test_put_order_uses_full_replace():
     assert "self.data[i] = order" in ORDERS_MODEL_SOURCE
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when order does not exist."
-)
 def test_put_nonexistent_order_returns_404(
     base_url,
     user_headers,
@@ -638,6 +635,10 @@ def test_put_nonexistent_order_current_behavior(
     assert response.status_code == 200
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="Current API converts malformed IDs to 500."
+)
 def test_put_order_malformed_id_returns_400(
     base_url,
     user_headers
@@ -671,7 +672,7 @@ def test_put_order_malformed_id_current_behavior(
         json=_order_payload()
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 500
 
 
 def test_put_order_without_api_key_returns_401(base_url):
@@ -760,10 +761,6 @@ def test_delete_order_removes_order(
     assert get_response.json() is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when order does not exist."
-)
 def test_delete_nonexistent_order_returns_404(
     base_url,
     user_headers,

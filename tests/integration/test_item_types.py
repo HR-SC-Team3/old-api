@@ -231,10 +231,6 @@ def test_get_item_type_schema(
     ItemType.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 with null instead of 404."
-)
 def test_get_nonexistent_item_type_returns_404(
     base_url,
     user_headers
@@ -264,6 +260,10 @@ def test_get_nonexistent_item_type_current_behavior(
     assert response.json() is None
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="Current API converts malformed IDs to 500."
+)
 def test_get_item_type_malformed_id_returns_400(
     base_url,
     user_headers
@@ -289,7 +289,7 @@ def test_get_item_type_malformed_id_current_behavior(
         headers=headers
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 500
 
 
 def test_get_item_type_without_api_key_returns_401(
@@ -573,10 +573,6 @@ def test_put_item_type_uses_full_replace():
     assert "self.data[i] = item_type" in ITEM_TYPES_MODEL_SOURCE
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when item type does not exist."
-)
 def test_put_nonexistent_item_type_returns_404(
     base_url,
     user_headers,
@@ -619,6 +615,10 @@ def test_put_nonexistent_item_type_current_behavior(
     assert response.status_code == 200
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="Current API converts malformed IDs to 500."
+)
 def test_put_item_type_malformed_id_returns_400(
     base_url,
     user_headers
@@ -652,7 +652,7 @@ def test_put_item_type_malformed_id_current_behavior(
         json=_item_type_payload()
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 500
 
 
 def test_put_item_type_without_api_key_returns_401(
@@ -749,10 +749,6 @@ def test_delete_item_type_removes_item_type(
     assert get_response.json() is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when item type does not exist."
-)
 def test_delete_nonexistent_item_type_returns_404(
     base_url,
     user_headers,

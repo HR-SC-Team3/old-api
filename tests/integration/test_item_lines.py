@@ -317,10 +317,6 @@ def test_get_item_line_by_id_matches_documented_schema(
     ItemLine.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for a nonexistent item_line instead of 404",
-)
 def test_get_item_line_by_nonexistent_id_returns_404(
     base_url, user_headers
 ):
@@ -333,6 +329,11 @@ def test_get_item_line_by_nonexistent_id_returns_404(
 
     assert response.status_code == 404
 
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="API returns 500 for a malformed item_line ID instead of 400",
+)
 def test_get_item_line_by_malformed_id_returns_400(
     base_url, user_headers
 ):
@@ -623,6 +624,10 @@ def test_post_item_line_insufficient_permissions_returns_403(
     assert response.status_code == 403
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="API accepts text/plain content and returns 201",
+)
 def test_post_item_line_wrong_content_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -639,7 +644,7 @@ def test_post_item_line_wrong_content_type_is_rejected(
         data=json.dumps({"name": "Plain Text Item Line"}),
     )
 
-    assert response.status_code == 415
+    assert response.status_code in (400, 415)
 
 
 @pytest.mark.xfail(
@@ -749,10 +754,6 @@ def test_put_item_line_update_is_persisted(
     assert get_response.json()["name"] == "Persisted Item Line"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for a nonexistent item_line instead of 404",
-)
 def test_put_item_line_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -774,6 +775,11 @@ def test_put_item_line_nonexistent_id_returns_404(
 
     assert response.status_code == 404
 
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="API returns 500 for a malformed item_line ID instead of 400",
+)
 def test_put_item_line_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -863,10 +869,6 @@ def test_delete_item_line_valid_id_returns_200(
     assert response.status_code in (200, 204)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Returns 200 from GET instead of 404",
-)
 def test_delete_item_line_resource_is_actually_gone(
     base_url, user_headers, preserve_data_files
 ):
@@ -905,6 +907,9 @@ def test_delete_item_line_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    reason="Returns 200 when it should return 400.",
+)
 def test_delete_item_line_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):

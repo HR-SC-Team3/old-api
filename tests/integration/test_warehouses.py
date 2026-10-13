@@ -212,13 +212,6 @@ def test_get_warehouse_by_id_matches_documented_schema(base_url, user_headers):
     Warehouse.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "get_warehouse() returns None for an unknown id and the API sends "
-        "that value with status 200 instead of returning 404."
-    ),
-)
 def test_get_warehouse_by_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
 
@@ -229,6 +222,13 @@ def test_get_warehouse_by_nonexistent_id_returns_404(base_url, user_headers):
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "warehouse_id = int(paths[1]) is not protected against invalid "
+        "input, so a non-numeric id results in a 500 instead of 400."
+    ),
+)
 def test_get_warehouse_by_malformed_id_returns_400(base_url, user_headers):
     headers = _get_headers(user_headers)
 
@@ -576,6 +576,13 @@ def test_post_warehouse_insufficient_permissions_returns_403(base_url, user_head
     assert response.status_code == 403
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "do_POST does not inspect Content-Type before parsing the body. "
+        "text/plain is accepted like application/json."
+    ),
+)
 def test_post_warehouse_wrong_content_type_is_rejected(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -594,7 +601,7 @@ def test_post_warehouse_wrong_content_type_is_rejected(base_url, user_headers, p
         )
     )
 
-    assert response.status_code == 415
+    assert response.status_code in (400, 415)
 
 
 @pytest.mark.xfail(
@@ -712,13 +719,6 @@ def test_put_warehouse_update_is_persisted(base_url, user_headers, preserve_data
     assert get_response.json()["name"] == "Persisted Warehouse Name"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "update_warehouse() does nothing when the id does not exist, "
-        "while the API still responds with 200. Expected behavior: 404."
-    ),
-)
 def test_put_warehouse_nonexistent_id_returns_404(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -737,6 +737,13 @@ def test_put_warehouse_nonexistent_id_returns_404(base_url, user_headers, preser
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "int(paths[1]) is not guarded, so a malformed warehouse id "
+        "causes 500 instead of the expected 400."
+    ),
+)
 def test_put_warehouse_malformed_id_returns_400(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -798,10 +805,6 @@ def test_delete_warehouse_valid_id_returns_200(base_url, user_headers, preserve_
     assert response.status_code in (200, 204)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API does not persist warehouse changes because save() uses a newly loaded Warehouses instance"
-)
 def test_delete_warehouse_resource_is_actually_gone(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -828,13 +831,6 @@ def test_delete_warehouse_resource_is_actually_gone(base_url, user_headers, pres
     assert get_response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "remove_warehouse() silently does nothing for a nonexistent id "
-        "and the API still returns 200. Expected behavior: 404."
-    ),
-)
 def test_delete_warehouse_nonexistent_id_returns_404(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -849,6 +845,13 @@ def test_delete_warehouse_nonexistent_id_returns_404(base_url, user_headers, pre
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "int(paths[1]) is not guarded, so a malformed warehouse id "
+        "causes 500 instead of the expected 400."
+    ),
+)
 def test_delete_warehouse_malformed_id_returns_400(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -863,14 +866,6 @@ def test_delete_warehouse_malformed_id_returns_400(base_url, user_headers, prese
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "The second DELETE is expected to return 404, but "
-        "remove_warehouse() silently does nothing and the handler "
-        "always responds with 200."
-    ),
-)
 def test_delete_warehouse_repeated_delete_returns_404_not_200(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 

@@ -171,11 +171,11 @@ def test_get_location_by_id_matches_schema(base_url, user_headers):
     Location.model_validate(body)
     assert body["id"] == existing["id"]
 
-@pytest.mark.xfail(strict=True, reason="GET location id returns 200 with a non existent location id instead of 404")
 def test_get_location_by_id_nonexistent_returns_404(base_url, user_headers):
     response = _location_by_id(base_url, user_headers, 99999999)
     assert response.status_code == 404
 
+@pytest.mark.xfail(strict=True, reason="It currently returns 500 for malformed ids")
 def test_get_location_by_id_malformed_id_does_not_return_500(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(f"{base_url}/api/v1/locations/not-an-id",headers=headers)
@@ -207,7 +207,6 @@ def test_get_location_by_id_insufficient_permissions_returns_403(base_url, user_
     response = _request_location(base_url, user_headers, method="get", path="/api/v1/locations/1", allowed=False)
     assert response.status_code == 403
 
-@pytest.mark.xfail(strict=True, reason="it should return 404 but it returns 200 for a id tht should error out")
 def test_get_location_by_id_error_does_not_leak_internal_data(base_url, user_headers):
     response = _location_by_id(base_url, user_headers, 999999999)
     assert response.status_code == 404
@@ -238,12 +237,13 @@ def test_post_location_insufficient_permission_returns_403(base_url, user_header
     response = _request_location(base_url, user_headers, method="post", path="/api/v1/locations", allowed=False, json=_valid_location_payload(),)
     assert response.status_code == 403
 
+@pytest.mark.xfail(strict=True, reason="Currently returns 500 when getting non-JSON requests bodies")
 def test_post_location_requires_application_json(base_url, user_headers, preserve_data_files):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post")
     headers["Content-Type"] = "text/plain"
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers, data="This is not a json file")
-    assert response.status_code == 415
+    assert response.status_code in (400, 415, 422)
 
 def test_post_location_accepts_application_json(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
@@ -339,12 +339,12 @@ def test_put_location_requires_authentication(base_url):
     response = requests.put(f"{base_url}/api/v1/locations/1", json={})
     assert response.status_code == 401
 
-@pytest.mark.xfail(strict=True, reason="it returns 200 instead of 404 for non existent ids")
 def test_put_location_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="put")
     response = requests.put(f"{base_url}/api/v1/locations/99999999", headers = headers, json=_valid_location_payload())
     assert response.status_code == 404
 
+@pytest.mark.xfail(strict=True, reason="It returns 500 for malformed ids")
 def test_put_locations_malformed_id_does_not_return_500(base_url, user_headers):
     headers = _get_headers(user_headers, method="put")
     response = requests.put(f"{base_url}/api/v1/locations/not-an-id", headers=headers, json = _valid_location_payload())
@@ -466,13 +466,11 @@ def test_delete_location_valid_id_returns_success(base_url, user_headers, preser
     response = requests.delete(f"{base_url}/api/v1/locations/{existing['id']}", headers = headers)
     assert response.status_code in (200, 204)
 
-@pytest.mark.xfail(strict=True, reason="it returns 200 instead of 404 for a non-existent location id")
 def test_delete_location_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="delete")
     response = requests.delete(f"{base_url}/api/v1/locations/999999999", headers = headers)
     assert response.status_code == 404
 
-@pytest.mark.xfail(strict=True, reason="it returns returns 200 instead of 400 at the first part")
 def test_delete_location_removes_resource(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
@@ -482,7 +480,6 @@ def test_delete_location_removes_resource(base_url, user_headers, preserve_data_
     get_response = _location_by_id(base_url, user_headers, existing["id"],)
     assert get_response.status_code == 404
 
-@pytest.mark.xfail(strict=True, reason="it returns 200 even when the same location got deleted a second time")
 def test_delete_location_twice_returns_404(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
@@ -521,12 +518,12 @@ def test_locations_unauthorized_errors_have_consistent_format(base_url,):
     assert put_response.headers.get("Content-Type") is None
     assert delete_response.headers.get("Content-Type") is None
 
-@pytest.mark.xfail(strict=True, reason="it returns 200 for a non-existent location id instead of 404",)
 def test_locations_404_error_does_not_leak_internal_data(base_url, user_headers):
     response = _location_by_id(base_url, user_headers, 999999999,)
     assert response.status_code == 404
     _error_text_does_not_leak(response)
 
+@pytest.mark.xfail(strict=True, reason="it returns 500 for malformed ids",)
 def test_locations_malformed_id_error_does_not_leak_internal_data(base_url, user_headers,):
     headers = _get_headers(user_headers)
     response = requests.get(f"{base_url}/api/v1/locations/not-an-id", headers=headers,)

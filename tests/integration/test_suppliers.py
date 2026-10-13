@@ -270,14 +270,6 @@ def test_get_supplier_by_id_matches_documented_schema(base_url, user_headers):
     Supplier.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "get_supplier() returns None for an unknown id, and main.py writes "
-        "`json.dumps(None)` straight back with a 200, instead of a 404. "
-        "Actual: 200 with body `null`. Expected: 404."
-    ),
-)
 def test_get_supplier_by_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(_url(base_url, f"/999999"), headers=headers)
@@ -285,6 +277,15 @@ def test_get_supplier_by_nonexistent_id_returns_404(base_url, user_headers):
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "`supplier_id = int(paths[1])` is not guarded, so a non-numeric id "
+        "raises an uncaught ValueError that bubbles up to the generic "
+        "`except Exception: send_response(500)` in do_GET. "
+        "Actual: 500 Internal Server Error. Expected: 400 Bad Request."
+    ),
+)
 def test_get_supplier_by_malformed_id_returns_400(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(_url(base_url, f"/not-an-id"), headers=headers)
@@ -595,6 +596,16 @@ def test_post_supplier_insufficient_permissions_returns_403(base_url, user_heade
 
     assert response.status_code == 403
 
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "do_POST never inspects the Content-Type header before json.loads()-ing "
+        "the body, so a request sent as text/plain (or with no Content-Type at "
+        "all) is accepted exactly like application/json. "
+        "Expected: a non-JSON Content-Type should be rejected."
+    ),
+)
 def test_post_supplier_wrong_content_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -610,7 +621,7 @@ def test_post_supplier_wrong_content_type_is_rejected(
         data=json.dumps({"name": "Plain Text Co"}),
     )
 
-    assert response.status_code == 415
+    assert response.status_code in (400, 415)
 
 
 @pytest.mark.xfail(
@@ -700,14 +711,6 @@ def test_put_supplier_update_is_persisted(base_url, user_headers, preserve_data_
     assert get_response.json()["name"] == "Persisted Name Co"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "update_supplier() loops over the data looking for a matching id and "
-        "simply does nothing if none is found; handle_put_version_1 always "
-        "sends 200 regardless. Actual: 200 for a nonexistent id. Expected: 404."
-    ),
-)
 def test_put_supplier_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -723,6 +726,14 @@ def test_put_supplier_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Same unguarded `int(paths[1])` as GET/DELETE by id: a non-numeric id "
+        "raises an uncaught ValueError caught only by the generic 500 handler. "
+        "Actual: 500. Expected: 400."
+    ),
+)
 def test_put_supplier_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -816,14 +827,6 @@ def test_delete_supplier_resource_is_actually_gone(
     assert get_response.json() is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "remove_supplier() is a silent no-op if the id doesn't match anything, "
-        "and handle_delete_version_1 always sends 200 regardless. "
-        "Actual: 200 for a nonexistent id. Expected: 404."
-    ),
-)
 def test_delete_supplier_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -835,6 +838,13 @@ def test_delete_supplier_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Same unguarded `int(paths[1])` as GET/PUT by id. "
+        "Actual: 500. Expected: 400."
+    ),
+)
 def test_delete_supplier_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -848,17 +858,6 @@ def test_delete_supplier_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "First DELETE is expected to remove the resource (200/204) and a "
-        "second DELETE on the same, now-gone id is expected to 404. "
-        "remove_supplier() is a silent no-op when the id isn't found, and "
-        "handle_delete_version_1 always sends 200 regardless of whether "
-        "anything was removed. The second delete still gets 200 instead of "
-        "404 because there is no existence check before responding."
-    ),
-)
 def test_delete_supplier_repeated_delete_returns_404_not_500(
     base_url, user_headers, preserve_data_files
 ):

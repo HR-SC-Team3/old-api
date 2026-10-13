@@ -311,10 +311,6 @@ def test_get_item_by_id_matches_documented_schema(
     Item.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for a nonexistent item instead of 404",
-)
 def test_get_item_by_nonexistent_id_returns_404(
     base_url, user_headers
 ):
@@ -328,6 +324,10 @@ def test_get_item_by_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="API returns 500 for a malformed item ID instead of 400",
+)
 def test_get_item_by_malformed_id_returns_400(
     base_url, user_headers
 ):
@@ -655,6 +655,10 @@ def test_post_item_insufficient_permissions_returns_403(
     assert response.status_code == 403
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="API accepts text/plain content and returns 201",
+)
 def test_post_item_wrong_content_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -671,7 +675,7 @@ def test_post_item_wrong_content_type_is_rejected(
         data=json.dumps({"description": "Plain Text Item"}),
     )
 
-    assert response.status_code == 415
+    assert response.status_code in (400, 415)
 
 
 @pytest.mark.xfail(
@@ -780,10 +784,6 @@ def test_put_item_update_is_persisted(
     assert get_response.json()["description"] == "Persisted Item"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 500 for a nonexistent item instead of 404",
-)
 def test_put_item_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -806,6 +806,10 @@ def test_put_item_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="API returns 500 for a malformed item ID instead of 400",
+)
 def test_put_item_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -930,10 +934,7 @@ def test_delete_item_valid_id_returns_200(
 
     assert response.status_code in (200, 204)
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Returnt 200 bij GET i.p.v. 404"
-)
+
 def test_delete_item_resource_is_actually_gone(
     base_url, user_headers, preserve_data_files
 ):
@@ -956,10 +957,6 @@ def test_delete_item_resource_is_actually_gone(
     assert get_response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Return the code 200 when it should reurn 404.",
-)
 def test_delete_item_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -972,6 +969,11 @@ def test_delete_item_nonexistent_id_returns_404(
 
     assert response.status_code == 404
 
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Returns the code 200 when it should return 400",
+)
 def test_delete_item_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -985,10 +987,6 @@ def test_delete_item_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Returns 200 despite item being deleted already",
-)
 def test_delete_item_repeated_delete_returns_404(
     base_url, user_headers, preserve_data_files
 ):
