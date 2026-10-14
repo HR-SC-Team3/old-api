@@ -1,11 +1,12 @@
 """
 /suppliers endpoint tests: GET (collection), GET /{id}, POST, PUT /{id},
-DELETE /{id}.
+DELETE /{id}, GET /{id}/items.
 
 These tests exercise the checklist for "As a developer I want to know what
 each endpoint does" (sub-issues: GET /suppliers, GET /suppliers/{id},
-POST /suppliers, PUT /suppliers/{id}, DELETE /suppliers/{id}). Several tests
-are written against the *documented*/expected behavior and are marked
+POST /suppliers, PUT /suppliers/{id}, DELETE /suppliers/{id},
+GET /suppliers/{id}/items). Several tests are written against the
+*documented*/expected behavior and are marked
 `xfail(strict=True)` where the live server currently does something else.
 This pins the actual, observed behavior so it shows up clearly in test
 output and turns into a loud XPASS failure the moment someone "fixes" it,
@@ -28,12 +29,12 @@ request for everyone, regardless of what that query string would even do.
 
 import json
 import time
-from datetime import datetime
 from pathlib import Path
 
 import pytest
 import requests
-from pydantic import BaseModel
+
+from schemas import Supplier
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SUPPLIERS_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "suppliers.py").read_text(
@@ -42,20 +43,8 @@ SUPPLIERS_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "suppliers.py").read_te
 
 
 # region Shared helpers
-class Supplier(BaseModel):
-    id: int
-    code: str
-    name: str
-    address: str
-    city: str
-    zip_code: str
-    province: str
-    country: str
-    contact_name: str
-    phone_number: str
-    reference: str
-    created_at: datetime
-    updated_at: datetime
+def _url(base_url, path=""):
+    return f"{base_url}/api/v1/suppliers{path}"
 
 
 def _get_headers(user_headers, method="get", allowed=True):
@@ -64,7 +53,7 @@ def _get_headers(user_headers, method="get", allowed=True):
 
 def _first_supplier(base_url, user_headers):
     headers = _get_headers(user_headers)
-    body = requests.get(f"{base_url}/api/v1/suppliers", headers=headers).json()
+    body = requests.get(_url(base_url), headers=headers).json()
     assert body, "fixture data/supplier.json is expected to be non-empty"
     return body[0]
 
@@ -75,7 +64,7 @@ def _first_supplier(base_url, user_headers):
 # region GET /suppliers (collection)
 def test_get_suppliers_returns_200_with_valid_response(base_url, user_headers):
     headers = user_headers(resource="suppliers", method="get", allowed=True)
-    response = requests.get(f"{base_url}/api/v1/suppliers", headers=headers)
+    response = requests.get(_url(base_url), headers=headers)
 
     assert response.status_code == 200
     body = response.json()
@@ -87,7 +76,7 @@ def test_get_suppliers_returns_200_with_valid_response(base_url, user_headers):
 def test_response_body_matches_documented_schema(base_url, user_headers):
     """Field names, types and (flat) nesting must match the `Supplier` schema."""
     headers = user_headers(resource="suppliers", method="get", allowed=True)
-    response = requests.get(f"{base_url}/api/v1/suppliers", headers=headers)
+    response = requests.get(_url(base_url), headers=headers)
 
     body = response.json()
     for raw in body:
@@ -96,7 +85,7 @@ def test_response_body_matches_documented_schema(base_url, user_headers):
 
 def test_response_content_type_is_json(base_url, user_headers):
     headers = user_headers(resource="suppliers", method="get", allowed=True)
-    response = requests.get(f"{base_url}/api/v1/suppliers", headers=headers)
+    response = requests.get(_url(base_url), headers=headers)
 
     assert response.headers.get("Content-Type", "").startswith("application/json")
 
@@ -105,7 +94,7 @@ def test_response_time_is_reasonable(base_url, user_headers):
     headers = user_headers(resource="suppliers", method="get", allowed=True)
 
     start = time.monotonic()
-    response = requests.get(f"{base_url}/api/v1/suppliers", headers=headers)
+    response = requests.get(_url(base_url), headers=headers)
     elapsed = time.monotonic() - start
 
     assert response.status_code == 200
@@ -140,7 +129,7 @@ def test_query_params_are_honoured_or_gracefully_ignored(
 ):
     headers = user_headers(resource="suppliers", method="get", allowed=True)
     response = requests.get(
-        f"{base_url}/api/v1/suppliers", headers=headers, params=params
+        _url(base_url), headers=headers, params=params
     )
 
     # A fully-permitted user sending an (undocumented) query string should
@@ -156,7 +145,7 @@ def test_query_params_currently_return_403(base_url, user_headers):
     """
     headers = user_headers(resource="suppliers", method="get", allowed=True)
     response = requests.get(
-        f"{base_url}/api/v1/suppliers", headers=headers, params={"page": 1}
+        _url(base_url), headers=headers, params={"page": 1}
     )
 
     assert response.status_code == 403
@@ -183,20 +172,20 @@ def test_insufficient_permissions_returns_403(base_url, user_headers):
     make this case testable at all.
     """
     headers = user_headers(resource="suppliers", method="get", allowed=False)
-    response = requests.get(f"{base_url}/api/v1/suppliers", headers=headers)
+    response = requests.get(_url(base_url), headers=headers)
 
     assert response.status_code == 403
 
 
 def test_missing_api_key_is_rejected_with_401(base_url):
-    response = requests.get(f"{base_url}/api/v1/suppliers")
+    response = requests.get(_url(base_url))
 
     assert response.status_code == 401
 
 
 def test_invalid_api_key_is_rejected_with_401(base_url):
     response = requests.get(
-        f"{base_url}/api/v1/suppliers", headers={"API_KEY": "not-a-real-key"}
+        _url(base_url), headers={"API_KEY": "not-a-real-key"}
     )
 
     assert response.status_code == 401
@@ -214,7 +203,7 @@ def test_invalid_api_key_is_rejected_with_401(base_url):
     ),
 )
 def test_error_response_has_consistent_json_schema(base_url):
-    response = requests.get(f"{base_url}/api/v1/suppliers")
+    response = requests.get(_url(base_url))
 
     assert response.status_code == 401
     assert response.headers.get("Content-Type", "").startswith("application/json")
@@ -223,7 +212,7 @@ def test_error_response_has_consistent_json_schema(base_url):
 
 
 def test_error_response_leaks_no_internal_details(base_url):
-    response = requests.get(f"{base_url}/api/v1/suppliers")
+    response = requests.get(_url(base_url))
 
     text_lower = response.text.lower()
     for leak_indicator in (
@@ -255,7 +244,7 @@ def test_get_supplier_by_id_returns_200_with_correct_resource(base_url, user_hea
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/suppliers/{existing['id']}", headers=headers
+        _url(base_url, f"/{existing['id']}"), headers=headers
     )
 
     assert response.status_code == 200
@@ -267,7 +256,7 @@ def test_get_supplier_by_id_matches_documented_schema(base_url, user_headers):
     headers = _get_headers(user_headers)
 
     response = requests.get(
-        f"{base_url}/api/v1/suppliers/{existing['id']}", headers=headers
+        _url(base_url, f"/{existing['id']}"), headers=headers
     )
 
     Supplier.model_validate(response.json())
@@ -283,7 +272,7 @@ def test_get_supplier_by_id_matches_documented_schema(base_url, user_headers):
 )
 def test_get_supplier_by_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
-    response = requests.get(f"{base_url}/api/v1/suppliers/999999", headers=headers)
+    response = requests.get(_url(base_url, f"/999999"), headers=headers)
 
     assert response.status_code == 404
 
@@ -299,22 +288,80 @@ def test_get_supplier_by_nonexistent_id_returns_404(base_url, user_headers):
 )
 def test_get_supplier_by_malformed_id_returns_400(base_url, user_headers):
     headers = _get_headers(user_headers)
-    response = requests.get(f"{base_url}/api/v1/suppliers/not-an-id", headers=headers)
+    response = requests.get(_url(base_url, f"/not-an-id"), headers=headers)
 
     assert response.status_code == 400
 
 
+def test_get_supplier_by_id_requires_authentication(base_url):
+    response = requests.get(_url(base_url, f"/1"))
+
+    assert response.status_code == 401
+
+
+def test_get_supplier_by_id_insufficient_permissions_returns_403(
+    base_url, user_headers
+):
+    headers = _get_headers(user_headers, allowed=False)
+    response = requests.get(_url(base_url, f"/1"), headers=headers)
+
+    assert response.status_code == 403
+
+
+def test_get_supplier_by_id_response_content_type_is_json(base_url, user_headers):
+    existing = _first_supplier(base_url, user_headers)
+    headers = _get_headers(user_headers)
+
+    response = requests.get(
+        _url(base_url, f"/{existing['id']}"), headers=headers
+    )
+
+    assert response.headers.get("Content-Type", "").startswith("application/json")
+
+
+def test_get_supplier_by_malformed_id_error_leaks_no_internal_details(
+    base_url, user_headers
+):
+    headers = _get_headers(user_headers)
+    response = requests.get(_url(base_url, f"/not-an-id"), headers=headers)
+
+    text_lower = response.text.lower()
+    for leak_indicator in ("traceback", "exception", "valueerror", 'file "', "line "):
+        assert leak_indicator not in text_lower
+
+
+# endregion
+
+
+# region GET /suppliers/{id}/items
+# Items.get_items_for_supplier() has no existence check on the parent
+# supplier at all, so a nonexistent parent id returns 200 with an empty
+# array (indistinguishable from a real supplier that simply has no items)
+# instead of 404.
+
+
+def test_get_supplier_items_returns_200(base_url, user_headers):
+    existing = _first_supplier(base_url, user_headers)
+    headers = _get_headers(user_headers)
+
+    response = requests.get(_url(base_url, f"/{existing['id']}/items"), headers=headers)
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
 def test_get_supplier_items_are_consistent_with_items_endpoint(base_url, user_headers):
     """
-    The only "related object" GET /suppliers/{id} has is its /items sub-resource.
-    Every item it returns should reference this supplier and match the standalone /items/{id} record.
+    The only "related object" a supplier has is its /items sub-resource.
+    Every item it returns should reference this supplier and match the
+    standalone /items/{id} record.
     """
     existing = _first_supplier(base_url, user_headers)
     supplier_headers = _get_headers(user_headers)
     item_headers = user_headers(resource="items", method="get", allowed=True)
 
     items_response = requests.get(
-        f"{base_url}/api/v1/suppliers/{existing['id']}/items", headers=supplier_headers
+        _url(base_url, f"/{existing['id']}/items"), headers=supplier_headers
     )
     assert items_response.status_code == 200
     items = items_response.json()
@@ -328,41 +375,44 @@ def test_get_supplier_items_are_consistent_with_items_endpoint(base_url, user_he
         assert direct.json() == item
 
 
-def test_get_supplier_by_id_requires_authentication(base_url):
-    response = requests.get(f"{base_url}/api/v1/suppliers/1")
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "get_items_for_supplier() filters Items by supplier_id with no "
+        "existence check on the parent supplier at all. A nonexistent "
+        "parent id returns 200 with an empty array instead of 404."
+    ),
+)
+def test_get_supplier_items_nonexistent_parent_returns_404(base_url, user_headers):
+    headers = _get_headers(user_headers)
+
+    response = requests.get(_url(base_url, "/999999/items"), headers=headers)
+
+    assert response.status_code == 404
+
+
+def test_get_supplier_items_requires_authentication(base_url):
+    response = requests.get(_url(base_url, "/1/items"))
 
     assert response.status_code == 401
 
 
-def test_get_supplier_by_id_insufficient_permissions_returns_403(
+def test_get_supplier_items_insufficient_permissions_returns_403(
     base_url, user_headers
 ):
     headers = _get_headers(user_headers, allowed=False)
-    response = requests.get(f"{base_url}/api/v1/suppliers/1", headers=headers)
+    response = requests.get(_url(base_url, "/1/items"), headers=headers)
 
     assert response.status_code == 403
 
 
-def test_get_supplier_by_id_response_content_type_is_json(base_url, user_headers):
+def test_get_supplier_items_response_content_type_is_json(base_url, user_headers):
     existing = _first_supplier(base_url, user_headers)
     headers = _get_headers(user_headers)
 
-    response = requests.get(
-        f"{base_url}/api/v1/suppliers/{existing['id']}", headers=headers
-    )
+    response = requests.get(_url(base_url, f"/{existing['id']}/items"), headers=headers)
 
     assert response.headers.get("Content-Type", "").startswith("application/json")
-
-
-def test_get_supplier_by_malformed_id_error_leaks_no_internal_details(
-    base_url, user_headers
-):
-    headers = _get_headers(user_headers)
-    response = requests.get(f"{base_url}/api/v1/suppliers/not-an-id", headers=headers)
-
-    text_lower = response.text.lower()
-    for leak_indicator in ("traceback", "exception", "valueerror", 'file "', "line "):
-        assert leak_indicator not in text_lower
 
 
 # endregion
@@ -398,7 +448,7 @@ def test_post_supplier_returns_created_resource_with_id(
     }
 
     response = requests.post(
-        f"{base_url}/api/v1/suppliers", headers=headers, json=payload
+        _url(base_url), headers=headers, json=payload
     )
 
     assert response.status_code == 201
@@ -421,7 +471,7 @@ def test_post_supplier_response_points_to_new_resource(
     preserve_data_files("supplier.json")
     headers = _get_headers(user_headers, method="post")
     response = requests.post(
-        f"{base_url}/api/v1/suppliers", headers=headers, json={"name": "Locate Me Co"}
+        _url(base_url), headers=headers, json={"name": "Locate Me Co"}
     )
 
     assert response.status_code == 201
@@ -443,7 +493,7 @@ def test_post_supplier_missing_required_fields_returns_400(
     preserve_data_files("supplier.json")
     headers = _get_headers(user_headers, method="post")
 
-    response = requests.post(f"{base_url}/api/v1/suppliers", headers=headers, json={})
+    response = requests.post(_url(base_url), headers=headers, json={})
 
     assert response.status_code in (400, 422)
 
@@ -463,7 +513,7 @@ def test_post_supplier_invalid_field_type_is_rejected(
     headers = _get_headers(user_headers, method="post")
 
     response = requests.post(
-        f"{base_url}/api/v1/suppliers",
+        _url(base_url),
         headers=headers,
         json={"id": "not-an-int", "name": "Bad Type Co"},
     )
@@ -487,7 +537,7 @@ def test_post_supplier_duplicate_id_returns_conflict(
     headers = _get_headers(user_headers, method="post")
 
     response = requests.post(
-        f"{base_url}/api/v1/suppliers",
+        _url(base_url),
         headers=headers,
         json={**existing, "name": "Duplicate Of " + existing["name"]},
     )
@@ -503,13 +553,13 @@ def test_post_supplier_is_immediately_retrievable(
     payload = {"id": 555555, "code": "SUP-555555", "name": "Retrievable Co"}
 
     create_response = requests.post(
-        f"{base_url}/api/v1/suppliers", headers=headers, json=payload
+        _url(base_url), headers=headers, json=payload
     )
     assert create_response.status_code == 201
 
     get_headers = _get_headers(user_headers)
     get_response = requests.get(
-        f"{base_url}/api/v1/suppliers/555555", headers=get_headers
+        _url(base_url, f"/555555"), headers=get_headers
     )
 
     assert get_response.status_code == 200
@@ -532,7 +582,7 @@ def test_post_supplier_invalid_foreign_key_is_rejected(base_url, user_headers):
 
 def test_post_supplier_requires_authentication(base_url):
     response = requests.post(
-        f"{base_url}/api/v1/suppliers", json={"name": "No Auth Co"}
+        _url(base_url), json={"name": "No Auth Co"}
     )
 
     assert response.status_code == 401
@@ -541,7 +591,7 @@ def test_post_supplier_requires_authentication(base_url):
 def test_post_supplier_insufficient_permissions_returns_403(base_url, user_headers):
     headers = _get_headers(user_headers, method="post", allowed=False)
     response = requests.post(
-        f"{base_url}/api/v1/suppliers", headers=headers, json={"name": "Forbidden Co"}
+        _url(base_url), headers=headers, json={"name": "Forbidden Co"}
     )
 
     assert response.status_code == 403
@@ -566,7 +616,7 @@ def test_post_supplier_wrong_content_type_is_rejected(
     }
 
     response = requests.post(
-        f"{base_url}/api/v1/suppliers",
+        _url(base_url),
         headers=headers,
         data=json.dumps({"name": "Plain Text Co"}),
     )
@@ -592,7 +642,7 @@ def test_post_supplier_malformed_json_body_returns_400(
     }
 
     response = requests.post(
-        f"{base_url}/api/v1/suppliers", headers=headers, data="{not valid json"
+        _url(base_url), headers=headers, data="{not valid json"
     )
 
     assert response.status_code in (400, 422)
@@ -608,7 +658,7 @@ def test_post_supplier_malformed_json_body_leaks_no_internal_details(
     }
 
     response = requests.post(
-        f"{base_url}/api/v1/suppliers", headers=headers, data="{not valid json"
+        _url(base_url), headers=headers, data="{not valid json"
     )
 
     text_lower = response.text.lower()
@@ -637,7 +687,7 @@ def test_put_supplier_valid_payload_returns_200(
 
     updated = {**existing, "name": "Updated Name Co"}
     response = requests.put(
-        f"{base_url}/api/v1/suppliers/{existing['id']}", headers=headers, json=updated
+        _url(base_url, f"/{existing['id']}"), headers=headers, json=updated
     )
 
     assert response.status_code == 200
@@ -650,13 +700,13 @@ def test_put_supplier_update_is_persisted(base_url, user_headers, preserve_data_
 
     updated = {**existing, "name": "Persisted Name Co"}
     put_response = requests.put(
-        f"{base_url}/api/v1/suppliers/{existing['id']}", headers=headers, json=updated
+        _url(base_url, f"/{existing['id']}"), headers=headers, json=updated
     )
     assert put_response.status_code == 200
 
     get_headers = _get_headers(user_headers)
     get_response = requests.get(
-        f"{base_url}/api/v1/suppliers/{existing['id']}", headers=get_headers
+        _url(base_url, f"/{existing['id']}"), headers=get_headers
     )
     assert get_response.json()["name"] == "Persisted Name Co"
 
@@ -676,7 +726,7 @@ def test_put_supplier_nonexistent_id_returns_404(
     headers = _get_headers(user_headers, method="put")
 
     response = requests.put(
-        f"{base_url}/api/v1/suppliers/999999",
+        _url(base_url, f"/999999"),
         headers=headers,
         json={"id": 999999, "name": "Ghost Co"},
     )
@@ -699,7 +749,7 @@ def test_put_supplier_malformed_id_returns_400(
     headers = _get_headers(user_headers, method="put")
 
     response = requests.put(
-        f"{base_url}/api/v1/suppliers/not-an-id", headers=headers, json={"name": "x"}
+        _url(base_url, f"/not-an-id"), headers=headers, json={"name": "x"}
     )
 
     assert response.status_code == 400
@@ -731,7 +781,7 @@ def test_put_supplier_invalid_foreign_key_is_rejected(base_url, user_headers):
 
 def test_put_supplier_requires_authentication(base_url):
     response = requests.put(
-        f"{base_url}/api/v1/suppliers/1", json={"name": "No Auth Co"}
+        _url(base_url, f"/1"), json={"name": "No Auth Co"}
     )
 
     assert response.status_code == 401
@@ -740,7 +790,7 @@ def test_put_supplier_requires_authentication(base_url):
 def test_put_supplier_insufficient_permissions_returns_403(base_url, user_headers):
     headers = _get_headers(user_headers, method="put", allowed=False)
     response = requests.put(
-        f"{base_url}/api/v1/suppliers/1", headers=headers, json={"name": "Forbidden Co"}
+        _url(base_url, f"/1"), headers=headers, json={"name": "Forbidden Co"}
     )
 
     assert response.status_code == 403
@@ -760,7 +810,7 @@ def test_delete_supplier_valid_id_returns_200(
     headers = _get_headers(user_headers, method="delete")
 
     response = requests.delete(
-        f"{base_url}/api/v1/suppliers/{existing['id']}", headers=headers
+        _url(base_url, f"/{existing['id']}"), headers=headers
     )
 
     assert response.status_code in (200, 204)
@@ -774,13 +824,13 @@ def test_delete_supplier_resource_is_actually_gone(
     delete_headers = _get_headers(user_headers, method="delete")
 
     delete_response = requests.delete(
-        f"{base_url}/api/v1/suppliers/{existing['id']}", headers=delete_headers
+        _url(base_url, f"/{existing['id']}"), headers=delete_headers
     )
     assert delete_response.status_code in (200, 204)
 
     get_headers = _get_headers(user_headers)
     get_response = requests.get(
-        f"{base_url}/api/v1/suppliers/{existing['id']}", headers=get_headers
+        _url(base_url, f"/{existing['id']}"), headers=get_headers
     )
     assert get_response.json() is None
 
@@ -799,7 +849,7 @@ def test_delete_supplier_nonexistent_id_returns_404(
     preserve_data_files("supplier.json")
     headers = _get_headers(user_headers, method="delete")
 
-    response = requests.delete(f"{base_url}/api/v1/suppliers/999999", headers=headers)
+    response = requests.delete(_url(base_url, f"/999999"), headers=headers)
 
     assert response.status_code == 404
 
@@ -818,7 +868,7 @@ def test_delete_supplier_malformed_id_returns_400(
     headers = _get_headers(user_headers, method="delete")
 
     response = requests.delete(
-        f"{base_url}/api/v1/suppliers/not-an-id", headers=headers
+        _url(base_url, f"/not-an-id"), headers=headers
     )
 
     assert response.status_code == 400
@@ -843,10 +893,10 @@ def test_delete_supplier_repeated_delete_returns_404_not_500(
     headers = _get_headers(user_headers, method="delete")
 
     first = requests.delete(
-        f"{base_url}/api/v1/suppliers/{existing['id']}", headers=headers
+        _url(base_url, f"/{existing['id']}"), headers=headers
     )
     second = requests.delete(
-        f"{base_url}/api/v1/suppliers/{existing['id']}", headers=headers
+        _url(base_url, f"/{existing['id']}"), headers=headers
     )
 
     assert first.status_code in (200, 204)
@@ -854,14 +904,14 @@ def test_delete_supplier_repeated_delete_returns_404_not_500(
 
 
 def test_delete_supplier_requires_authentication(base_url):
-    response = requests.delete(f"{base_url}/api/v1/suppliers/1")
+    response = requests.delete(_url(base_url, f"/1"))
 
     assert response.status_code == 401
 
 
 def test_delete_supplier_insufficient_permissions_returns_403(base_url, user_headers):
     headers = _get_headers(user_headers, method="delete", allowed=False)
-    response = requests.delete(f"{base_url}/api/v1/suppliers/1", headers=headers)
+    response = requests.delete(_url(base_url, f"/1"), headers=headers)
 
     assert response.status_code == 403
 

@@ -405,6 +405,8 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self._drain_request_body()
             self.send_response(401)
             self.end_headers()
+            return
+
         else:
             try:
                 paths = self.path.split("/")
@@ -481,10 +483,26 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             new_inventory = json.loads(post_data.decode())
+
+            required_fields = [
+                "item_id",
+                "location_id",
+                "quantity_on_hand",
+                "quantity_expected",
+                "quantity_ordered",
+                "quantity_allocated",
+            ]
+
+            if not all(field in new_inventory for field in required_fields):
+                self.send_response(400)
+                self.end_headers()
+                return
+
             data_provider.fetch_inventory_pool().add_inventory(new_inventory)
             data_provider.fetch_inventory_pool().save()
             self.send_response(201)
             self.end_headers()
+
         elif paths[0] == "suppliers":
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
@@ -530,8 +548,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
         if user == None:
+            self._drain_request_body()
             self.send_response(401)
             self.end_headers()
+            return
         else:
             try:
                 paths = self.path.split("/")

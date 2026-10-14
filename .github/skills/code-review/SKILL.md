@@ -43,3 +43,50 @@ reason - not to add test data, not to fix a typo, not to support a new test case
 - Reject any diff that touches files under `data/`.
 - If a test needs data that doesn't exist yet, it should create it at runtime (e.g. via the
   API, or via helpers like `scripts/permission_users.py`) rather than editing the seed files.
+
+## 4. Test function names must be unique within a file
+
+Python silently keeps only the last definition when two functions in the same module share a
+name - pytest never warns about this. The earlier test simply never runs, and any coverage
+claimed for it (in the PR description or elsewhere) is false without any error to signal it.
+
+- Check the whole file for name collisions, not just neighboring tests. A rename made to fix
+  one collision can silently introduce a new one elsewhere in the same file - re-check after
+  every rename touching a test name.
+- `grep "^def test_" file.py | sort | uniq -d` should print nothing; treat any output as a
+  bug in the diff, not a style nit.
+
+## 5. Don't accept a `skip` marker that claims "no user has that permission"
+
+`scripts/permission_users.py`'s `make_user_for_permutation`, wired into the `user_headers`
+fixture (rule 2), synthesizes a user for any `(resource, method, allowed)` combination that
+doesn't already have a hand-authored match. A test marked
+`@pytest.mark.skip(reason="no user has DELETE permission for X")` is citing a limitation that
+doesn't exist - `user_headers(resource=..., method=..., allowed=...)` already produces that
+user on demand, and the fixture's own docstring documents this fallback.
+
+- Flag any `skip` whose stated reason is "no test user has this permission" and ask for it to
+  be replaced with a real assertion (or an `xfail` if the endpoint itself misbehaves).
+
+## 6. Flag dead code left in test files
+
+- Unused imports and unused module-level variables (e.g. a `*_MODEL_SOURCE` constant read
+  from disk but never asserted against) should be removed, not left as copy-paste leftovers.
+- Commented-out test functions should be finished or deleted, not left commented out.
+
+## 7. Pydantic response models belong in `schemas.py`
+
+`tests/integration/schemas.py` is the single shared location for the Pydantic models used to
+validate API responses (e.g. `Transfer`, `Client`, `Item`, `ItemType`).
+
+- Reject a diff that defines a new `BaseModel` subclass inline inside a `test_*.py` file -
+  it should be added to `schemas.py` and imported (`from schemas import Whatever`) instead.
+- Check `schemas.py` doesn't already define a model for that resource before approving a new
+  one - including one added by another currently-open PR (see the note below).
+
+## Additional things worth flagging
+
+- **Shared-file collisions across concurrent PRs.** If a PR adds a class/model to a shared
+  file (e.g. a new `class X` in `tests/integration/schemas.py`) and another currently open PR
+  adds the same class, note it as a merge-coordination risk for whichever PR merges second,
+  even though it isn't a violation of rules 1-6 in isolation.
