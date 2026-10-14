@@ -877,9 +877,6 @@ def test_delete_item_line_resource_is_actually_gone(
     assert get_response.status_code == 404
 
 
-@pytest.mark.xfail(
-    reason="Returns 200 when it should return 404.",
-)
 def test_delete_item_line_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
