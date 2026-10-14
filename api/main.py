@@ -55,9 +55,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(warehouses).encode("utf-8"))
                 case 2:
                     warehouse_id = int(paths[1])
-                    warehouse = data_provider.fetch_warehouse_pool().get_warehouse(
-                        warehouse_id
-                    )
+                    warehouse = data_provider.fetch_warehouse_pool().get_warehouse(warehouse_id)
+                    if warehouse is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -89,9 +91,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(locations).encode("utf-8"))
                 case 2:
                     location_id = int(paths[1])
-                    location = data_provider.fetch_location_pool().get_location(
-                        location_id
-                    )
+                    location = data_provider.fetch_location_pool().get_location(location_id)
+                    if location is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -110,9 +114,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(transfers).encode("utf-8"))
                 case 2:
                     transfer_id = int(paths[1])
-                    transfer = data_provider.fetch_transfer_pool().get_transfer(
-                        transfer_id
-                    )
+                    transfer = data_provider.fetch_transfer_pool().get_transfer(transfer_id)
+                    if transfer is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -147,6 +153,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 2:
                     item_id = int(paths[1])
                     item = data_provider.fetch_item_pool().get_item(item_id)
+                    if item is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -191,9 +201,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(item_lines).encode("utf-8"))
                 case 2:
                     item_line_id = int(paths[1])
-                    item_line = data_provider.fetch_item_line_pool().get_item_line(
-                        item_line_id
-                    )
+                    item_line = data_provider.fetch_item_line_pool().get_item_line(item_line_id)
+                    if item_line is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -227,9 +239,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(item_groups).encode("utf-8"))
                 case 2:
                     item_group_id = int(paths[1])
-                    item_group = data_provider.fetch_item_group_pool().get_item_group(
-                        item_group_id
-                    )
+                    item_group = data_provider.fetch_item_group_pool().get_item_group(item_group_id)
+                    if item_group is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -263,9 +277,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(item_types).encode("utf-8"))
                 case 2:
                     item_type_id = int(paths[1])
-                    item_type = data_provider.fetch_item_type_pool().get_item_type(
-                        item_type_id
-                    )
+                    item_type = data_provider.fetch_item_type_pool().get_item_type(item_type_id)
+                    if item_type is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -314,9 +330,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(suppliers).encode("utf-8"))
                 case 2:
                     supplier_id = int(paths[1])
-                    supplier = data_provider.fetch_supplier_pool().get_supplier(
-                        supplier_id
-                    )
+                    supplier = data_provider.fetch_supplier_pool().get_supplier(supplier_id)
+                    if supplier is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -349,6 +367,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 2:
                     order_id = int(paths[1])
                     order = data_provider.fetch_order_pool().get_order(order_id)
+                    if order is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -381,6 +403,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case 2:
                     client_id = int(paths[1])
                     client = data_provider.fetch_client_pool().get_client(client_id)
+                    if client is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -412,9 +438,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(shipments).encode("utf-8"))
                 case 2:
                     shipment_id = int(paths[1])
-                    shipment = data_provider.fetch_shipment_pool().get_shipment(
-                        shipment_id
-                    )
+                    shipment = data_provider.fetch_shipment_pool().get_shipment(shipment_id)
+                    if shipment is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
                     self.end_headers()
@@ -638,10 +666,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             updated_warehouse = json.loads(post_data.decode())
-            data_provider.fetch_warehouse_pool().update_warehouse(
-                warehouse_id, updated_warehouse
-            )
-            data_provider.fetch_warehouse_pool().save()
+            warehouse_pool = data_provider.fetch_warehouse_pool()
+            if warehouse_pool.get_warehouse(warehouse_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            warehouse_pool.update_warehouse(warehouse_id, updated_warehouse)
+            warehouse_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "locations":
@@ -649,10 +680,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             updated_location = json.loads(post_data.decode())
-            data_provider.fetch_location_pool().update_location(
-                location_id, updated_location
-            )
-            data_provider.fetch_location_pool().save()
+            location_pool = data_provider.fetch_location_pool()
+            if location_pool.get_location(location_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            location_pool.update_location(location_id, updated_location)
+            location_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "transfers":
@@ -663,10 +697,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     content_length = int(self.headers["Content-Length"])
                     post_data = self.rfile.read(content_length)
                     updated_transfer = json.loads(post_data.decode())
-                    data_provider.fetch_transfer_pool().update_transfer(
-                        transfer_id, updated_transfer
-                    )
-                    data_provider.fetch_transfer_pool().save()
+                    transfer_pool = data_provider.fetch_transfer_pool()
+                    if transfer_pool.get_transfer(transfer_id) is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
+                    transfer_pool.update_transfer(transfer_id, updated_transfer)
+                    transfer_pool.save()
                     self.send_response(200)
                     self.end_headers()
                 case 3:
@@ -731,8 +768,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             updated_item = json.loads(post_data.decode())
-            data_provider.fetch_item_pool().update_item(item_id, updated_item)
-            data_provider.fetch_item_pool().save()
+            item_pool = data_provider.fetch_item_pool()
+            if item_pool.get_item(item_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            item_pool.update_item(item_id, updated_item)
+            item_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "item_lines":
@@ -740,10 +782,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             updated_item_line = json.loads(post_data.decode())
-            data_provider.fetch_item_line_pool().update_item_line(
-                item_line_id, updated_item_line
-            )
-            data_provider.fetch_item_line_pool().save()
+            item_line_pool = data_provider.fetch_item_line_pool()
+            if item_line_pool.get_item_line(item_line_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            item_line_pool.update_item_line(item_line_id, updated_item_line)
+            item_line_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "item_groups":
@@ -751,10 +796,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             updated_item_group = json.loads(post_data.decode())
-            data_provider.fetch_item_group_pool().update_item_group(
-                item_group_id, updated_item_group
-            )
-            data_provider.fetch_item_group_pool().save()
+            item_group_pool = data_provider.fetch_item_group_pool()
+            if item_group_pool.get_item_group(item_group_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            item_group_pool.update_item_group(item_group_id, updated_item_group)
+            item_group_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "item_types":
@@ -762,10 +810,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             updated_item_type = json.loads(post_data.decode())
-            data_provider.fetch_item_type_pool().update_item_type(
-                item_type_id, updated_item_type
-            )
-            data_provider.fetch_item_type_pool().save()
+            item_type_pool = data_provider.fetch_item_type_pool()
+            if item_type_pool.get_item_type(item_type_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            item_type_pool.update_item_type(item_type_id, updated_item_type)
+            item_type_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "inventories":
@@ -778,10 +829,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             updated_supplier = json.loads(post_data.decode())
-            data_provider.fetch_supplier_pool().update_supplier(
-                supplier_id, updated_supplier
-            )
-            data_provider.fetch_supplier_pool().save()
+            supplier_pool = data_provider.fetch_supplier_pool()
+            if supplier_pool.get_supplier(supplier_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            supplier_pool.update_supplier(supplier_id, updated_supplier)
+            supplier_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "orders":
@@ -792,10 +846,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     content_length = int(self.headers["Content-Length"])
                     post_data = self.rfile.read(content_length)
                     updated_order = json.loads(post_data.decode())
-                    data_provider.fetch_order_pool().update_order(
-                        order_id, updated_order
-                    )
-                    data_provider.fetch_order_pool().save()
+                    order_pool = data_provider.fetch_order_pool()
+                    if order_pool.get_order(order_id) is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
+                    order_pool.update_order(order_id, updated_order)
+                    order_pool.save()
                     self.send_response(200)
                     self.end_headers()
                 case 3:
@@ -821,8 +878,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             updated_client = json.loads(post_data.decode())
-            data_provider.fetch_client_pool().update_client(client_id, updated_client)
-            data_provider.fetch_client_pool().save()
+            client_pool = data_provider.fetch_client_pool()
+            if client_pool.get_client(client_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            client_pool.update_client(client_id, updated_client)
+            client_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "shipments":
@@ -833,10 +895,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     content_length = int(self.headers["Content-Length"])
                     post_data = self.rfile.read(content_length)
                     updated_shipment = json.loads(post_data.decode())
-                    data_provider.fetch_shipment_pool().update_shipment(
-                        shipment_id, updated_shipment
-                    )
-                    data_provider.fetch_shipment_pool().save()
+                    shipment_pool = data_provider.fetch_shipment_pool()
+                    if shipment_pool.get_shipment(shipment_id) is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
+                    shipment_pool.update_shipment(shipment_id, updated_shipment)
+                    shipment_pool.save()
                     self.send_response(200)
                     self.end_headers()
                 case 3:
@@ -899,44 +964,79 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             return
         if paths[0] == "warehouses":
             warehouse_id = int(paths[1])
-            data_provider.fetch_warehouse_pool().remove_warehouse(warehouse_id)
-            data_provider.fetch_warehouse_pool().save()
+            warehouse_pool = data_provider.fetch_warehouse_pool()
+            if warehouse_pool.get_warehouse(warehouse_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            warehouse_pool.remove_warehouse(warehouse_id)
+            warehouse_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "locations":
             location_id = int(paths[1])
-            data_provider.fetch_location_pool().remove_location(location_id)
-            data_provider.fetch_location_pool().save()
+            location_pool = data_provider.fetch_location_pool()
+            if location_pool.get_location(location_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            location_pool.remove_location(location_id)
+            location_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "transfers":
             transfer_id = int(paths[1])
-            data_provider.fetch_transfer_pool().remove_transfer(transfer_id)
-            data_provider.fetch_transfer_pool().save()
+            transfer_pool = data_provider.fetch_transfer_pool()
+            if transfer_pool.get_transfer(transfer_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            transfer_pool.remove_transfer(transfer_id)
+            transfer_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "items":
             item_id = int(paths[1])
-            data_provider.fetch_item_pool().remove_item(item_id)
-            data_provider.fetch_item_pool().save()
+            item_pool = data_provider.fetch_item_pool()
+            if item_pool.get_item(item_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            item_pool.remove_item(item_id)
+            item_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "item_lines":
             item_line_id = int(paths[1])
-            data_provider.fetch_item_line_pool().remove_item_line(item_line_id)
-            data_provider.fetch_item_line_pool().save()
+            item_line_pool = data_provider.fetch_item_line_pool()
+            if item_line_pool.get_item_line(item_line_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            item_line_pool.remove_item_line(item_line_id)
+            item_line_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "item_groups":
             item_group_id = int(paths[1])
-            data_provider.fetch_item_group_pool().remove_item_group(item_group_id)
-            data_provider.fetch_item_group_pool().save()
+            item_group_pool = data_provider.fetch_item_group_pool()
+            if item_group_pool.get_item_group(item_group_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            item_group_pool.remove_item_group(item_group_id)
+            item_group_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "item_types":
             item_type_id = int(paths[1])
-            data_provider.fetch_item_type_pool().remove_item_type(item_type_id)
-            data_provider.fetch_item_type_pool().save()
+            item_type_pool = data_provider.fetch_item_type_pool()
+            if item_type_pool.get_item_type(item_type_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            item_type_pool.remove_item_type(item_type_id)
+            item_type_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "inventories":
@@ -944,26 +1044,46 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
         elif paths[0] == "suppliers":
             supplier_id = int(paths[1])
-            data_provider.fetch_supplier_pool().remove_supplier(supplier_id)
-            data_provider.fetch_supplier_pool().save()
+            supplier_pool = data_provider.fetch_supplier_pool()
+            if supplier_pool.get_supplier(supplier_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            supplier_pool.remove_supplier(supplier_id)
+            supplier_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "orders":
             order_id = int(paths[1])
-            data_provider.fetch_order_pool().remove_order(order_id)
-            data_provider.fetch_order_pool().save()
+            order_pool = data_provider.fetch_order_pool()
+            if order_pool.get_order(order_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            order_pool.remove_order(order_id)
+            order_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "clients":
             client_id = int(paths[1])
-            data_provider.fetch_client_pool().remove_client(client_id)
-            data_provider.fetch_client_pool().save()
+            client_pool = data_provider.fetch_client_pool()
+            if client_pool.get_client(client_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            client_pool.remove_client(client_id)
+            client_pool.save()
             self.send_response(200)
             self.end_headers()
         elif paths[0] == "shipments":
             shipment_id = int(paths[1])
-            data_provider.fetch_shipment_pool().remove_shipment(shipment_id)
-            data_provider.fetch_shipment_pool().save()
+            shipment_pool = data_provider.fetch_shipment_pool()
+            if shipment_pool.get_shipment(shipment_id) is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            shipment_pool.remove_shipment(shipment_id)
+            shipment_pool.save()
             self.send_response(200)
             self.end_headers()
         else:
