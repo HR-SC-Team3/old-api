@@ -212,10 +212,6 @@ def test_get_order_contains_items(base_url, user_headers):
     assert isinstance(body["items"], list)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 with null instead of 404."
-)
 def test_get_nonexistent_order_returns_404(
     base_url,
     user_headers
@@ -230,19 +226,6 @@ def test_get_nonexistent_order_returns_404(
     assert response.status_code == 404
 
 
-def test_get_nonexistent_order_current_behavior(
-    base_url,
-    user_headers
-):
-    headers = _get_headers(user_headers)
-
-    response = requests.get(
-        f"{base_url}/api/v1/orders/999999999",
-        headers=headers
-    )
-
-    assert response.status_code == 200
-    assert response.json() is None
 
 def test_get_order_malformed_id_returns_400(
     base_url,
@@ -592,10 +575,6 @@ def test_put_order_uses_full_replace():
     assert "self.data[i] = order" in ORDERS_MODEL_SOURCE
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when order does not exist."
-)
 def test_put_nonexistent_order_returns_404(
     base_url,
     user_headers,
@@ -617,25 +596,6 @@ def test_put_nonexistent_order_returns_404(
     assert response.status_code == 404
 
 
-def test_put_nonexistent_order_current_behavior(
-    base_url,
-    user_headers,
-    preserve_data_files
-):
-    preserve_data_files("order.json")
-
-    headers = _get_headers(
-        user_headers,
-        method="put"
-    )
-
-    response = requests.put(
-        f"{base_url}/api/v1/orders/999999999",
-        headers=headers,
-        json=_order_payload(999999999)
-    )
-
-    assert response.status_code == 200
 
 
 def test_put_order_malformed_id_returns_400(
@@ -756,14 +716,9 @@ def test_delete_order_removes_order(
         headers=_get_headers(user_headers)
     )
 
-    assert get_response.status_code == 200
-    assert get_response.json() is None
+    assert get_response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when order does not exist."
-)
 def test_delete_nonexistent_order_returns_404(
     base_url,
     user_headers,
