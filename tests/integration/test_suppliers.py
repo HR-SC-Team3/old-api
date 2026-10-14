@@ -797,7 +797,7 @@ def test_delete_supplier_resource_is_actually_gone(
     get_response = requests.get(
         _url(base_url, f"/{existing['id']}"), headers=get_headers
     )
-    assert get_response.json() is None
+    assert get_response.status_code == 404
 
 
 def test_delete_supplier_nonexistent_id_returns_404(

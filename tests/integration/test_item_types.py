@@ -704,8 +704,7 @@ def test_delete_item_type_removes_item_type(
         headers=_get_headers(user_headers)
     )
 
-    assert get_response.status_code == 200
-    assert get_response.json() is None
+    assert get_response.status_code == 404
 
 
 def test_delete_nonexistent_item_type_returns_404(

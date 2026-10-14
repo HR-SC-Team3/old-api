@@ -716,8 +716,7 @@ def test_delete_order_removes_order(
         headers=_get_headers(user_headers)
     )
 
-    assert get_response.status_code == 200
-    assert get_response.json() is None
+    assert get_response.status_code == 404
 
 
 def test_delete_nonexistent_order_returns_404(

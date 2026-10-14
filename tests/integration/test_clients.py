@@ -716,8 +716,7 @@ def test_delete_client_removes_client(
         headers=_get_headers(user_headers)
     )
 
-    assert get_response.status_code == 200
-    assert get_response.json() is None
+    assert get_response.status_code == 404
 
 
 def test_delete_nonexistent_client_returns_404(
