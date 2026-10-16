@@ -1,4 +1,19 @@
-## 0.1.0 (2026-09-30)
+### [0.1.1](https://github.com/HR-SC-Team3/old-api/compare/v0.1.0...v0.1.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* [#101](https://github.com/HR-SC-Team3/old-api/issues/101) malformed id's geven 500 ([#126](https://github.com/HR-SC-Team3/old-api/issues/126)) ([9ecdaac](https://github.com/HR-SC-Team3/old-api/commit/9ecdaac41f4d3cd2ce282de7b2071ccc110f4a24))
+* [#103](https://github.com/HR-SC-Team3/old-api/issues/103) unknown id returns 200 instead of 404 ([#124](https://github.com/HR-SC-Team3/old-api/issues/124)) ([4f4f4c7](https://github.com/HR-SC-Team3/old-api/commit/4f4f4c7def4129885554318c3714bff8f44a7b86))
+* [#109](https://github.com/HR-SC-Team3/old-api/issues/109) Content-type check for post ([#123](https://github.com/HR-SC-Team3/old-api/issues/123)) ([bf68b1f](https://github.com/HR-SC-Team3/old-api/commit/bf68b1f593853e9c61277ed970baebeced9463cc))
+* Gracefully ignore unsupported query parameters ([#122](https://github.com/HR-SC-Team3/old-api/issues/122)) ([29606b4](https://github.com/HR-SC-Team3/old-api/commit/29606b4ec0384269cf3809c2c3b157bdd45e8b9f)), closes [#110](https://github.com/HR-SC-Team3/old-api/issues/110)
+
+
+### Documentation
+
+* Clarify policy on changing application behavior ([71a1e36](https://github.com/HR-SC-Team3/old-api/commit/71a1e36637dfc4a01415b9fc7ac2606f762cf834))
+
+## [0.1.0](https://github.com/HR-SC-Team3/old-api/compare/e37f19face01c55d0b1089aadfc68de0ce9073c6...v0.1.0) (2026-09-30)
 
 
 ### Features
@@ -45,6 +60,7 @@
 ### Chores
 
 * Add git ignore ([c1ed119](https://github.com/HR-SC-Team3/old-api/commit/c1ed119bf5ef8b9006e71d846c2c6ffe5dd64d68))
+* **release:** v0.1.0 [skip ci] ([0562df8](https://github.com/HR-SC-Team3/old-api/commit/0562df8bfda93e6a2372da77942f8d4dea1108ad))
 * **release:** v0.1.0 [skip ci] ([7ac2583](https://github.com/HR-SC-Team3/old-api/commit/7ac2583b637419c2f206762af6b4f027adff5dbd))
 * Remove what isn't true ([5d23ec1](https://github.com/HR-SC-Team3/old-api/commit/5d23ec10797f4fc0e1adeb203a254d923e3fb8a8))
 
