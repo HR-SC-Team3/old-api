@@ -8,6 +8,11 @@ from providers import data_provider
 
 from processors import notification_processor
 
+from typing import Any
+
+### Route Handlers (resources)
+from controllers.warehouses import Warehouses
+
 # Enables a test-only cache-reset endpoint (see do_POST below). Never set in
 # a normal run of this server -- only the test suite's conftest.py sets it
 # when spawning this process.
@@ -15,6 +20,9 @@ TEST_MODE = os.environ.get("API_TEST_MODE") == "1"
 
 
 class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        self.warehouses_controller = Warehouses()
+        super().__init__(*args, **kwargs)
 
     def address_string(self):
         # Defensive: force the raw client IP instead of BaseHTTPRequestHandler's
@@ -35,6 +43,183 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         if content_length:
             self.rfile.read(int(content_length))
 
+    def _deny_without_access(self, user, paths, method) -> bool:
+        if auth_provider.has_access(user, paths, method):
+            return False
+        self._drain_request_body()
+        self.send_response(403)
+        self.end_headers()
+        return True
+
+    def _read_json_body(self):
+        content_length = int(self.headers["Content-Length"])
+        return json.loads(self.rfile.read(content_length).decode())
+
+    def send_json_response(self, status_code: int, data: Any):
+        self.send_response(status_code)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode("utf-8"))
+
+    def do_GET(self):
+        api_key = self.headers.get("API_KEY")
+        user = auth_provider.get_user(api_key)
+        if user == None:
+            self._drain_request_body()
+            self.send_response(401)
+            self.end_headers()
+            return
+        else:
+            try:
+                paths = self.path.split("/")
+                if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
+
+                    # Strip out the query parameters, if any. We do not support any query parameters, so we just ignore them.
+                    paths[3] = paths[3].split("?")[0]
+                    match paths[3]:
+                        case "warehouses":
+                            if self._deny_without_access(user, paths[3:], "get"):
+                                return
+                            match len(paths) - 3:
+                                case 1:
+                                    self.send_json_response(
+                                        200, self.warehouses_controller.get()
+                                    )
+                                case 2:
+                                    warehouse = self.warehouses_controller.get(
+                                        int(paths[4])
+                                    )
+                                    if warehouse is None:
+                                        self.send_response(404)
+                                        self.end_headers()
+                                    else:
+                                        self.send_json_response(200, warehouse)
+                                case 3 if paths[5] == "locations":
+                                    self.send_json_response(
+                                        200,
+                                        self.warehouses_controller.get_locations(
+                                            int(paths[4])
+                                        ),
+                                    )
+                                case _:
+                                    self.send_response(404)
+                                    self.end_headers()
+                        case _:
+                            self.handle_get_version_1(paths[3:], user)
+            except ValueError:
+                self.send_response(400)
+                self.end_headers()
+            except Exception:
+                self.send_response(500)
+                self.end_headers()
+
+    def do_PUT(self):
+        api_key = self.headers.get("API_KEY")
+        user = auth_provider.get_user(api_key)
+        if user == None:
+            self._drain_request_body()
+            self.send_response(401)
+            self.end_headers()
+        else:
+            try:
+                paths = self.path.split("/")
+                if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
+                    match paths[3]:
+                        case "warehouses":
+                            if self._deny_without_access(user, paths[3:], "put"):
+                                return
+                            warehouse_id = int(paths[4])
+                            updated_warehouse = self._read_json_body()
+                            if (
+                                self.warehouses_controller.put(
+                                    warehouse_id, updated_warehouse
+                                )
+                                is None
+                            ):
+                                self.send_response(404)
+                            else:
+                                self.send_response(200)
+                            self.end_headers()
+                        case _:
+                            self.handle_put_version_1(paths[3:], user)
+            except ValueError:
+                self.send_response(400)
+                self.end_headers()
+            except Exception:
+                self.send_response(500)
+                self.end_headers()
+
+    def do_POST(self):
+        if TEST_MODE and self.path == "/api/v1/_test/reset-cache":
+            data_provider.reset_pools()
+            self.send_response(204)
+            self.end_headers()
+            return
+        api_key = self.headers.get("API_KEY")
+        user = auth_provider.get_user(api_key)
+        if user == None:
+            self._drain_request_body()
+            self.send_response(401)
+            self.end_headers()
+            return
+        else:
+            try:
+                paths = self.path.split("/")
+                if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
+                    match paths[3]:
+                        case "warehouses":
+                            if self._deny_without_access(user, paths[3:], "post"):
+                                return
+                            media_type = (
+                                self.headers.get("Content-Type", "")
+                                .split(";", 1)[0]
+                                .strip()
+                                .lower()
+                            )
+                            if media_type != "application/json":
+                                self._drain_request_body()
+                                self.send_response(415)
+                                self.end_headers()
+                                return
+                            self.warehouses_controller.post(self._read_json_body())
+                            self.send_response(201)
+                            self.end_headers()
+                        case _:
+                            self.handle_post_version_1(paths[3:], user)
+            except Exception:
+                self.send_response(500)
+                self.end_headers()
+
+    def do_DELETE(self):
+        api_key = self.headers.get("API_KEY")
+        user = auth_provider.get_user(api_key)
+        if user == None:
+            self._drain_request_body()
+            self.send_response(401)
+            self.end_headers()
+        else:
+            try:
+                paths = self.path.split("/")
+                if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
+                    match paths[3]:
+                        case "warehouses":
+                            if self._deny_without_access(user, paths[3:], "delete"):
+                                return
+                            if self.warehouses_controller.delete(int(paths[4])) is None:
+                                self.send_response(404)
+                            else:
+                                self.send_response(200)
+                            self.end_headers()
+                        case _:
+                            self.handle_delete_version_1(paths[3:], user)
+            except ValueError:
+                self.send_response(400)
+                self.end_headers()
+            except Exception:
+                self.send_response(500)
+                self.end_headers()
+
+    # region Old Shit
     def handle_get_version_1(self, paths, user):
         # Strip out the query parameters, if any. We do not support any query parameters, so we just ignore them.
         paths[0] = paths[0].split("?")[0]
@@ -44,43 +229,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(403)
             self.end_headers()
             return
-        if paths[0] == "warehouses":
-            parts = len(paths)
-            match parts:
-                case 1:
-                    warehouses = data_provider.fetch_warehouse_pool().get_warehouses()
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(warehouses).encode("utf-8"))
-                case 2:
-                    warehouse_id = int(paths[1])
-                    warehouse = data_provider.fetch_warehouse_pool().get_warehouse(warehouse_id)
-                    if warehouse is None:
-                        self.send_response(404)
-                        self.end_headers()
-                        return
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(warehouse).encode("utf-8"))
-                case 3:
-                    if paths[2] == "locations":
-                        warehouse_id = int(paths[1])
-                        locations = data_provider.fetch_location_pool().get_locations_in_warehouse(
-                            warehouse_id
-                        )
-                        self.send_response(200)
-                        self.send_header("Content-type", "application/json")
-                        self.end_headers()
-                        self.wfile.write(json.dumps(locations).encode("utf-8"))
-                    else:
-                        self.send_response(404)
-                        self.end_headers()
-                case _:
-                    self.send_response(404)
-                    self.end_headers()
-        elif paths[0] == "locations":
+        if paths[0] == "locations":
             parts = len(paths)
             match parts:
                 case 1:
@@ -91,7 +240,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(locations).encode("utf-8"))
                 case 2:
                     location_id = int(paths[1])
-                    location = data_provider.fetch_location_pool().get_location(location_id)
+                    location = data_provider.fetch_location_pool().get_location(
+                        location_id
+                    )
                     if location is None:
                         self.send_response(404)
                         self.end_headers()
@@ -114,7 +265,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(transfers).encode("utf-8"))
                 case 2:
                     transfer_id = int(paths[1])
-                    transfer = data_provider.fetch_transfer_pool().get_transfer(transfer_id)
+                    transfer = data_provider.fetch_transfer_pool().get_transfer(
+                        transfer_id
+                    )
                     if transfer is None:
                         self.send_response(404)
                         self.end_headers()
@@ -201,7 +354,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(item_lines).encode("utf-8"))
                 case 2:
                     item_line_id = int(paths[1])
-                    item_line = data_provider.fetch_item_line_pool().get_item_line(item_line_id)
+                    item_line = data_provider.fetch_item_line_pool().get_item_line(
+                        item_line_id
+                    )
                     if item_line is None:
                         self.send_response(404)
                         self.end_headers()
@@ -239,7 +394,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(item_groups).encode("utf-8"))
                 case 2:
                     item_group_id = int(paths[1])
-                    item_group = data_provider.fetch_item_group_pool().get_item_group(item_group_id)
+                    item_group = data_provider.fetch_item_group_pool().get_item_group(
+                        item_group_id
+                    )
                     if item_group is None:
                         self.send_response(404)
                         self.end_headers()
@@ -277,7 +434,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(item_types).encode("utf-8"))
                 case 2:
                     item_type_id = int(paths[1])
-                    item_type = data_provider.fetch_item_type_pool().get_item_type(item_type_id)
+                    item_type = data_provider.fetch_item_type_pool().get_item_type(
+                        item_type_id
+                    )
                     if item_type is None:
                         self.send_response(404)
                         self.end_headers()
@@ -330,7 +489,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(suppliers).encode("utf-8"))
                 case 2:
                     supplier_id = int(paths[1])
-                    supplier = data_provider.fetch_supplier_pool().get_supplier(supplier_id)
+                    supplier = data_provider.fetch_supplier_pool().get_supplier(
+                        supplier_id
+                    )
                     if supplier is None:
                         self.send_response(404)
                         self.end_headers()
@@ -438,7 +599,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(shipments).encode("utf-8"))
                 case 2:
                     shipment_id = int(paths[1])
-                    shipment = data_provider.fetch_shipment_pool().get_shipment(shipment_id)
+                    shipment = data_provider.fetch_shipment_pool().get_shipment(
+                        shipment_id
+                    )
                     if shipment is None:
                         self.send_response(404)
                         self.end_headers()
@@ -478,27 +641,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
-    def do_GET(self):
-        api_key = self.headers.get("API_KEY")
-        user = auth_provider.get_user(api_key)
-        if user == None:
-            self._drain_request_body()
-            self.send_response(401)
-            self.end_headers()
-            return
-
-        else:
-            try:
-                paths = self.path.split("/")
-                if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
-                    self.handle_get_version_1(paths[3:], user)
-            except ValueError:
-                self.send_response(400)
-                self.end_headers()
-            except Exception:
-                self.send_response(500)
-                self.end_headers()
-                
     def handle_post_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "post"):
             self._drain_request_body()
@@ -514,15 +656,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(415)
             self.end_headers()
             return
-        if paths[0] == "warehouses":
-            content_length = int(self.headers["Content-Length"])
-            post_data = self.rfile.read(content_length)
-            new_warehouse = json.loads(post_data.decode())
-            data_provider.fetch_warehouse_pool().add_warehouse(new_warehouse)
-            data_provider.fetch_warehouse_pool().save()
-            self.send_response(201)
-            self.end_headers()
-        elif paths[0] == "locations":
+        if paths[0] == "locations":
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             new_location = json.loads(post_data.decode())
@@ -633,49 +767,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
-    def do_POST(self):
-        if TEST_MODE and self.path == "/api/v1/_test/reset-cache":
-            data_provider.reset_pools()
-            self.send_response(204)
-            self.end_headers()
-            return
-        api_key = self.headers.get("API_KEY")
-        user = auth_provider.get_user(api_key)
-        if user == None:
-            self._drain_request_body()
-            self.send_response(401)
-            self.end_headers()
-            return
-        else:
-            try:
-                paths = self.path.split("/")
-                if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
-                    self.handle_post_version_1(paths[3:], user)
-            except Exception:
-                self.send_response(500)
-                self.end_headers()
-
     def handle_put_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "put"):
             self._drain_request_body()
             self.send_response(403)
             self.end_headers()
             return
-        if paths[0] == "warehouses":
-            warehouse_id = int(paths[1])
-            content_length = int(self.headers["Content-Length"])
-            post_data = self.rfile.read(content_length)
-            updated_warehouse = json.loads(post_data.decode())
-            warehouse_pool = data_provider.fetch_warehouse_pool()
-            if warehouse_pool.get_warehouse(warehouse_id) is None:
-                self.send_response(404)
-                self.end_headers()
-                return
-            warehouse_pool.update_warehouse(warehouse_id, updated_warehouse)
-            warehouse_pool.save()
-            self.send_response(200)
-            self.end_headers()
-        elif paths[0] == "locations":
+        if paths[0] == "locations":
             location_id = int(paths[1])
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
@@ -937,43 +1035,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
-    def do_PUT(self):
-        api_key = self.headers.get("API_KEY")
-        user = auth_provider.get_user(api_key)
-        if user == None:
-            self._drain_request_body()
-            self.send_response(401)
-            self.end_headers()
-        else:
-            try:
-                paths = self.path.split("/")
-                if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
-                    self.handle_put_version_1(paths[3:], user)
-            except ValueError:
-                self.send_response(400)
-                self.end_headers()
-            except Exception:
-                self.send_response(500)
-                self.end_headers()
-
     def handle_delete_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "delete"):
             self._drain_request_body()
             self.send_response(403)
             self.end_headers()
             return
-        if paths[0] == "warehouses":
-            warehouse_id = int(paths[1])
-            warehouse_pool = data_provider.fetch_warehouse_pool()
-            if warehouse_pool.get_warehouse(warehouse_id) is None:
-                self.send_response(404)
-                self.end_headers()
-                return
-            warehouse_pool.remove_warehouse(warehouse_id)
-            warehouse_pool.save()
-            self.send_response(200)
-            self.end_headers()
-        elif paths[0] == "locations":
+        if paths[0] == "locations":
             location_id = int(paths[1])
             location_pool = data_provider.fetch_location_pool()
             if location_pool.get_location(location_id) is None:
@@ -1090,25 +1158,8 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
-    def do_DELETE(self):
-        api_key = self.headers.get("API_KEY")
-        user = auth_provider.get_user(api_key)
-        if user == None:
-            self._drain_request_body()
-            self.send_response(401)
-            self.end_headers()
-        else:
-            try:
-                paths = self.path.split("/")
-                if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
-                    self.handle_delete_version_1(paths[3:], user)
-            except ValueError:
-                self.send_response(400)
-                self.end_headers()
-            except Exception:
-                self.send_response(500)
-                self.end_headers()
 
+# endregion
 
 if __name__ == "__main__":
     PORT = 3000
