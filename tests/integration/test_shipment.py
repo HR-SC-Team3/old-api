@@ -236,8 +236,6 @@ def test_post_shipment_missing_required_field_is_rejected(base_url, user_headers
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
 
-@pytest.mark.xfail(strict = True, reason="POST shipment doesn't return 400 or 422 but it returns 500 since there is no validation checks yet")
-
 def test_post_shipment_rejects_invalid_value(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
@@ -245,8 +243,6 @@ def test_post_shipment_rejects_invalid_value(base_url, user_headers, preserve_da
     payload["shipment_status"] = "NOT_A_REAL_STATUS"
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
-
-@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 for duplicate references even tho it needs to return 400, 409 or 422")
 
 def test_post_shipment_duplicate_reference_is_handled(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
@@ -257,7 +253,6 @@ def test_post_shipment_duplicate_reference_is_handled(base_url, user_headers, pr
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 409, 422)
 
-@pytest.mark.xfail(strict = True, reason="POST shipment return 500 for unexpected fields. There is no validation checks yet")
 
 def test_post_shipment_unexpected_field_is_handled_consistently(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
@@ -266,8 +261,6 @@ def test_post_shipment_unexpected_field_is_handled_consistently(base_url, user_h
     payload["unexpected_field"] = "should-not-be-accepted"
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (201, 400, 422)
-
-@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 for invalid foreign keys since there are no validation checks yet")
 
 def test_post_shipment_reject_invalid_foreign_key(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
