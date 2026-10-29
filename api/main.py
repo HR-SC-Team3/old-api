@@ -220,6 +220,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 return
                             controller = self.controllers["inventories"]
                             if len(paths) != 6:
+                                self._drain_request_body()
                                 self.send_response(404)
                                 self.end_headers()
                                 return
@@ -266,6 +267,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         case _:
                             self.handle_put_version_1(paths[3:], user)
             except ValueError:
+                self._drain_request_body()
                 self.send_response(400)
                 self.end_headers()
             except Exception:
@@ -358,9 +360,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 self.send_json_response(201, created_shipment)
                         case _:
                             self.handle_post_version_1(paths[3:], user)
-            except (ValueError, KeyError):
-                self.send_response(400)
-                self.end_headers()
             except Exception:
                 self.send_response(500)
                 self.end_headers()
