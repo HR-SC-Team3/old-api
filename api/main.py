@@ -12,6 +12,7 @@ from typing import Any
 
 ### Route Handlers (resources)
 from controllers.warehouses import Warehouses
+from controllers.inventory import Inventory
 
 # Enables a test-only cache-reset endpoint (see do_POST below). Never set in
 # a normal run of this server -- only the test suite's conftest.py sets it
@@ -22,6 +23,7 @@ TEST_MODE = os.environ.get("API_TEST_MODE") == "1"
 class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         self.warehouses_controller = Warehouses()
+        self.inventory_controller = Inventory()
         super().__init__(*args, **kwargs)
 
     def address_string(self):
@@ -104,6 +106,30 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
+                        case "inventories":
+                            if self._deny_without_access(user, paths[3:], "get"):
+                                return
+                            match len(paths) - 3:
+                                case 1:
+                                    self.send_json_response(200, self.inventory_controller.get())
+                                case 2:
+                                    item_id = int(paths[4])
+                                    self.send_json_response(200, self.inventory_controller.get(item_id))
+                                case 3 if paths[5] == "totals":
+                                    item_id = int(paths[4])
+                                    self.send_json_response(200, self.inventory_controller.get_totals(item_id))
+                                case 3:
+                                    item_id = int(paths[4])
+                                    location_id = int(paths[5])
+                                    inventory = self.inventory_controller.get(item_id, location_id)
+                                    if inventory is None:
+                                        self.send_response(404)
+                                        self.end_headers()
+                                    else:
+                                        self.send_json_response(200, inventory)
+                                case _:
+                                    self.send_response(404)
+                                    self.end_headers()
                         case _:
                             self.handle_get_version_1(paths[3:], user)
             except ValueError:
@@ -136,6 +162,21 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 )
                                 is None
                             ):
+                                self.send_response(404)
+                            else:
+                                self.send_response(200)
+                            self.end_headers()
+                        case "inventories":
+                            if self._deny_without_access(user, paths[3:], "put"):
+                                return
+                            if len(paths) != 6:
+                                self.send_response(404)
+                                self.end_headers()
+                                return
+                            item_id = int(paths[4])
+                            location_id = int(paths[5])
+                            updated_inventory = self._read_json_body()
+                            if self.inventory_controller.put(item_id, location_id, updated_inventory) is None:
                                 self.send_response(404)
                             else:
                                 self.send_response(200)
@@ -184,6 +225,24 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                             self.warehouses_controller.post(self._read_json_body())
                             self.send_response(201)
                             self.end_headers()
+                        case "inventories":
+                            if self._deny_without_access(user, paths[3:], "post"):
+                                return
+                            media_type = (self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower())
+                            if media_type != "application/json":
+                                self._drain_request_body()
+                                self.send_response(415)
+                                self.end_headers()
+                                return
+                            new_inventory = self._read_json_body()
+                            required_fields = [ "item_id", "location_id", "quantity_on_hand", "quantity_expected", "quantity_ordered", "quantity_allocated",]
+                            if not all(field in new_inventory for field in required_fields):
+                                self.send_response(400)
+                                self.end_headers()
+                                return
+                            self.inventory_controller.post(new_inventory)
+                            self.send_response(201)
+                            self.end_headers()
                         case _:
                             self.handle_post_version_1(paths[3:], user)
             except Exception:
@@ -206,6 +265,20 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                             if self._deny_without_access(user, paths[3:], "delete"):
                                 return
                             if self.warehouses_controller.delete(int(paths[4])) is None:
+                                self.send_response(404)
+                            else:
+                                self.send_response(200)
+                            self.end_headers()
+                        case "inventories":
+                            if self._deny_without_access(user, paths[3:], "delete"):
+                                return
+                            if len(paths) != 6:
+                                self.send_response(404)
+                                self.end_headers()
+                                return
+                            item_id = int(paths[4])
+                            location_id = int(paths[5])
+                            if self.inventory_controller.delete(item_id, location_id) is None:
                                 self.send_response(404)
                             else:
                                 self.send_response(200)
@@ -461,23 +534,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case _:
                     self.send_response(404)
                     self.end_headers()
-        elif paths[0] == "inventories":
-            parts = len(paths)
-            match parts:
-                case 1:
-                    inventories = data_provider.fetch_inventory_pool().get_inventories()
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(inventories).encode("utf-8"))
-                case 2:
-                    # Inventory rows are keyed on a composite (item_id, location_id)
-                    # in the new schema, so a single surrogate id has no meaning.
-                    self.send_response(404)
-                    self.end_headers()
-                case _:
-                    self.send_response(404)
-                    self.end_headers()
         elif paths[0] == "suppliers":
             parts = len(paths)
             match parts:
@@ -707,30 +763,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             data_provider.fetch_item_type_pool().save()
             self.send_response(201)
             self.end_headers()
-        elif paths[0] == "inventories":
-            content_length = int(self.headers["Content-Length"])
-            post_data = self.rfile.read(content_length)
-            new_inventory = json.loads(post_data.decode())
-
-            required_fields = [
-                "item_id",
-                "location_id",
-                "quantity_on_hand",
-                "quantity_expected",
-                "quantity_ordered",
-                "quantity_allocated",
-            ]
-
-            if not all(field in new_inventory for field in required_fields):
-                self.send_response(400)
-                self.end_headers()
-                return
-
-            data_provider.fetch_inventory_pool().add_inventory(new_inventory)
-            data_provider.fetch_inventory_pool().save()
-            self.send_response(201)
-            self.end_headers()
-
         elif paths[0] == "suppliers":
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
@@ -917,11 +949,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             item_type_pool.save()
             self.send_response(200)
             self.end_headers()
-        elif paths[0] == "inventories":
-            # Inventory rows are keyed on a composite (item_id, location_id); a
-            # single surrogate id is not meaningful in the new schema.
-            self.send_response(404)
-            self.end_headers()
         elif paths[0] == "suppliers":
             supplier_id = int(paths[1])
             content_length = int(self.headers["Content-Length"])
@@ -1106,9 +1133,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             item_type_pool.remove_item_type(item_type_id)
             item_type_pool.save()
             self.send_response(200)
-            self.end_headers()
-        elif paths[0] == "inventories":
-            self.send_response(404)
             self.end_headers()
         elif paths[0] == "suppliers":
             supplier_id = int(paths[1])
