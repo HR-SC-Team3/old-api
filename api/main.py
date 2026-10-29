@@ -729,7 +729,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             return
         if paths[0] == "locations":
-        if paths[0] == "locations":
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             new_location = json.loads(post_data.decode())
@@ -823,7 +822,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(403)
             self.end_headers()
             return
-        if paths[0] == "locations":
         if paths[0] == "locations":
             location_id = int(paths[1])
             content_length = int(self.headers["Content-Length"])
