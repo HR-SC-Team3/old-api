@@ -21,10 +21,6 @@ TEST_MODE = os.environ.get("API_TEST_MODE") == "1"
 
 
 class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        self.warehouses_controller = Warehouses()
-        self.inventory_controller = Inventory()
-        super().__init__(*args, **kwargs)
 
     def address_string(self):
         # Defensive: force the raw client IP instead of BaseHTTPRequestHandler's
@@ -341,6 +337,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     transfer = data_provider.fetch_transfer_pool().get_transfer(
                         transfer_id
                     )
+                    transfer = data_provider.fetch_transfer_pool().get_transfer(
+                        transfer_id
+                    )
                     if transfer is None:
                         self.send_response(404)
                         self.end_headers()
@@ -430,6 +429,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     item_line = data_provider.fetch_item_line_pool().get_item_line(
                         item_line_id
                     )
+                    item_line = data_provider.fetch_item_line_pool().get_item_line(
+                        item_line_id
+                    )
                     if item_line is None:
                         self.send_response(404)
                         self.end_headers()
@@ -467,6 +469,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(item_groups).encode("utf-8"))
                 case 2:
                     item_group_id = int(paths[1])
+                    item_group = data_provider.fetch_item_group_pool().get_item_group(
+                        item_group_id
+                    )
                     item_group = data_provider.fetch_item_group_pool().get_item_group(
                         item_group_id
                     )
@@ -510,6 +515,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     item_type = data_provider.fetch_item_type_pool().get_item_type(
                         item_type_id
                     )
+                    item_type = data_provider.fetch_item_type_pool().get_item_type(
+                        item_type_id
+                    )
                     if item_type is None:
                         self.send_response(404)
                         self.end_headers()
@@ -545,6 +553,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(suppliers).encode("utf-8"))
                 case 2:
                     supplier_id = int(paths[1])
+                    supplier = data_provider.fetch_supplier_pool().get_supplier(
+                        supplier_id
+                    )
                     supplier = data_provider.fetch_supplier_pool().get_supplier(
                         supplier_id
                     )
@@ -658,6 +669,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     shipment = data_provider.fetch_shipment_pool().get_shipment(
                         shipment_id
                     )
+                    shipment = data_provider.fetch_shipment_pool().get_shipment(
+                        shipment_id
+                    )
                     if shipment is None:
                         self.send_response(404)
                         self.end_headers()
@@ -697,6 +711,8 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
+            self.end_headers()
+
     def handle_post_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "post"):
             self._drain_request_body()
@@ -712,6 +728,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(415)
             self.end_headers()
             return
+        if paths[0] == "locations":
         if paths[0] == "locations":
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
@@ -798,6 +815,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         else:
             self.send_response(404)
             self.end_headers()
+            self.end_headers()
 
     def handle_put_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "put"):
@@ -805,6 +823,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(403)
             self.end_headers()
             return
+        if paths[0] == "locations":
         if paths[0] == "locations":
             location_id = int(paths[1])
             content_length = int(self.headers["Content-Length"])
