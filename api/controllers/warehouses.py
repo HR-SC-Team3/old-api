@@ -3,13 +3,15 @@ from providers import data_provider
 
 
 class Warehouses(IResource):
+    sub_resource = "locations"
+
     def get(self, resource_id=None):
         warehouse_pool = data_provider.fetch_warehouse_pool()
         if resource_id is None:
             return warehouse_pool.get_warehouses()
         return warehouse_pool.get_warehouse(resource_id)
 
-    def get_locations(self, resource_id):
+    def get_sub_resource(self, resource_id):
         return data_provider.fetch_location_pool().get_locations_in_warehouse(
             resource_id
         )
