@@ -12,6 +12,7 @@ from typing import Any
 
 ### Route Handlers (resources)
 from controllers.warehouses import Warehouses
+from controllers.orders import Orders
 
 # Enables a test-only cache-reset endpoint (see do_POST below). Never set in
 # a normal run of this server -- only the test suite's conftest.py sets it
@@ -22,6 +23,7 @@ TEST_MODE = os.environ.get("API_TEST_MODE") == "1"
 class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         self.warehouses_controller = Warehouses()
+        self.orders_controller = Orders()
         super().__init__(*args, **kwargs)
 
     def address_string(self):
@@ -61,9 +63,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data).encode("utf-8"))
 
+
     def do_GET(self):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
+
         if user == None:
             self._drain_request_body()
             self.send_response(401)
@@ -104,6 +108,35 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
+
+                        case "orders":
+                            if self._deny_without_access(user, paths[3:], "get"):
+                                return
+                            match len(paths) - 3:
+                                case 1:
+                                    self.send_json_response(
+                                        200, self.orders_controller.get()
+                                    )
+                                case 2:
+                                    order = self.orders_controller.get(
+                                        int(paths[4])
+                                    )
+                                    if order is None:
+                                        self.send_response(404)
+                                        self.end_headers()
+                                    else:
+                                        self.send_json_response(200, order)
+                                case 3 if paths[5] == "items":
+                                    self.send_json_response(
+                                        200,
+                                        self.orders_controller.get_items(
+                                            int(paths[4])
+                                        ),
+                                    )
+                                case _:
+                                    self.send_response(404)
+                                    self.end_headers()
+
                         case _:
                             self.handle_get_version_1(paths[3:], user)
             except ValueError:
@@ -113,9 +146,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.end_headers()
 
+
     def do_PUT(self):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
+
         if user == None:
             self._drain_request_body()
             self.send_response(401)
@@ -128,8 +163,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         case "warehouses":
                             if self._deny_without_access(user, paths[3:], "put"):
                                 return
+
                             warehouse_id = int(paths[4])
                             updated_warehouse = self._read_json_body()
+
                             if (
                                 self.warehouses_controller.put(
                                     warehouse_id, updated_warehouse
@@ -140,8 +177,44 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                             else:
                                 self.send_response(200)
                             self.end_headers()
+
+                        case "orders":
+                            if self._deny_without_access(user, paths[3:], "put"):
+                                return
+
+                            match len(paths) - 3:
+                                case 2:
+                                    order_id = int(paths[4])
+                                    updated_order = self._read_json_body()
+
+                                    if (
+                                        self.orders_controller.put(
+                                            order_id, updated_order
+                                        )
+                                        is None
+                                    ):
+                                        self.send_response(404)
+                                    else:
+                                        self.send_response(200)
+                                    self.end_headers()
+
+                                case 3 if paths[5] == "items":
+                                    order_id = int(paths[4])
+                                    updated_items = self._read_json_body()
+
+                                    self.orders_controller.put_items(
+                                        order_id, updated_items
+                                    )
+                                    self.send_response(200)
+                                    self.end_headers()
+
+                                case _:
+                                    self.send_response(404)
+                                    self.end_headers()
+
                         case _:
                             self.handle_put_version_1(paths[3:], user)
+
             except ValueError:
                 self.send_response(400)
                 self.end_headers()
@@ -149,75 +222,135 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.end_headers()
 
+
     def do_POST(self):
-        if TEST_MODE and self.path == "/api/v1/_test/reset-cache":
-            data_provider.reset_pools()
-            self.send_response(204)
-            self.end_headers()
-            return
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
+
         if user == None:
             self._drain_request_body()
             self.send_response(401)
             self.end_headers()
             return
-        else:
-            try:
-                paths = self.path.split("/")
-                if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
-                    match paths[3]:
-                        case "warehouses":
-                            if self._deny_without_access(user, paths[3:], "post"):
-                                return
-                            media_type = (
-                                self.headers.get("Content-Type", "")
-                                .split(";", 1)[0]
-                                .strip()
-                                .lower()
-                            )
-                            if media_type != "application/json":
-                                self._drain_request_body()
-                                self.send_response(415)
-                                self.end_headers()
-                                return
-                            self.warehouses_controller.post(self._read_json_body())
-                            self.send_response(201)
+
+        try:
+            paths = self.path.split("/")
+
+            if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
+
+                if paths[3] == "_test" and len(paths) > 4 and paths[4] == "reset-cache":
+                    data_provider.reset_cache()
+                    self.send_response(204)
+                    self.end_headers()
+                    return
+
+                paths[3] = paths[3].split("?")[0]
+
+                match paths[3]:
+                    case "warehouses":
+                        if self._deny_without_access(user, paths[3:], "post"):
+                            return
+
+                        content_type = self.headers.get("Content-Type", "")
+                        if content_type.split(";")[0].strip().lower() != "application/json":
+                            self._drain_request_body()
+                            self.send_response(415)
                             self.end_headers()
-                        case _:
-                            self.handle_post_version_1(paths[3:], user)
-            except Exception:
-                self.send_response(500)
-                self.end_headers()
+                            return
+
+                        new_warehouse = self._read_json_body()
+                        self.warehouses_controller.post(new_warehouse)
+
+                        self.send_response(201)
+                        self.end_headers()
+
+                    case "orders":
+                        if self._deny_without_access(user, paths[3:], "post"):
+                            return
+
+                        content_type = self.headers.get("Content-Type", "")
+                        if content_type.split(";")[0].strip().lower() != "application/json":
+                            self._drain_request_body()
+                            self.send_response(415)
+                            self.end_headers()
+                            return
+
+                        new_order = self._read_json_body()
+                        self.orders_controller.post(new_order)
+
+                        self.send_response(201)
+                        self.end_headers()
+
+                    case _:
+                        self.handle_post_version_1(paths[3:], user)
+
+        except ValueError:
+            self.send_response(400)
+            self.end_headers()
+        except Exception:
+            self.send_response(500)
+            self.end_headers()
+
+
 
     def do_DELETE(self):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
+
         if user == None:
             self._drain_request_body()
             self.send_response(401)
             self.end_headers()
-        else:
-            try:
-                paths = self.path.split("/")
-                if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
-                    match paths[3]:
-                        case "warehouses":
-                            if self._deny_without_access(user, paths[3:], "delete"):
-                                return
-                            if self.warehouses_controller.delete(int(paths[4])) is None:
-                                self.send_response(404)
-                            else:
-                                self.send_response(200)
+            return
+
+        try:
+            paths = self.path.split("/")
+
+            if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
+                paths[3] = paths[3].split("?")[0]
+
+                match paths[3]:
+                    case "warehouses":
+                        if self._deny_without_access(user, paths[3:], "delete"):
+                            return
+
+                        warehouse_id = int(paths[4])
+
+                        if self.warehouses_controller.delete(warehouse_id) is None:
+                            self.send_response(404)
+                        else:
+                            self.send_response(200)
+
+                        self.end_headers()
+
+                    case "orders":
+                        if self._deny_without_access(user, paths[3:], "delete"):
+                            return
+
+                        if len(paths) != 5:
+                            self.send_response(404)
                             self.end_headers()
-                        case _:
-                            self.handle_delete_version_1(paths[3:], user)
-            except ValueError:
-                self.send_response(400)
-                self.end_headers()
-            except Exception:
-                self.send_response(500)
-                self.end_headers()
+                            return
+
+                        order_id = int(paths[4])
+
+                        if self.orders_controller.delete(order_id) is None:
+                            self.send_response(404)
+                        else:
+                            self.send_response(200)
+
+                        self.end_headers()
+
+                    case _:
+                        self.handle_delete_version_1(paths[3:], user)
+
+        except ValueError:
+            self.send_response(400)
+            self.end_headers()
+        except Exception:
+            self.send_response(500)
+            self.end_headers()
+
 
     # region Old Shit
     def handle_get_version_1(self, paths, user):
@@ -516,42 +649,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case _:
                     self.send_response(404)
                     self.end_headers()
-        elif paths[0] == "orders":
-            parts = len(paths)
-            match parts:
-                case 1:
-                    orders = data_provider.fetch_order_pool().get_orders()
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(orders).encode("utf-8"))
-                case 2:
-                    order_id = int(paths[1])
-                    order = data_provider.fetch_order_pool().get_order(order_id)
-                    if order is None:
-                        self.send_response(404)
-                        self.end_headers()
-                        return
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(order).encode("utf-8"))
-                case 3:
-                    if paths[2] == "items":
-                        order_id = int(paths[1])
-                        items = data_provider.fetch_order_pool().get_items_in_order(
-                            order_id
-                        )
-                        self.send_response(200)
-                        self.send_header("Content-type", "application/json")
-                        self.end_headers()
-                        self.wfile.write(json.dumps(items).encode("utf-8"))
-                    else:
-                        self.send_response(404)
-                        self.end_headers()
-                case _:
-                    self.send_response(404)
-                    self.end_headers()
+                    
         elif paths[0] == "clients":
             parts = len(paths)
             match parts:
