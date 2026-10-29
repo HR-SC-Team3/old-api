@@ -1,4 +1,3 @@
-
 from controllers.IResource import IResource
 from providers import data_provider
 
