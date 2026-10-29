@@ -227,7 +227,6 @@ def test_post_shipment_accepts_application_json(base_url, user_headers, preserve
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json= _valid_shipment_payload(),)
     assert response.status_code != 415
 
-@pytest.mark.xfail(strict = True, reason="POST shipment doesn't return 400 or 422 but it returns 500 since there is no validation yet")
 
 def test_post_shipment_missing_required_field_is_rejected(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
