@@ -7,7 +7,7 @@ class Inventory(IResource):
         inventory_pool = data_provider.fetch_inventory_pool()
         if resource_id is None:
             return inventory_pool.get_inventories()
-        if resource_id is None:
+        if location_id is None:
             return inventory_pool.get_inventory(resource_id, location_id)
         return inventory_pool.get_inventories_for_item(resource_id, location_id)
 

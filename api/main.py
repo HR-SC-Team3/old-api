@@ -22,6 +22,11 @@ TEST_MODE = os.environ.get("API_TEST_MODE") == "1"
 
 class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
 
+    def __init__(self, *args, **kwargs):
+        self.warehouses_controller = Warehouses()
+        self.inventory_controller = Inventory()
+        super().__init__(*args, **kwargs)
+
     def address_string(self):
         # Defensive: force the raw client IP instead of BaseHTTPRequestHandler's
         # default, in case some environment/version makes that do a reverse-DNS
@@ -109,8 +114,8 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case 1:
                                     self.send_json_response(200, self.inventory_controller.get())
                                 case 2:
-                                    item_id = int(paths[4])
-                                    self.send_json_response(200, self.inventory_controller.get(item_id))
+                                    self.send_response(404)
+                                    self.end_headers()
                                 case 3 if paths[5] == "totals":
                                     item_id = int(paths[4])
                                     self.send_json_response(200, self.inventory_controller.get_totals(item_id))
