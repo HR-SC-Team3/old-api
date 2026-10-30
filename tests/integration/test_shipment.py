@@ -163,6 +163,7 @@ def _valid_shipment_payload():
     return {
         "reference": "TEST-SHP-999991",
         "order_id": 1,
+        "id": 1,
         "shipment_date": "2025-03-05T18:51:53Z",
         "shipment_type": "Outgoing",
         "shipment_status": "Scheduled",
@@ -170,8 +171,6 @@ def _valid_shipment_payload():
         "shipping_method": "Standard",
         "payment_type": "Automated",
         }
-
-@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 instead of 201")
 
 def test_post_shipment_returns_201(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
@@ -187,6 +186,16 @@ def test_post_shipment_returns_201(base_url, user_headers, preserve_data_files):
         body = response.json()
         assert isinstance(body, dict)
         assert "id" in body
+
+@pytest.mark.xfail(strict=True, reason="POST shipment without id returns 500 instead of 201")
+
+def test_post_shipment_without_id_returns_201(base_url, user_headers, preserve_data_files):
+    preserve_data_files("shipment.json")
+    headers = _get_headers(user_headers, method="post")
+    payload = _valid_shipment_payload()
+    payload.pop("id")
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload)
+    assert response.status_code == 201
 
 def test_post_shipments_requires_authentication(base_url):
     response = requests.post(f"{base_url}/api/v1/shipments", json=_valid_shipment_payload(),)
@@ -227,7 +236,6 @@ def test_post_shipment_accepts_application_json(base_url, user_headers, preserve
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json= _valid_shipment_payload(),)
     assert response.status_code != 415
 
-@pytest.mark.xfail(strict = True, reason="POST shipment doesn't return 400 or 422 but it returns 500 since there is no validation yet")
 
 def test_post_shipment_missing_required_field_is_rejected(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
@@ -237,8 +245,7 @@ def test_post_shipment_missing_required_field_is_rejected(base_url, user_headers
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
 
-@pytest.mark.xfail(strict = True, reason="POST shipment doesn't return 400 or 422 but it returns 500 since there is no validation checks yet")
-
+@pytest.mark.xfail(strict=True, reason="POST accepts an invalid shipment_status with 201 instead of rejecting it with 400 or 422")
 def test_post_shipment_rejects_invalid_value(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
@@ -247,8 +254,7 @@ def test_post_shipment_rejects_invalid_value(base_url, user_headers, preserve_da
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
 
-@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 for duplicate references even tho it needs to return 400, 409 or 422")
-
+@pytest.mark.xfail(strict=True, reason="POST accepts an duplicate references with 201 instead of rejecting it")
 def test_post_shipment_duplicate_reference_is_handled(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method="post")
@@ -258,7 +264,6 @@ def test_post_shipment_duplicate_reference_is_handled(base_url, user_headers, pr
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 409, 422)
 
-@pytest.mark.xfail(strict = True, reason="POST shipment return 500 for unexpected fields. There is no validation checks yet")
 
 def test_post_shipment_unexpected_field_is_handled_consistently(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
@@ -268,9 +273,8 @@ def test_post_shipment_unexpected_field_is_handled_consistently(base_url, user_h
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (201, 400, 422)
 
-@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 for invalid foreign keys since there are no validation checks yet")
-
-def test_post_shipment_reject_invalid_foreign_key(base_url, user_headers, preserve_data_files):
+@pytest.mark.xfail(strict=True, reason="POST accepts an nonexistent order_id key with 201 instead of rejecting it with 400, 404, 409 or 422")
+def test_post_shipment_rejects_invalid_foreign_key(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
     payload = _valid_shipment_payload()
