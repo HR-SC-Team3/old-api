@@ -20,9 +20,6 @@ class Shipment(IResource):
         shipment_pool = data_provider.fetch_shipment_pool()
         shipment_pool.add_shipment(data)
         shipment_pool.save()
-        data_provider.fetch_shipment_item_pool().save()
-        data_provider.fetch_inventory_pool().save()
-        return shipment_pool.get_shipment(data["id"])
 
 
     def put(self, shipment_id, data):
@@ -31,35 +28,24 @@ class Shipment(IResource):
             return None
         shipment_pool.update_shipment(shipment_id, data)
         shipment_pool.save()
-        data_provider.fetch_shipment_item_pool().save()
-        data_provider.fetch_inventory_pool().save()
         return True
 
     def put_orders(self, shipment_id, order_ids):
         shipment_pool = data_provider.fetch_shipment_pool()
-        if shipment_pool.get_shipment(shipment_id) is None:
-            return None
         shipment_pool.update_orders_in_shipment(shipment_id, order_ids)
         shipment_pool.save()
         return True
     
     def put_items(self, shipment_id, items):
         shipment_pool = data_provider.fetch_shipment_pool()
-        if shipment_pool.get_shipment(shipment_id) is None:
-            return None
         shipment_pool.update_items_in_shipment(shipment_id, items)
         shipment_pool.save()
-        data_provider.fetch_shipment_item_pool().save()
-        data_provider.fetch_inventory_pool().save()
         return True
     
     def delete(self, shipment_id):
         shipment_pool = data_provider.fetch_shipment_pool()
         if shipment_pool.get_shipment(shipment_id) is None:
             return None
-        shipment_pool.update_items_in_shipment(shipment_id, [])
         shipment_pool.remove_shipment(shipment_id)
         shipment_pool.save()
-        data_provider.fetch_inventory_pool().save()
-        data_provider.fetch_shipment_item_pool().save()
         return True

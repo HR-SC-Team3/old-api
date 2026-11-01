@@ -176,6 +176,12 @@ def test_error_respone_have_constint_format(base_url):
     assert get_response.headers.get("Content-Type") is None
     assert post_respone.headers.get("Content-Type") is None
 
+@pytest.mark.parametrize("suffix", ["1/totals", "1/1"])
+def test_get_inventory_subroute_returns_404(base_url, user_headers, suffix):
+    headers = _get_headers(user_headers)
+    response = requests.get(f"{base_url}/api/v1/inventories/{suffix}", headers=headers,)
+    assert response.status_code == 404
+
 #endregion
 
 # region GET /inventories/{id}
@@ -527,7 +533,7 @@ def test_post_inventory_insufficient_permissions_returns_403(base_url, user_head
 # region PUT /inventories/{id}
 def test_PUT_inventory_by_id_is_not_supported(base_url, user_headers):
     headers = _get_headers(user_headers, method= "put")
-    response = requests.put(f"{base_url}/api/v1/inventories/1",headers=headers, json={"item_id": 459})
+    response = requests.put(f"{base_url}/api/v1/inventories/1",headers=headers,)
     assert response.status_code == 404
 
 def test_PUT_inventory_requires_authentication(base_url):
@@ -538,6 +544,11 @@ def test_PUT_inventory_insufficient_permission(base_url, user_headers):
     headers = _get_headers(user_headers, method="put", allowed=False)
     response = requests.put(f"{base_url}/api/v1/inventories/1", headers=headers, json={"item_id": 459})
     assert response.status_code == 403
+
+def test_put_inventory_composite_key_returns_404(base_url, user_headers):
+    headers = _get_headers(user_headers, method="put")
+    response = requests.put(f"{base_url}/api/v1/inventories/1/1", headers=headers, json={"item_id": 1, "location_id": 1},)
+    assert response.status_code == 404
 # endregion
 
 
@@ -553,10 +564,14 @@ def test_DELETE_inventory_by_id_is_not_supported(base_url, user_headers):
     response = requests.delete(f"{base_url}/api/v1/inventories/1", headers=headers,)
     assert response.status_code == 404
 
-def test_DELETE_inventory_by_id_is_not_supported(base_url):
+def test_DELETE_inventory_by_id_requires_authentication(base_url):
     response = requests.delete(f"{base_url}/api/v1/inventories/1")
     assert response.status_code == 401
 
+def test_delete_inventory_composite_key_returns_404(base_url, user_headers):
+    headers = _get_headers(user_headers, method="delete")
+    response = requests.delete(f"{base_url}/api/v1/inventories/1/1", headers=headers,)
+    assert response.status_code == 404
 # endregion
 
 

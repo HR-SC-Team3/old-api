@@ -283,26 +283,21 @@ def test_post_shipment_rejects_invalid_foreign_key(base_url, user_headers, prese
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422)
 
-@pytest.mark.xfail(strict = True, reason="POST shipment returns 500 instead of just creating a new shipment")
-
 def test_post_shipment_is_immendiately_retrieveable(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
     payload = _valid_shipment_payload()
+    existing_response = _get_shipments(base_url, user_headers)
+    assert existing_response.status_code == 200
+    existing_shipments = existing_response.json()
+    assert existing_shipments
+
+    payload["id"] = max(shipment["id"] for shipment in existing_shipments) + 1
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code == 201
-    created_id = None
-
-    if response.content:
-        body = response.json()
-        if isinstance(body, dict):
-            created_id = body.get("id")
-    if created_id is None:
-        location = response.headers.get("Location")
-        assert location, ("Created shipment must expose its id in the response body or Location header.")
-        created_id = int(location.rstrip("/").split("/")[-1])
-
-    get_response = _shipment_by_id(base_url, user_headers, created_id,)
+    assert response.content == b""
+    created_id = payload["id"]
+    get_response = _shipment_by_id(base_url, user_headers, created_id)
     assert get_response.status_code == 200
     created = get_response.json()
     assert created["id"] == created_id
