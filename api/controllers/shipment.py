@@ -22,9 +22,10 @@ class Shipment(IResource):
         shipment_pool.save()
         data_provider.fetch_shipment_item_pool().save()
         data_provider.fetch_inventory_pool().save()
-        return data
+        return shipment_pool.get_shipment(data["id"])
 
-    def put(self, data, shipment_id):
+
+    def put(self, shipment_id, data):
         shipment_pool = data_provider.fetch_shipment_pool()
         if shipment_pool.get_shipment(shipment_id) is None:
             return None
@@ -32,7 +33,7 @@ class Shipment(IResource):
         shipment_pool.save()
         data_provider.fetch_shipment_item_pool().save()
         data_provider.fetch_inventory_pool().save()
-        return data
+        return True
 
     def put_orders(self, shipment_id, order_ids):
         shipment_pool = data_provider.fetch_shipment_pool()
@@ -50,13 +51,15 @@ class Shipment(IResource):
         shipment_pool.save()
         data_provider.fetch_shipment_item_pool().save()
         data_provider.fetch_inventory_pool().save()
-        return items
+        return True
     
     def delete(self, shipment_id):
         shipment_pool = data_provider.fetch_shipment_pool()
         if shipment_pool.get_shipment(shipment_id) is None:
             return None
+        shipment_pool.update_items_in_shipment(shipment_id, [])
         shipment_pool.remove_shipment(shipment_id)
         shipment_pool.save()
+        data_provider.fetch_inventory_pool().save()
         data_provider.fetch_shipment_item_pool().save()
         return True
