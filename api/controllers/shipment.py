@@ -40,7 +40,7 @@ class Shipment(IResource):
             return None
         shipment_pool.update_orders_in_shipment(shipment_id, order_ids)
         shipment_pool.save()
-        return order_ids
+        return True
     
     def put_items(self, shipment_id, items):
         shipment_pool = data_provider.fetch_shipment_pool()
