@@ -9,7 +9,7 @@ class Inventory(IResource):
             return inventory_pool.get_inventories()
         if location_id is None:
             return None
-        return inventory_pool.get_inventories_for_item(resource_id, location_id)
+        return inventory_pool.get_inventories(resource_id, location_id)
 
     def get_totals(self, resource_id):
         inventory_pool = data_provider.fetch_inventory_pool()
