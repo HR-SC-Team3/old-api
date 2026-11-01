@@ -20,6 +20,7 @@ from controllers.shipment import Shipment
 from controllers.orders import Orders
 from controllers.clients import Clients
 from controllers.item_types import ItemTypes
+from controllers.locations import Locations
 
 # Enables a test-only cache-reset endpoint (see do_POST below). Never set in
 # a normal run of this server -- only the test suite's conftest.py sets it
@@ -40,6 +41,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             "orders": Orders(),
             "clients": Clients(),
             "item_types": ItemTypes(),
+            "locations": Locations(),
         }
         super().__init__(*args, **kwargs)
 
@@ -100,7 +102,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     # Strip out the query parameters, if any. We do not support any query parameters, so we just ignore them.
                     paths[3] = paths[3].split("?")[0]
                     match paths[3]:
-                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types":
+                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations":
                             if self._deny_without_access(user, paths[3:], "get"):
                                 return
                             controller = self.controllers[paths[3]]
@@ -233,15 +235,16 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                     order_id = int(paths[4])
                                     updated_items = self._read_json_body()
 
-                                    controller.put_items(order_id, updated_items)
-
-                                    self.send_response(200)
+                                    if controller.put_items(order_id, updated_items) is None:
+                                        self.send_response(404)
+                                    else:
+                                        self.send_response(200)
                                     self.end_headers()
 
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
-                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types":
+                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations":
                             if self._deny_without_access(user, paths[3:], "put"):
                                 return
                             resource_id = int(paths[4])
@@ -333,7 +336,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 paths = self.path.split("/")
                 if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
                     match paths[3]:
-                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types":
+                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations":
                             if self._deny_without_access(user, paths[3:], "post"):
                                 return
                             media_type = (
@@ -417,7 +420,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 paths = self.path.split("/")
                 if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
                     match paths[3]:
-                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types":
+                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations":
                             if self._deny_without_access(user, paths[3:], "delete"):
                                 return
                             if self.controllers[paths[3]].delete(int(paths[4])) is None:
@@ -473,32 +476,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(403)
             self.end_headers()
             return
-        if paths[0] == "locations":
-            parts = len(paths)
-            match parts:
-                case 1:
-                    locations = data_provider.fetch_location_pool().get_locations()
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(locations).encode("utf-8"))
-                case 2:
-                    location_id = int(paths[1])
-                    location = data_provider.fetch_location_pool().get_location(
-                        location_id
-                    )
-                    if location is None:
-                        self.send_response(404)
-                        self.end_headers()
-                        return
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(location).encode("utf-8"))
-                case _:
-                    self.send_response(404)
-                    self.end_headers()
-        elif paths[0] == "items":
+        if paths[0] == "items":
             parts = len(paths)
             match parts:
                 case 1:
@@ -661,15 +639,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(415)
             self.end_headers()
             return
-        if paths[0] == "locations":
-            content_length = int(self.headers["Content-Length"])
-            post_data = self.rfile.read(content_length)
-            new_location = json.loads(post_data.decode())
-            data_provider.fetch_location_pool().add_location(new_location)
-            data_provider.fetch_location_pool().save()
-            self.send_response(201)
-            self.end_headers()
-        elif paths[0] == "items":
+        if paths[0] == "items":
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             new_item = json.loads(post_data.decode())
@@ -744,21 +714,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(403)
             self.end_headers()
             return
-        if paths[0] == "locations":
-            location_id = int(paths[1])
-            content_length = int(self.headers["Content-Length"])
-            post_data = self.rfile.read(content_length)
-            updated_location = json.loads(post_data.decode())
-            location_pool = data_provider.fetch_location_pool()
-            if location_pool.get_location(location_id) is None:
-                self.send_response(404)
-                self.end_headers()
-                return
-            location_pool.update_location(location_id, updated_location)
-            location_pool.save()
-            self.send_response(200)
-            self.end_headers()
-        elif paths[0] == "items":
+        if paths[0] == "items":
             item_id = int(paths[1])
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
@@ -896,18 +852,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(403)
             self.end_headers()
             return
-        if paths[0] == "locations":
-            location_id = int(paths[1])
-            location_pool = data_provider.fetch_location_pool()
-            if location_pool.get_location(location_id) is None:
-                self.send_response(404)
-                self.end_headers()
-                return
-            location_pool.remove_location(location_id)
-            location_pool.save()
-            self.send_response(200)
-            self.end_headers()
-        elif paths[0] == "items":
+        if paths[0] == "items":
             item_id = int(paths[1])
             item_pool = data_provider.fetch_item_pool()
             if item_pool.get_item(item_id) is None:
