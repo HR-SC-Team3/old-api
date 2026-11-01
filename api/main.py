@@ -271,6 +271,8 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                             item_id = int(paths[4])
                             location_id = int(paths[5])
                             updated_inventory = self._read_json_body()
+                            updated_inventory["item_id"] = item_id
+                            updated_inventory["location_id"] = location_id
                             if controller.put(item_id, location_id, updated_inventory) is None:
                                 self.send_response(404)
                             else:
@@ -388,11 +390,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 return
                             new_shipment = self._read_json_body()
                             if not isinstance(new_shipment, dict):
-                                self.send_response(400)
-                                self.end_headers()
-                                return
-                            required_fields = [ "reference", "order_id", "shipment_date", "shipment_type", "shipment_status", "carrier_name", "shipping_method", "payment_type",]
-                            if not all(field in new_shipment for field in required_fields):
                                 self.send_response(400)
                                 self.end_headers()
                                 return

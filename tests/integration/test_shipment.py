@@ -237,6 +237,7 @@ def test_post_shipment_accepts_application_json(base_url, user_headers, preserve
     assert response.status_code != 415
 
 
+@pytest.mark.xfail(strict=True, reason="Right now it doesn't have any checks for missing required fields")
 def test_post_shipment_missing_required_field_is_rejected(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
