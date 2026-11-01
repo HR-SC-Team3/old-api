@@ -180,12 +180,7 @@ def test_post_shipment_returns_201(base_url, user_headers, preserve_data_files):
 
     response = requests.post( f"{base_url}/api/v1/shipments", headers =headers, json=payload,)
     assert response.status_code == 201
-    assert response.headers.get("Location") or response.content
-
-    if response.content:
-        body = response.json()
-        assert isinstance(body, dict)
-        assert "id" in body
+    assert response.content == b""
 
 @pytest.mark.xfail(strict=True, reason="POST shipment without id returns 500 instead of 201")
 
@@ -304,14 +299,14 @@ def test_post_shipment_is_immendiately_retrieveable(base_url, user_headers, pres
     assert created["reference"] == payload["reference"]
     assert created["order_id"] == payload["order_id"]
 
-def test_post_shipment_response_content_type_is_json(base_url, user_headers, preserve_data_files,):
+def test_post_shipment_response_has_no_content_type(base_url, user_headers, preserve_data_files,):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method="post")
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=_valid_shipment_payload(),)
 
-    if response.status_code == 201:
-        assert response.headers.get("Content-Type", "").startswith("application/json")
-
+    assert response.status_code == 201
+    assert response.content == b""
+    assert response.headers.get("Content-Type") is None
 
 #endregion
 
