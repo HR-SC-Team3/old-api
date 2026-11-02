@@ -15,7 +15,7 @@ class Items(IResource):
         return data_provider.fetch_inventory_pool().get_inventories_for_item(
             resource_id
         )
-    
+
     def get_sub_resource_totals(self, resource_id):
         return data_provider.fetch_inventory_pool().get_inventory_totals_for_item(
             resource_id

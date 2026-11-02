@@ -22,7 +22,7 @@ from controllers.clients import Clients
 from controllers.item_types import ItemTypes
 from controllers.locations import Locations
 from controllers.items import Items
-from controllers.item_lines import Item_lines
+from controllers.item_lines import ItemLines
 
 # Enables a test-only cache-reset endpoint (see do_POST below). Never set in
 # a normal run of this server -- only the test suite's conftest.py sets it
@@ -45,7 +45,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             "item_types": ItemTypes(),
             "locations": Locations(),
             "items": Items(),
-            "item_lines": Item_lines(),
+            "item_lines": ItemLines(),
         }
         super().__init__(*args, **kwargs)
 
@@ -423,6 +423,25 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         else:
             self.send_response(404)
             self.end_headers()
+    
+    def handle_post_version_1(self, paths, user):
+        if not auth_provider.has_access(user, paths, "post"):
+            self._drain_request_body()
+            self.send_response(403)
+            self.end_headers()
+            return
+
+        content_type = self.headers.get("Content-Type", "")
+        media_type = content_type.split(";", 1)[0].strip().lower()
+
+        if media_type != "application/json":
+            self._drain_request_body()
+            self.send_response(415)
+            self.end_headers()
+            return
+        else:
+            self.send_response(404)
+            self.end_headers() 
 
     def handle_put_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "put"):

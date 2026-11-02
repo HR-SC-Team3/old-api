@@ -2,7 +2,7 @@ from controllers.IResource import IResource
 from providers import data_provider
 
 
-class Item_lines(IResource):
+class ItemLines(IResource):
     sub_resource = "items"
 
     def get(self, resource_id=None):
