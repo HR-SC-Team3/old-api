@@ -60,9 +60,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         # pending in the kernel receive buffer can trigger a TCP RST
         # instead of a clean close, surfacing as a connection reset on
         # the client. Draining the body before responding avoids that.
-        if getattr(self, "_body_consumed", False):
-            return
-        self._body_consumed = True
         content_length = self.headers.get("Content-Length")
         if content_length:
             self.rfile.read(int(content_length))
@@ -76,7 +73,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         return True
 
     def _read_json_body(self):
-        self._body_consumed = True
         content_length = int(self.headers["Content-Length"])
         return json.loads(self.rfile.read(content_length).decode())
 
@@ -219,11 +215,8 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case 3 if paths[5] == "items":
                                     order_id = int(paths[4])
                                     updated_items = self._read_json_body()
-
-                                    if controller.put_items(order_id, updated_items) is None:
-                                        self.send_response(404)
-                                    else:
-                                        self.send_response(200)
+                                    controller.put_items(order_id, updated_items)
+                                    self.send_response(200)
                                     self.end_headers()
 
                                 case _:

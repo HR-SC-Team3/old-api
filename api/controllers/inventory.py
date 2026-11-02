@@ -11,17 +11,13 @@ class Inventory(IResource):
             return None
         return inventory_pool.get_inventory(resource_id, location_id)
 
-    def get_totals(self, resource_id):
-        inventory_pool = data_provider.fetch_inventory_pool()
-        return inventory_pool.get_inventory_totals_for_item(resource_id)
-    
     def post(self, data):
         inventory_pool = data_provider.fetch_inventory_pool()
         inventory_pool.add_inventory(data)
         inventory_pool.save()
         return data
 
-
+    # keep this for when the API needs to use it in the future
     def put(self, resource_id, location_id, data):
         inventory_pool = data_provider.fetch_inventory_pool()
         if inventory_pool.get_inventory(resource_id, location_id) is None:
@@ -30,6 +26,7 @@ class Inventory(IResource):
         inventory_pool.save()
         return data
 
+    # keep this for when the API needs to use it in the future
     def delete(self, resource_id, location_id):
         inventory_pool = data_provider.fetch_inventory_pool()
         if inventory_pool.get_inventory(resource_id, location_id) is None:
