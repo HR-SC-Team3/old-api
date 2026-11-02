@@ -159,11 +159,11 @@ def test_get_shipments_unknown_query_param_is_handled(base_url, user_headers):
 
 # region POST shipment
 
-def _valid_shipment_payload():
+def _valid_shipment_payload(shipment_id):
     return {
         "reference": "TEST-SHP-999991",
         "order_id": 1,
-        "id": 1,
+        "id": shipment_id,
         "shipment_date": "2025-03-05T18:51:53Z",
         "shipment_type": "Outgoing",
         "shipment_status": "Scheduled",
@@ -172,13 +172,18 @@ def _valid_shipment_payload():
         "payment_type": "Automated",
         }
 
+def _next_shipment_id(base_url, user_headers):
+    response = _get_shipments(base_url, user_headers)
+    assert response.status_code == 200
+    shipments = response.json()
+    assert shipments
+    return max(shipment["id"] for shipment in shipments) + 1
+
 def test_post_shipment_returns_201(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
-
     headers = _get_headers(user_headers, method="post")
-    payload = _valid_shipment_payload()
-
-    response = requests.post( f"{base_url}/api/v1/shipments", headers =headers, json=payload,)
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code == 201
     assert response.content == b""
 
@@ -187,19 +192,19 @@ def test_post_shipment_returns_201(base_url, user_headers, preserve_data_files):
 def test_post_shipment_without_id_returns_201(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method="post")
-    payload = _valid_shipment_payload()
+    payload = _valid_shipment_payload(1)
     payload.pop("id")
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload)
     assert response.status_code == 201
 
 def test_post_shipments_requires_authentication(base_url):
-    response = requests.post(f"{base_url}/api/v1/shipments", json=_valid_shipment_payload(),)
+    response = requests.post(f"{base_url}/api/v1/shipments", json=_valid_shipment_payload(1),)
 
     assert response.status_code == 401
 
 def test_post_shipment_insufficient_permission_returns_403(base_url, user_headers):
     headers = _get_headers(user_headers, method="post", allowed =False)
-    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=_valid_shipment_payload(),)
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=_valid_shipment_payload(1),)
     assert response.status_code == 403
 
 def test_post_shipment_requires_application_json(base_url, user_headers, preserve_data_files):
@@ -213,14 +218,16 @@ def test_post_shipment_rejects_missing_content_type(base_url, user_headers, pres
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method ="post")
     headers.pop("Content-Type", None)
-    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, data = json.dumps(_valid_shipment_payload()))
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, data = json.dumps(payload))
     assert response.status_code == 415
 
 def test_post_shipment_accepts_json_with_charset(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method="post")
     headers["Content-Type"] = "application/json; charset=utf-8"
-    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, data=json.dumps(_valid_shipment_payload()),)
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, data=json.dumps(payload),)
     assert response.status_code != 415
 
 
@@ -228,7 +235,8 @@ def test_post_shipment_accepts_application_json(base_url, user_headers, preserve
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
     headers["Content-Type"] ="application/json"
-    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json= _valid_shipment_payload(),)
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json= payload,)
     assert response.status_code != 415
 
 
@@ -236,7 +244,7 @@ def test_post_shipment_accepts_application_json(base_url, user_headers, preserve
 def test_post_shipment_missing_required_field_is_rejected(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
-    payload = _valid_shipment_payload()
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
     payload.pop("reference")
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
@@ -245,7 +253,7 @@ def test_post_shipment_missing_required_field_is_rejected(base_url, user_headers
 def test_post_shipment_rejects_invalid_value(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
-    payload = _valid_shipment_payload()
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
     payload["shipment_status"] = "NOT_A_REAL_STATUS"
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
@@ -255,7 +263,7 @@ def test_post_shipment_duplicate_reference_is_handled(base_url, user_headers, pr
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method="post")
     existing = _first_shipment(base_url, user_headers)
-    payload = _valid_shipment_payload()
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
     payload["reference"] = existing["reference"]
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 409, 422)
@@ -264,7 +272,7 @@ def test_post_shipment_duplicate_reference_is_handled(base_url, user_headers, pr
 def test_post_shipment_unexpected_field_is_handled_consistently(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
-    payload = _valid_shipment_payload()
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
     payload["unexpected_field"] = "should-not-be-accepted"
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (201, 400, 422)
@@ -273,7 +281,7 @@ def test_post_shipment_unexpected_field_is_handled_consistently(base_url, user_h
 def test_post_shipment_rejects_invalid_foreign_key(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
-    payload = _valid_shipment_payload()
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
     payload["order_id"] = 99999999999
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422)
@@ -281,13 +289,7 @@ def test_post_shipment_rejects_invalid_foreign_key(base_url, user_headers, prese
 def test_post_shipment_is_immendiately_retrieveable(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
-    payload = _valid_shipment_payload()
-    existing_response = _get_shipments(base_url, user_headers)
-    assert existing_response.status_code == 200
-    existing_shipments = existing_response.json()
-    assert existing_shipments
-
-    payload["id"] = max(shipment["id"] for shipment in existing_shipments) + 1
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code == 201
     assert response.content == b""
@@ -302,7 +304,8 @@ def test_post_shipment_is_immendiately_retrieveable(base_url, user_headers, pres
 def test_post_shipment_response_has_no_content_type(base_url, user_headers, preserve_data_files,):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method="post")
-    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=_valid_shipment_payload(),)
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json= payload,)
 
     assert response.status_code == 201
     assert response.content == b""

@@ -14,7 +14,10 @@ def _get_headers(user_headers, method="get", allowed=True):
 
 def _first_inventory(base_url, user_headers):
     headers = _get_headers(user_headers)
-    body = requests.get(f"{base_url}/api/v1/inventories", headers=headers).json()
+    response = requests.get(f"{base_url}/api/v1/inventories", headers=headers)
+    if response.status_code >= 500:
+        pytest.fail(f"Unexpected server error: {response.status_code}")
+    body = response.json()
     assert body, "fixture data/inventory.json is expected to be non-empty"
     return body[0]
 

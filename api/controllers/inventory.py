@@ -3,6 +3,7 @@ from providers import data_provider
 
 
 class Inventory(IResource):
+    #  Keep composite-key lookup for future use; main.py currently returns 404 for inventory item routes.
     def get(self, resource_id=None, location_id=None):
         inventory_pool = data_provider.fetch_inventory_pool()
         if resource_id is None:
