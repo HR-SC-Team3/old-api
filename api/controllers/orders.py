@@ -36,6 +36,7 @@ class Orders(IResource):
         order_pool = data_provider.fetch_order_pool()
         order_pool.update_items_in_order(resource_id, data)
         order_pool.save()
+        return True
 
     def delete(self, resource_id):
         order_pool = data_provider.fetch_order_pool()

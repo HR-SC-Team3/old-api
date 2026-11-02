@@ -15,9 +15,12 @@ from controllers.item_groups import ItemGroups
 from controllers.suppliers import Suppliers
 from controllers.transfers import Transfers
 from controllers.warehouses import Warehouses
+from controllers.inventory import Inventory
+from controllers.shipment import Shipment
 from controllers.orders import Orders
 from controllers.clients import Clients
 from controllers.item_types import ItemTypes
+from controllers.locations import Locations
 
 # Enables a test-only cache-reset endpoint (see do_POST below). Never set in
 # a normal run of this server -- only the test suite's conftest.py sets it
@@ -26,15 +29,19 @@ TEST_MODE = os.environ.get("API_TEST_MODE") == "1"
 
 
 class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
+
     def __init__(self, *args, **kwargs):
         self.controllers = {
             "item_groups": ItemGroups(),
             "suppliers": Suppliers(),
             "transfers": Transfers(),
+            "inventories": Inventory(),
+            "shipments": Shipment(),
             "warehouses": Warehouses(),
             "orders": Orders(),
             "clients": Clients(),
             "item_types": ItemTypes(),
+            "locations": Locations(),
         }
         super().__init__(*args, **kwargs)
 
@@ -91,7 +98,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     # Strip out the query parameters, if any. We do not support any query parameters, so we just ignore them.
                     paths[3] = paths[3].split("?")[0]
                     match paths[3]:
-                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types":
+                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations":
                             if self._deny_without_access(user, paths[3:], "get"):
                                 return
                             controller = self.controllers[paths[3]]
@@ -109,6 +116,39 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                     self.send_json_response(
                                         200, controller.get_sub_resource(int(paths[4]))
                                     )
+                                case _:
+                                    self.send_response(404)
+                                    self.end_headers()
+                        case "inventories":
+                            if self._deny_without_access(user, paths[3:], "get"):
+                                return
+                            controller = self.controllers["inventories"]
+                            match len(paths) - 3:
+                                case 1:
+                                    self.send_json_response(200, controller.get())
+                                case _:
+                                    self.send_response(404)
+                                    self.end_headers()
+                        case "shipments":
+                            if self._deny_without_access(user, paths[3:], "get"):
+                                return
+                            controller = self.controllers["shipments"]
+                            match len(paths) - 3:
+                                case 1:
+                                    self.send_json_response(200, controller.get())
+                                case 2:
+                                    shipment = controller.get(int(paths[4]))
+                                    if shipment is None:
+                                        self.send_response(404)
+                                        self.end_headers()
+                                    else:
+                                        self.send_json_response(200, shipment)
+                                case 3 if paths[5] == "orders":
+                                    orders = controller.get_orders(int(paths[4]))
+                                    self.send_json_response(200, orders)
+                                case 3 if paths[5] == "items":
+                                    items = controller.get_items(int(paths[4]))
+                                    self.send_json_response(200, items)
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
@@ -153,7 +193,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
-                                    
+
                         case "orders":
                             if self._deny_without_access(user, paths[3:], "put"):
                                 return
@@ -175,16 +215,14 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case 3 if paths[5] == "items":
                                     order_id = int(paths[4])
                                     updated_items = self._read_json_body()
-
                                     controller.put_items(order_id, updated_items)
-
                                     self.send_response(200)
                                     self.end_headers()
 
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
-                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types":
+                        case "warehouses" | "suppliers" | "item_groups" | "clients" | "item_types" | "locations":
                             if self._deny_without_access(user, paths[3:], "put"):
                                 return
                             resource_id = int(paths[4])
@@ -199,6 +237,43 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                             else:
                                 self.send_response(200)
                             self.end_headers()
+                        case "inventories":
+                            if self._deny_without_access(user, paths[3:], "put"):
+                                return
+                            self.send_response(404)
+                            self.end_headers()
+                        case "shipments":
+                            if self._deny_without_access(user, paths[3:], "put"):
+                                return
+                            controller = self.controllers["shipments"]
+                            match len(paths) - 3:
+                                case 2:
+                                    shipment_id = int(paths[4])
+                                    update_shipment = self._read_json_body()
+                                    if controller.put(shipment_id, update_shipment) is None:
+                                        self.send_response(404)
+                                    else:
+                                        self.send_response(200)
+                                    self.end_headers()
+                                case 3 if (paths[5]) == "orders":
+                                    shipment_id = int(paths[4])
+                                    updated_orders = self._read_json_body()
+                                    if controller.put_orders(shipment_id, updated_orders) is None:
+                                        self.send_response(404)
+                                    else:
+                                        self.send_response(200)
+                                    self.end_headers()
+                                case 3 if (paths[5]) =="items":
+                                    shipment_id = int(paths[4])
+                                    updated_items = self._read_json_body()
+                                    if controller.put_items(shipment_id, updated_items) is None:
+                                        self.send_response(404)
+                                    else:
+                                        self.send_response(200)
+                                    self.end_headers()
+                                case _:
+                                    self.send_response(404)
+                                    self.end_headers()
                         case _:
                             self.handle_put_version_1(paths[3:], user)
             except ValueError:
@@ -226,7 +301,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 paths = self.path.split("/")
                 if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
                     match paths[3]:
-                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types":
+                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations":
                             if self._deny_without_access(user, paths[3:], "post"):
                                 return
                             media_type = (
@@ -241,6 +316,39 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 self.end_headers()
                                 return
                             self.controllers[paths[3]].post(self._read_json_body())
+                            self.send_response(201)
+                            self.end_headers()
+                        case "inventories":
+                            if self._deny_without_access(user, paths[3:], "post"):
+                                return
+                            controller = self.controllers["inventories"]
+                            media_type = (self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower())
+                            if media_type != "application/json":
+                                self._drain_request_body()
+                                self.send_response(415)
+                                self.end_headers()
+                                return
+                            new_inventory = self._read_json_body()
+                            required_fields = [ "item_id", "location_id", "quantity_on_hand", "quantity_expected", "quantity_ordered", "quantity_allocated",]
+                            if not all(field in new_inventory for field in required_fields):
+                                self.send_response(400)
+                                self.end_headers()
+                                return
+                            controller.post(new_inventory)
+                            self.send_response(201)
+                            self.end_headers()
+                        case "shipments":
+                            if self._deny_without_access(user, paths[3:], "post"):
+                                return
+                            controller = self.controllers["shipments"]
+                            media_type = (self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower())
+                            if media_type != "application/json":
+                                self._drain_request_body()
+                                self.send_response(415)
+                                self.end_headers()
+                                return
+                            new_shipment = self._read_json_body()
+                            controller.post(new_shipment)
                             self.send_response(201)
                             self.end_headers()
                         case _:
@@ -261,10 +369,25 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 paths = self.path.split("/")
                 if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
                     match paths[3]:
-                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types":
+                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations":
                             if self._deny_without_access(user, paths[3:], "delete"):
                                 return
                             if self.controllers[paths[3]].delete(int(paths[4])) is None:
+                                self.send_response(404)
+                            else:
+                                self.send_response(200)
+                            self.end_headers()
+                        case "inventories":
+                            if self._deny_without_access(user, paths[3:], "delete"):
+                                return
+                            self.send_response(404)
+                            self.end_headers()
+                        case "shipments":
+                            if self._deny_without_access(user, paths[3:], "delete"):
+                                return
+                            controller = self.controllers["shipments"]
+                            shipment_id = int(paths[4])
+                            if controller.delete(shipment_id) is None:
                                 self.send_response(404)
                             else:
                                 self.send_response(200)
@@ -288,32 +411,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(403)
             self.end_headers()
             return
-        if paths[0] == "locations":
-            parts = len(paths)
-            match parts:
-                case 1:
-                    locations = data_provider.fetch_location_pool().get_locations()
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(locations).encode("utf-8"))
-                case 2:
-                    location_id = int(paths[1])
-                    location = data_provider.fetch_location_pool().get_location(
-                        location_id
-                    )
-                    if location is None:
-                        self.send_response(404)
-                        self.end_headers()
-                        return
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(location).encode("utf-8"))
-                case _:
-                    self.send_response(404)
-                    self.end_headers()
-        elif paths[0] == "items":
+        if paths[0] == "items":
             parts = len(paths)
             match parts:
                 case 1:
@@ -400,75 +498,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 case _:
                     self.send_response(404)
                     self.end_headers()
-        elif paths[0] == "inventories":
-            parts = len(paths)
-            match parts:
-                case 1:
-                    inventories = data_provider.fetch_inventory_pool().get_inventories()
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(inventories).encode("utf-8"))
-                case 2:
-                    # Inventory rows are keyed on a composite (item_id, location_id)
-                    # in the new schema, so a single surrogate id has no meaning.
-                    self.send_response(404)
-                    self.end_headers()
-                case _:
-                    self.send_response(404)
-                    self.end_headers()
-        elif paths[0] == "shipments":
-            parts = len(paths)
-            match parts:
-                case 1:
-                    shipments = data_provider.fetch_shipment_pool().get_shipments()
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(shipments).encode("utf-8"))
-                case 2:
-                    shipment_id = int(paths[1])
-                    shipment = data_provider.fetch_shipment_pool().get_shipment(
-                        shipment_id
-                    )
-                    if shipment is None:
-                        self.send_response(404)
-                        self.end_headers()
-                        return
-                    self.send_response(200)
-                    self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(shipment).encode("utf-8"))
-                case 3:
-                    if paths[2] == "orders":
-                        shipment_id = int(paths[1])
-                        orders = data_provider.fetch_shipment_pool().get_order_ids_in_shipment(
-                            shipment_id
-                        )
-                        self.send_response(200)
-                        self.send_header("Content-type", "application/json")
-                        self.end_headers()
-                        self.wfile.write(json.dumps(orders).encode("utf-8"))
-                    elif paths[2] == "items":
-                        shipment_id = int(paths[1])
-                        items = (
-                            data_provider.fetch_shipment_pool().get_items_in_shipment(
-                                shipment_id
-                            )
-                        )
-                        self.send_response(200)
-                        self.send_header("Content-type", "application/json")
-                        self.end_headers()
-                        self.wfile.write(json.dumps(items).encode("utf-8"))
-                    else:
-                        self.send_response(404)
-                        self.end_headers()
-                case _:
-                    self.send_response(404)
-                    self.end_headers()
-        else:
-            self.send_response(404)
-            self.end_headers()
 
     def handle_post_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "post"):
@@ -485,15 +514,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(415)
             self.end_headers()
             return
-        if paths[0] == "locations":
-            content_length = int(self.headers["Content-Length"])
-            post_data = self.rfile.read(content_length)
-            new_location = json.loads(post_data.decode())
-            data_provider.fetch_location_pool().add_location(new_location)
-            data_provider.fetch_location_pool().save()
-            self.send_response(201)
-            self.end_headers()
-        elif paths[0] == "items":
+        if paths[0] == "items":
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             new_item = json.loads(post_data.decode())
@@ -509,37 +530,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             data_provider.fetch_item_line_pool().save()
             self.send_response(201)
             self.end_headers()
-        elif paths[0] == "inventories":
-            content_length = int(self.headers["Content-Length"])
-            post_data = self.rfile.read(content_length)
-            new_inventory = json.loads(post_data.decode())
-
-            required_fields = [
-                "item_id",
-                "location_id",
-                "quantity_on_hand",
-                "quantity_expected",
-                "quantity_ordered",
-                "quantity_allocated",
-            ]
-
-            if not all(field in new_inventory for field in required_fields):
-                self.send_response(400)
-                self.end_headers()
-                return
-
-            data_provider.fetch_inventory_pool().add_inventory(new_inventory)
-            data_provider.fetch_inventory_pool().save()
-            self.send_response(201)
-            self.end_headers()
-        elif paths[0] == "shipments":
-            content_length = int(self.headers["Content-Length"])
-            post_data = self.rfile.read(content_length)
-            new_shipment = json.loads(post_data.decode())
-            data_provider.fetch_shipment_pool().add_shipment(new_shipment)
-            data_provider.fetch_shipment_pool().save()
-            self.send_response(201)
-            self.end_headers()
         else:
             self.send_response(404)
             self.end_headers()
@@ -550,21 +540,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(403)
             self.end_headers()
             return
-        if paths[0] == "locations":
-            location_id = int(paths[1])
-            content_length = int(self.headers["Content-Length"])
-            post_data = self.rfile.read(content_length)
-            updated_location = json.loads(post_data.decode())
-            location_pool = data_provider.fetch_location_pool()
-            if location_pool.get_location(location_id) is None:
-                self.send_response(404)
-                self.end_headers()
-                return
-            location_pool.update_location(location_id, updated_location)
-            location_pool.save()
-            self.send_response(200)
-            self.end_headers()
-        elif paths[0] == "items":
+        if paths[0] == "items":
             item_id = int(paths[1])
             content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
@@ -592,57 +568,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             item_line_pool.save()
             self.send_response(200)
             self.end_headers()
-        elif paths[0] == "inventories":
-            # Inventory rows are keyed on a composite (item_id, location_id); a
-            # single surrogate id is not meaningful in the new schema.
-            self.send_response(404)
-            self.end_headers()
-        elif paths[0] == "shipments":
-            parts = len(paths)
-            match parts:
-                case 2:
-                    shipment_id = int(paths[1])
-                    content_length = int(self.headers["Content-Length"])
-                    post_data = self.rfile.read(content_length)
-                    updated_shipment = json.loads(post_data.decode())
-                    shipment_pool = data_provider.fetch_shipment_pool()
-                    if shipment_pool.get_shipment(shipment_id) is None:
-                        self.send_response(404)
-                        self.end_headers()
-                        return
-                    shipment_pool.update_shipment(shipment_id, updated_shipment)
-                    shipment_pool.save()
-                    self.send_response(200)
-                    self.end_headers()
-                case 3:
-                    if paths[2] == "orders":
-                        shipment_id = int(paths[1])
-                        content_length = int(self.headers["Content-Length"])
-                        post_data = self.rfile.read(content_length)
-                        updated_orders = json.loads(post_data.decode())
-                        data_provider.fetch_shipment_pool().update_orders_in_shipment(
-                            shipment_id, updated_orders
-                        )
-                        data_provider.fetch_shipment_pool().save()
-                        self.send_response(200)
-                        self.end_headers()
-                    elif paths[2] == "items":
-                        shipment_id = int(paths[1])
-                        content_length = int(self.headers["Content-Length"])
-                        post_data = self.rfile.read(content_length)
-                        updated_items = json.loads(post_data.decode())
-                        data_provider.fetch_shipment_pool().update_items_in_shipment(
-                            shipment_id, updated_items
-                        )
-                        data_provider.fetch_shipment_pool().save()
-                        self.send_response(200)
-                        self.end_headers()
-                    else:
-                        self.send_response(404)
-                        self.end_headers()
-                case _:
-                    self.send_response(404)
-                    self.end_headers()
         else:
             self.send_response(404)
             self.end_headers()
@@ -653,18 +578,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(403)
             self.end_headers()
             return
-        if paths[0] == "locations":
-            location_id = int(paths[1])
-            location_pool = data_provider.fetch_location_pool()
-            if location_pool.get_location(location_id) is None:
-                self.send_response(404)
-                self.end_headers()
-                return
-            location_pool.remove_location(location_id)
-            location_pool.save()
-            self.send_response(200)
-            self.end_headers()
-        elif paths[0] == "items":
+        if paths[0] == "items":
             item_id = int(paths[1])
             item_pool = data_provider.fetch_item_pool()
             if item_pool.get_item(item_id) is None:
@@ -684,20 +598,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 return
             item_line_pool.remove_item_line(item_line_id)
             item_line_pool.save()
-            self.send_response(200)
-            self.end_headers()
-        elif paths[0] == "inventories":
-            self.send_response(404)
-            self.end_headers()
-        elif paths[0] == "shipments":
-            shipment_id = int(paths[1])
-            shipment_pool = data_provider.fetch_shipment_pool()
-            if shipment_pool.get_shipment(shipment_id) is None:
-                self.send_response(404)
-                self.end_headers()
-                return
-            shipment_pool.remove_shipment(shipment_id)
-            shipment_pool.save()
             self.send_response(200)
             self.end_headers()
         else:
