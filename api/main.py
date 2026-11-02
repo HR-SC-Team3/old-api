@@ -233,6 +233,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         case "warehouses" | "suppliers" | "item_groups" | "clients" | "item_types" | "locations" | "items" | "item_lines":
                             if self._deny_without_access(user, paths[3:], "put"):
                                 return
+                            if len(paths) - 3 != 2:
+                                self._drain_request_body()
+                                self.send_response(404)
+                                self.end_headers()
+                                return
                             resource_id = int(paths[4])
                             updated_resource = self._read_json_body()
                             if (
@@ -380,6 +385,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations" | "items" | "item_lines":
                             if self._deny_without_access(user, paths[3:], "delete"):
                                 return
+                            if len(paths) - 3 != 2:
+                                self.send_response(404)
+                                self.end_headers()
+                                return
                             if self.controllers[paths[3]].delete(int(paths[4])) is None:
                                 self.send_response(404)
                             else:
@@ -392,6 +401,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                             self.end_headers()
                         case "shipments":
                             if self._deny_without_access(user, paths[3:], "delete"):
+                                return
+                            if len(paths) - 3 != 2:
+                                self.send_response(404)
+                                self.end_headers()
                                 return
                             controller = self.controllers["shipments"]
                             shipment_id = int(paths[4])
