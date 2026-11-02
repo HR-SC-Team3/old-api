@@ -120,8 +120,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                     self.send_json_response(
                                         200, controller.get_sub_resource(int(paths[4]))
                                     )
-                                case 4:
-                                    if paths[5] == "inventory" and paths[6] == "totals":
+                                case 4 if paths[3] == "items" and paths[5] == "inventory" and paths[6] == "totals":
                                         self.send_json_response(
                                             200, controller.get_sub_resource_totals(int(paths[4]))
                                         )
@@ -423,7 +422,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         else:
             self.send_response(404)
             self.end_headers()
-    
+
     def handle_post_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "post"):
             self._drain_request_body()
