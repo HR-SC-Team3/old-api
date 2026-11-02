@@ -3,12 +3,12 @@ from providers import data_provider
 
 
 class Items(IResource):
-    sub_resource = "inventories"
+    sub_resource = "inventory"
 
     def get(self, resource_id=None):
         item_pool = data_provider.fetch_item_pool()
         if resource_id is None:
-            return item_pool.get_item()
+            return item_pool.get_items()
         return item_pool.get_item(resource_id)
 
     def get_sub_resource(self, resource_id):

@@ -121,7 +121,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                         200, controller.get_sub_resource(int(paths[4]))
                                     )
                                 case 4:
-                                    if paths[5] == "items" & paths[6] == "totals":
+                                    if paths[5] == "inventory" and paths[6] == "totals":
                                         self.send_json_response(
                                             200, controller.get_sub_resource_totals(int(paths[4]))
                                         )

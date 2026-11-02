@@ -8,7 +8,7 @@ class Item_lines(IResource):
     def get(self, resource_id=None):
         item_line_pool = data_provider.fetch_item_line_pool()
         if resource_id is None:
-            return item_line_pool.get_item_line()
+            return item_line_pool.get_item_lines()
         return item_line_pool.get_item_line(resource_id)
 
     def get_sub_resource(self, resource_id):
