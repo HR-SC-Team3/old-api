@@ -307,10 +307,6 @@ def test_post_order_returns_201(
     assert response.status_code == 201
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current POST endpoint returns 201 with an empty body."
-)
 def test_post_order_returns_created_order(
     base_url,
     user_headers,

@@ -412,14 +412,6 @@ def test_get_supplier_items_response_content_type_is_json(base_url, user_headers
 # region POST /suppliers
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "POST /suppliers returns 201 with an empty body: no created resource, "
-        "no generated id, nothing."
-        "Redesign suggestion: return the created resource (with its id) in the body."
-    ),
-)
 def test_post_supplier_returns_created_resource_with_id(
     base_url, user_headers, preserve_data_files
 ):
@@ -449,13 +441,6 @@ def test_post_supplier_returns_created_resource_with_id(
         assert body[key] == value
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No Location header and no body are returned on 201, so there is no "
-        "way for a client to discover the URL of the resource it just created."
-    ),
-)
 def test_post_supplier_response_points_to_new_resource(
     base_url, user_headers, preserve_data_files
 ):
