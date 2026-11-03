@@ -828,9 +828,7 @@ def test_delete_transfer_resource_is_actually_gone(
 ):
     """
     remove_transfer() does delete the row from the in-memory/on-disk
-    collection, but get_transfer() still returns 200 with a `null` body
-    instead of 404 for the now-missing id (same gap as GET-by-nonexistent-id
-    above), so "gone" is only observable as `null`, not as a 404.
+    collection, and GET-by-id returns 404 for the now-missing id.
     """
     preserve_data_files("transfer.json", "transfer_item.json")
     existing = _first_transfer(base_url, user_headers)
@@ -848,7 +846,7 @@ def test_delete_transfer_resource_is_actually_gone(
     assert get_response.status_code == 404
 
 
-def test_delete_transfer_also_removes_its_items(
+def test_delete_transfer_items_endpoint_returns_404_for_deleted_transfer(
     base_url, user_headers, preserve_data_files
 ):
     preserve_data_files("transfer.json", "transfer_item.json")
@@ -865,8 +863,7 @@ def test_delete_transfer_also_removes_its_items(
     items_response = requests.get(
         _url(base_url, f"/{existing['id']}/items"), headers=get_headers
     )
-    assert items_response.status_code == 200
-    assert items_response.json() == []
+    assert items_response.status_code == 404
 
 
 def test_delete_transfer_nonexistent_id_returns_404(
