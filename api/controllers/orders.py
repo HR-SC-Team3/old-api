@@ -18,9 +18,10 @@ class Orders(IResource):
 
     def post(self, data):
         order_pool = data_provider.fetch_order_pool()
+        items = data.get("items", [])
         order_pool.add_order(data)
         order_pool.save()
-        return data
+        return {**data, "items": items}
 
     def put(self, resource_id, data):
         order_pool = data_provider.fetch_order_pool()

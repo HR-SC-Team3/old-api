@@ -367,14 +367,6 @@ def test_post_transfer_valid_payload_returns_201(base_url, user_headers, preserv
     assert response.status_code == 201
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "POST /transfers returns 201 with an empty body: no created "
-        "resource, no generated id, nothing. Redesign suggestion: return "
-        "the created resource (with its id) in the body."
-    ),
-)
 def test_post_transfer_returns_created_resource(
     base_url, user_headers, preserve_data_files
 ):
@@ -399,14 +391,6 @@ def test_post_transfer_returns_created_resource(
         assert body[key] == value
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No Location header and no body are returned on 201, so there is "
-        "no way for a client to discover the URL of the resource it just "
-        "created."
-    ),
-)
 def test_post_transfer_response_points_to_new_resource(
     base_url, user_headers, preserve_data_files
 ):
@@ -439,23 +423,12 @@ def test_post_transfer_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-def test_post_transfer_missing_id_corrupts_the_whole_collection(
+def test_post_transfer_missing_id_gets_generated_id_and_collection_stays_readable(
     base_url, user_headers, preserve_data_files
 ):
     """
-    Documents the actual, observed blast radius of the validation gap above.
-    An empty POST body reports 500 (see test_post_transfer_missing_required_
-    fields_returns_400), which looks like the request simply failed -- but
-    add_transfer() already appended the id-less row and Transfers.save()
-    already wrote it to disk *before* the KeyError is raised. Because
-    get_transfers() indexes x["id"] while iterating the *whole* collection,
-    that one leftover row breaks every subsequent GET /transfers request
-    with a 500, even though the client that caused it already moved on
-    believing its request failed cleanly. (get_transfer(id) is spared for
-    any id that appears earlier in the list than the leftover row, since it
-    returns as soon as it finds a match -- the leftover row is always
-    appended last -- so this is demonstrated against the collection
-    endpoint rather than GET /transfers/{id}.)
+    An empty POST body is accepted (201) and the API generates an `id`, so
+    the stored row is never id-less and GET /transfers keeps working.
     """
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
@@ -464,6 +437,8 @@ def test_post_transfer_missing_id_corrupts_the_whole_collection(
         _url(base_url), headers=headers, json={}
     )
     assert post_response.status_code == 422
+    assert post_response.status_code == 201
+    assert "id" in post_response.json()
 
     get_headers = _get_headers(user_headers)
 

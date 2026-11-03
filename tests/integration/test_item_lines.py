@@ -405,10 +405,6 @@ def test_get_item_line_malformed_id_error_leaks_no_internal_details(
 # region POST /item_lines
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="POST /item_lines returns 201 with an empty response body",
-)
 def test_post_item_line_returns_created_resource_with_id(
     base_url, user_headers, preserve_data_files
 ):
@@ -443,13 +439,6 @@ def test_post_item_line_returns_created_resource_with_id(
     assert body["name"] == "Test Item Line"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "POST /item_lines returns 201 without a Location header "
-        "or response body"
-    ),
-)
 def test_post_item_line_response_points_to_new_resource(
     base_url, user_headers, preserve_data_files
 ):

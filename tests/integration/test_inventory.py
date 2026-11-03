@@ -194,12 +194,6 @@ def test_GET_inventory_by_id_is_not_supported(base_url, user_headers):
 
 # region POST /inventories
 
-@pytest.mark.xfail(
-        strict = True,
-        raises=AssertionError,
-        reason = ("POST inventories should return 201 but it doesn't return it right now")
-)
-
 def test_post_inventory_returns_201(base_url, user_headers, preserve_data_files):
     # this is to preserve the original data before anything gets added or removed or changed
     preserve_data_files("inventory.json")
