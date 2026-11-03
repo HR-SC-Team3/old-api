@@ -10,6 +10,8 @@ from processors import notification_processor
 
 from typing import Any
 
+from validations.request_validations import RequestValidator
+
 ### Route Handlers (resources)
 from controllers.item_groups import ItemGroups
 from controllers.suppliers import Suppliers
@@ -189,6 +191,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case 2:
                                     transfer_id = int(paths[4])
                                     updated_transfer = self._read_json_body()
+                                    valid, error = RequestValidator.validate("transfers", updated_transfer,self.controllers, method="PUT", resource_id=transfer_id)
+                                    if not valid:
+                                        self.send_json_response(422, {"error": error})
+                                        return
+
                                     if controller.put(transfer_id, updated_transfer) is None:
                                         self.send_response(404)
                                     else:
@@ -213,6 +220,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                     order_id = int(paths[4])
                                     updated_order = self._read_json_body()
 
+                                    valid, error = RequestValidator.validate("orders", updated_order, self.controllers, method="PUT", resource_id=order_id)
+                                    if not valid:
+                                        self.send_json_response(422, {"error": error})
+                                        return
                                     if controller.put(order_id, updated_order) is None:
                                         self.send_response(404)
                                     else:
@@ -230,7 +241,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
-                        case "warehouses" | "suppliers" | "item_groups" | "clients" | "item_types" | "locations" | "items" | "item_lines":
+                        case "warehouses" | "suppliers" | "item_groups" | "clients" | "item_types" | "locations" | "items" | "item_lines" | "inventories":
                             if self._deny_without_access(user, paths[3:], "put"):
                                 return
                             if len(paths) - 3 != 2 or paths[4] == "":
@@ -240,20 +251,14 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 return
                             resource_id = int(paths[4])
                             updated_resource = self._read_json_body()
-                            if (
-                                self.controllers[paths[3]].put(
-                                    resource_id, updated_resource
-                                )
-                                is None
-                            ):
+                            valid, error = RequestValidator.validate(paths[3], updated_resource, self.controllers, method="PUT", resource_id=resource_id)
+                            if not valid:
+                                self.send_json_response(422, {"error": error})
+                                return
+                            if (self.controllers[paths[3]].put(resource_id, updated_resource) is None):
                                 self.send_response(404)
                             else:
                                 self.send_response(200)
-                            self.end_headers()
-                        case "inventories":
-                            if self._deny_without_access(user, paths[3:], "put"):
-                                return
-                            self.send_response(404)
                             self.end_headers()
                         case "shipments":
                             if self._deny_without_access(user, paths[3:], "put"):
@@ -263,6 +268,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case 2:
                                     shipment_id = int(paths[4])
                                     update_shipment = self._read_json_body()
+                                    valid, error = RequestValidator.validate("shipments", update_shipment, self.controllers, method="PUT", resource_id=shipment_id)
+                                    if not valid:
+                                        self.send_json_response(422, {"error": error})
+                                        return
                                     if controller.put(shipment_id, update_shipment) is None:
                                         self.send_response(404)
                                     else:
@@ -328,7 +337,13 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 self.send_response(415)
                                 self.end_headers()
                                 return
-                            self.controllers[paths[3]].post(self._read_json_body())
+                            data = self._read_json_body()
+                            valid, error = RequestValidator.validate(paths[3], data, self.controllers, method="POST")
+
+                            if not valid:
+                                self.send_json_response(422, {"error": error})
+                                return
+                            self.controllers[paths[3]].post(data)
                             self.send_response(201)
                             self.end_headers()
                         case "inventories":
@@ -342,10 +357,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 self.end_headers()
                                 return
                             new_inventory = self._read_json_body()
-                            required_fields = [ "item_id", "location_id", "quantity_on_hand", "quantity_expected", "quantity_ordered", "quantity_allocated",]
-                            if not all(field in new_inventory for field in required_fields):
-                                self.send_response(400)
-                                self.end_headers()
+                            valid, error = RequestValidator.validate("inventories", new_inventory, self.controllers, method="POST")
+                            if not valid:
+                                self.send_json_response(422, {"error": error})
                                 return
                             controller.post(new_inventory)
                             self.send_response(201)
@@ -361,6 +375,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 self.end_headers()
                                 return
                             new_shipment = self._read_json_body()
+                            valid, error = RequestValidator.validate("shipments", new_shipment, self.controllers, method="POST")
+                            if not valid:
+                                self.send_json_response(422, {"error": error})
+                                return
                             controller.post(new_shipment)
                             self.send_response(201)
                             self.end_headers()
