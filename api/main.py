@@ -86,6 +86,28 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data).encode("utf-8"))
 
+    def send_created_response(self, resource: str, created: Any):
+        self.send_response(201)
+        if isinstance(created, dict) and "id" in created:
+            self.send_header("Location", f"/api/v1/{resource}/{created['id']}")
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(created).encode("utf-8"))
+
+    """_summary_
+	Assigns an ID to a new resource if it's missing.
+
+	This function is needed as long as #107 is not completed.
+	Missing IDs are assigned the next free ID based on the existing resources in the controller.
+	"""
+
+    def _assign_id_if_missing(self, controller, data):
+        # Give a new resource the next free id when the client sent none.
+        if not isinstance(data, dict) or "id" in data:
+            return
+        ids = [x["id"] for x in controller.get() if isinstance(x, dict) and "id" in x]
+        data["id"] = max(ids, default=0) + 1
+
     def do_GET(self):
         api_key = self.headers.get("API_KEY")
         user = auth_provider.get_user(api_key)
@@ -102,7 +124,18 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                     # Strip out the query parameters, if any. We do not support any query parameters, so we just ignore them.
                     paths[3] = paths[3].split("?")[0]
                     match paths[3]:
-                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations" | "items" | "item_lines" :
+                        case (
+                            "warehouses"
+                            | "suppliers"
+                            | "item_groups"
+                            | "transfers"
+                            | "orders"
+                            | "clients"
+                            | "item_types"
+                            | "locations"
+                            | "items"
+                            | "item_lines"
+                        ):
                             if self._deny_without_access(user, paths[3:], "get"):
                                 return
                             controller = self.controllers[paths[3]]
@@ -120,10 +153,17 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                     self.send_json_response(
                                         200, controller.get_sub_resource(int(paths[4]))
                                     )
-                                case 4 if paths[3] == "items" and paths[5] == "inventory" and paths[6] == "totals":
-                                        self.send_json_response(
-                                            200, controller.get_sub_resource_totals(int(paths[4]))
-                                        )
+                                case 4 if (
+                                    paths[3] == "items"
+                                    and paths[5] == "inventory"
+                                    and paths[6] == "totals"
+                                ):
+                                    self.send_json_response(
+                                        200,
+                                        controller.get_sub_resource_totals(
+                                            int(paths[4])
+                                        ),
+                                    )
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
@@ -189,7 +229,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case 2:
                                     transfer_id = int(paths[4])
                                     updated_transfer = self._read_json_body()
-                                    if controller.put(transfer_id, updated_transfer) is None:
+                                    if (
+                                        controller.put(transfer_id, updated_transfer)
+                                        is None
+                                    ):
                                         self.send_response(404)
                                     else:
                                         self.send_response(200)
@@ -230,7 +273,16 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
-                        case "warehouses" | "suppliers" | "item_groups" | "clients" | "item_types" | "locations" | "items" | "item_lines":
+                        case (
+                            "warehouses"
+                            | "suppliers"
+                            | "item_groups"
+                            | "clients"
+                            | "item_types"
+                            | "locations"
+                            | "items"
+                            | "item_lines"
+                        ):
                             if self._deny_without_access(user, paths[3:], "put"):
                                 return
                             if len(paths) - 3 != 2 or paths[4] == "":
@@ -240,16 +292,17 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 return
                             resource_id = int(paths[4])
                             updated_resource = self._read_json_body()
-                            if (
-                                self.controllers[paths[3]].put(
-                                    resource_id, updated_resource
-                                )
-                                is None
-                            ):
+                            result = self.controllers[paths[3]].put(
+                                resource_id, updated_resource
+                            )
+                            if result is None:
                                 self.send_response(404)
+                                self.end_headers()
+                            elif paths[3] == "locations":
+                                self.send_json_response(200, result)
                             else:
                                 self.send_response(200)
-                            self.end_headers()
+                                self.end_headers()
                         case "inventories":
                             if self._deny_without_access(user, paths[3:], "put"):
                                 return
@@ -263,7 +316,10 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case 2:
                                     shipment_id = int(paths[4])
                                     update_shipment = self._read_json_body()
-                                    if controller.put(shipment_id, update_shipment) is None:
+                                    if (
+                                        controller.put(shipment_id, update_shipment)
+                                        is None
+                                    ):
                                         self.send_response(404)
                                     else:
                                         self.send_response(200)
@@ -271,15 +327,23 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case 3 if (paths[5]) == "orders":
                                     shipment_id = int(paths[4])
                                     updated_orders = self._read_json_body()
-                                    if controller.put_orders(shipment_id, updated_orders) is None:
+                                    if (
+                                        controller.put_orders(
+                                            shipment_id, updated_orders
+                                        )
+                                        is None
+                                    ):
                                         self.send_response(404)
                                     else:
                                         self.send_response(200)
                                     self.end_headers()
-                                case 3 if (paths[5]) =="items":
+                                case 3 if (paths[5]) == "items":
                                     shipment_id = int(paths[4])
                                     updated_items = self._read_json_body()
-                                    if controller.put_items(shipment_id, updated_items) is None:
+                                    if (
+                                        controller.put_items(shipment_id, updated_items)
+                                        is None
+                                    ):
                                         self.send_response(404)
                                     else:
                                         self.send_response(200)
@@ -314,7 +378,18 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 paths = self.path.split("/")
                 if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
                     match paths[3]:
-                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations" | "items" | "item_lines":
+                        case (
+                            "warehouses"
+                            | "suppliers"
+                            | "item_groups"
+                            | "transfers"
+                            | "orders"
+                            | "clients"
+                            | "item_types"
+                            | "locations"
+                            | "items"
+                            | "item_lines"
+                        ):
                             if self._deny_without_access(user, paths[3:], "post"):
                                 return
                             media_type = (
@@ -328,33 +403,53 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 self.send_response(415)
                                 self.end_headers()
                                 return
-                            self.controllers[paths[3]].post(self._read_json_body())
-                            self.send_response(201)
-                            self.end_headers()
+                            controller = self.controllers[paths[3]]
+                            new_resource = self._read_json_body()
+                            self._assign_id_if_missing(controller, new_resource)
+                            created = controller.post(new_resource)
+                            self.send_created_response(paths[3], created)
                         case "inventories":
                             if self._deny_without_access(user, paths[3:], "post"):
                                 return
                             controller = self.controllers["inventories"]
-                            media_type = (self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower())
+                            media_type = (
+                                self.headers.get("Content-Type", "")
+                                .split(";", 1)[0]
+                                .strip()
+                                .lower()
+                            )
                             if media_type != "application/json":
                                 self._drain_request_body()
                                 self.send_response(415)
                                 self.end_headers()
                                 return
                             new_inventory = self._read_json_body()
-                            required_fields = [ "item_id", "location_id", "quantity_on_hand", "quantity_expected", "quantity_ordered", "quantity_allocated",]
-                            if not all(field in new_inventory for field in required_fields):
+                            required_fields = [
+                                "item_id",
+                                "location_id",
+                                "quantity_on_hand",
+                                "quantity_expected",
+                                "quantity_ordered",
+                                "quantity_allocated",
+                            ]
+                            if not all(
+                                field in new_inventory for field in required_fields
+                            ):
                                 self.send_response(400)
                                 self.end_headers()
                                 return
-                            controller.post(new_inventory)
-                            self.send_response(201)
-                            self.end_headers()
+                            created = controller.post(new_inventory)
+                            self.send_created_response("inventories", created)
                         case "shipments":
                             if self._deny_without_access(user, paths[3:], "post"):
                                 return
                             controller = self.controllers["shipments"]
-                            media_type = (self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower())
+                            media_type = (
+                                self.headers.get("Content-Type", "")
+                                .split(";", 1)[0]
+                                .strip()
+                                .lower()
+                            )
                             if media_type != "application/json":
                                 self._drain_request_body()
                                 self.send_response(415)
@@ -382,7 +477,18 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                 paths = self.path.split("/")
                 if len(paths) > 3 and paths[1] == "api" and paths[2] == "v1":
                     match paths[3]:
-                        case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations" | "items" | "item_lines":
+                        case (
+                            "warehouses"
+                            | "suppliers"
+                            | "item_groups"
+                            | "transfers"
+                            | "orders"
+                            | "clients"
+                            | "item_types"
+                            | "locations"
+                            | "items"
+                            | "item_lines"
+                        ):
                             if self._deny_without_access(user, paths[3:], "delete"):
                                 return
                             if len(paths) - 3 != 2 or paths[4] == "":
@@ -453,7 +559,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
             return
         else:
             self.send_response(404)
-            self.end_headers() 
+            self.end_headers()
 
     def handle_put_version_1(self, paths, user):
         if not auth_provider.has_access(user, paths, "put"):
