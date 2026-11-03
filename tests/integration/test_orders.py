@@ -559,6 +559,25 @@ def test_put_order_update_is_persisted(
         assert get_response.json()["reference"] == "UPDATED-REFERENCE"
 
 
+def test_put_order_rejects_body_id_different_from_url_id(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("order.json", "order_item.json")
+    order = _first_order(base_url, user_headers)
+    headers = _get_headers(user_headers, method="put")
+    new_id = 999999999
+    mismatched_order = {**order, "id": new_id, "reference": "SHOULD-NOT-SAVE"}
+
+    response = requests.put(f"{base_url}/api/v1/orders/{order['id']}", headers=headers, json=mismatched_order,)
+
+    assert response.status_code == 422
+    assert "id" in response.json()["error"].lower()
+
+    get_original = requests.get(f"{base_url}/api/v1/orders/{order['id']}", headers=_get_headers(user_headers),)
+    get_new_id = requests.get(f"{base_url}/api/v1/orders/{new_id}", headers=_get_headers(user_headers),)
+    assert get_original.status_code == 200
+    assert get_original.json() == order
+    assert get_new_id.status_code == 404
+
+
 def test_put_order_uses_full_replace():
     assert "self.data[i] = order" in ORDERS_MODEL_SOURCE
 

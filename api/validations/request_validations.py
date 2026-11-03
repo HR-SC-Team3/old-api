@@ -49,6 +49,9 @@ class RequestValidator:
         except ValidationError as error:
             return False, str(error)
 
+        if method == "PUT" and data["id"] != resource_id:
+            return False, "Request body id must match URL id"
+
         if method in ("POST", "PUT"):
             valid, error = RequestValidator.validate_duplicate_id(resource, data, controllers, resource_id)
             if not valid:
