@@ -699,7 +699,7 @@ def test_put_warehouse_duplicate_id_is_rejected(base_url, user_headers, preserve
     response = requests.put(f"{base_url}/api/v1/warehouses/{target['id']}", headers=headers, json={**target, "id": other["id"]},)
 
     assert response.status_code == 422
-    assert response.json()["error"] == "Id already exists"
+    assert response.json()["error"] == "Request body id must match URL id"
 
 
 def test_put_warehouse_nonexistent_id_returns_404(base_url, user_headers, preserve_data_files):

@@ -332,7 +332,9 @@ def test_put_location_requires_authentication(base_url):
 
 def test_put_location_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="put")
-    response = requests.put(f"{base_url}/api/v1/locations/99999999", headers = headers, json=_valid_location_payload())
+    payload = _valid_location_payload()
+    payload["id"] = 99999999
+    response = requests.put(f"{base_url}/api/v1/locations/99999999", headers=headers, json=payload,)
     assert response.status_code == 404
 
 def test_put_locations_malformed_id_does_not_return_500(base_url, user_headers):
