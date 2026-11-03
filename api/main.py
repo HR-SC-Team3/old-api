@@ -233,7 +233,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         case "warehouses" | "suppliers" | "item_groups" | "clients" | "item_types" | "locations" | "items" | "item_lines":
                             if self._deny_without_access(user, paths[3:], "put"):
                                 return
-                            if len(paths) - 3 != 2:
+                            if len(paths) - 3 != 2 or paths[4] == "":
                                 self._drain_request_body()
                                 self.send_response(404)
                                 self.end_headers()
@@ -385,7 +385,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         case "warehouses" | "suppliers" | "item_groups" | "transfers" | "orders" | "clients" | "item_types" | "locations" | "items" | "item_lines":
                             if self._deny_without_access(user, paths[3:], "delete"):
                                 return
-                            if len(paths) - 3 != 2:
+                            if len(paths) - 3 != 2 or paths[4] == "":
                                 self.send_response(404)
                                 self.end_headers()
                                 return
@@ -402,7 +402,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                         case "shipments":
                             if self._deny_without_access(user, paths[3:], "delete"):
                                 return
-                            if len(paths) - 3 != 2:
+                            if len(paths) - 3 != 2 or paths[4] == "":
                                 self.send_response(404)
                                 self.end_headers()
                                 return
