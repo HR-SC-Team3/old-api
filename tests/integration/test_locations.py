@@ -215,7 +215,6 @@ def test_get_location_by_id_error_does_not_leak_internal_data(base_url, user_hea
 
 
 #region POST location
-@pytest.mark.xfail(strict=True, reason="POST /locations returns a 201 without a response body or Location header")
 def test_post_location_returns_201(base_url, user_headers, preserve_data_files):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post")
@@ -296,7 +295,6 @@ def test_post_location_invalid_foreign_key_is_rejected(base_url, user_headers, p
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422,)
 
-@pytest.mark.xfail(strict=True, reason="It returns 201 without showing the created location id or location header")
 def test_post_location_is_immediately_retrievable(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post",)
@@ -322,7 +320,6 @@ def test_post_location_is_immediately_retrievable(base_url, user_headers, preser
     assert created["code"] == payload["code"]
     assert created["name"] == payload["name"]
 
-@pytest.mark.xfail(strict=True, reason="it returns 201 without application json Content type")
 def test_post_location_response_content_type_is_json(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post",)
@@ -408,7 +405,6 @@ def test_put_location_partial_payload_behavior(base_url, user_headers, preserve_
     response = requests.put(f"{base_url}/api/v1/locations/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code in (200, 400, 422,)
 
-@pytest.mark.xfail(strict=True, reason="it returns 200 without application/json Content-Type",)
 def test_put_location_response_content_type_is_json(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
