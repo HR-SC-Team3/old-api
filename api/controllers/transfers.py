@@ -20,10 +20,11 @@ class Transfers(IResource):
 
     def post(self, data):
         pool = data_provider.fetch_transfer_pool()
+        items = data.get("items", [])
         pool.add_transfer(data)
         pool.save()
         notification_processor.push(f"Scheduled batch transfer {data['id']}")
-        return data
+        return {**data, "items": items}
 
     def put(self, resource_id, data):
         pool = data_provider.fetch_transfer_pool()

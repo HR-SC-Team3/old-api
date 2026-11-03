@@ -391,13 +391,6 @@ def test_post_warehouse_valid_payload_returns_201(base_url, user_headers, preser
     assert response.status_code == 201
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "POST /warehouses returns 201 with an empty body. "
-        "The API does not return the created warehouse."
-    ),
-)
 def test_post_warehouse_returns_created_resource(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
