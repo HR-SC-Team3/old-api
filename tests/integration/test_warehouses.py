@@ -432,14 +432,6 @@ def test_post_warehouse_returns_created_resource(base_url, user_headers, preserv
     for key, value in payload.items():
         assert body[key] == value
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "The warehouse model does not validate required fields. "
-        "An empty payload is accepted and stored instead of returning 400/422."
-    ),
-)
 def test_post_warehouse_missing_required_fields_returns_400(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -454,13 +446,6 @@ def test_post_warehouse_missing_required_fields_returns_400(base_url, user_heade
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "The API stores JSON values without validating their types. "
-        "An invalid id type is accepted instead of returning 400/422."
-    ),
-)
 def test_post_warehouse_invalid_field_type_is_rejected(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -479,13 +464,6 @@ def test_post_warehouse_invalid_field_type_is_rejected(base_url, user_headers, p
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Warehouses.add_warehouse() does not check for duplicate ids or "
-        "codes, so a duplicate warehouse is accepted instead of 409/400."
-    ),
-)
 def test_post_warehouse_duplicate_id_returns_conflict(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -505,7 +483,7 @@ def test_post_warehouse_duplicate_id_returns_conflict(base_url, user_headers, pr
         }
     )
 
-    assert response.status_code == 409
+    assert response.status_code == 422
 
 
 def test_post_warehouse_is_immediately_retrievable(base_url, user_headers, preserve_data_files):
@@ -527,8 +505,6 @@ def test_post_warehouse_is_immediately_retrievable(base_url, user_headers, prese
         "contact_name": "Test Contact",
         "contact_phone": "0612345678",
         "contact_email": "test@example.com",
-        "created_at": "",
-        "updated_at": "",
     }
 
     create_response = requests.post(
@@ -712,12 +688,19 @@ def test_put_warehouse_nonexistent_id_returns_404(base_url, user_headers, preser
         user_headers, method="put"
     )
 
+    existing = _first_warehouse(base_url, user_headers)
+    missing_id = 999999
+    payload = {
+        **existing,
+        "id": missing_id,
+        "code": "WH-GHOST-999999",
+        "name": "Ghost Warehouse",
+    }
+
     response = requests.put(
-        f"{base_url}/api/v1/warehouses/999999", headers=headers,
-        json={
-            "id": 999999,
-            "name": "Ghost Warehouse",
-        },
+        f"{base_url}/api/v1/warehouses/{missing_id}",
+        headers=headers,
+        json=payload,
     )
 
     assert response.status_code == 404

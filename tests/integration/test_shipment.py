@@ -187,15 +187,15 @@ def test_post_shipment_returns_201(base_url, user_headers, preserve_data_files):
     assert response.status_code == 201
     assert response.content == b""
 
-@pytest.mark.xfail(strict=True, reason="POST shipment without id returns 500 instead of 201")
-
-def test_post_shipment_without_id_returns_201(base_url, user_headers, preserve_data_files):
+def test_post_shipment_without_id_returns_400_or_422(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method="post")
+    shipments_before = _get_shipments(base_url, user_headers).json()
     payload = _valid_shipment_payload(1)
     payload.pop("id")
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload)
-    assert response.status_code == 201
+    assert response.status_code in (400, 422)
+    assert _get_shipments(base_url, user_headers).json() == shipments_before
 
 def test_post_shipments_requires_authentication(base_url):
     response = requests.post(f"{base_url}/api/v1/shipments", json=_valid_shipment_payload(1),)
@@ -240,23 +240,33 @@ def test_post_shipment_accepts_application_json(base_url, user_headers, preserve
     assert response.status_code != 415
 
 
-@pytest.mark.xfail(strict=True, reason="Right now it doesn't have any checks for missing required fields")
 def test_post_shipment_missing_required_field_is_rejected(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
     payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
+    shipment_id = payload["id"]
     payload.pop("reference")
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
+    assert _shipment_by_id(base_url, user_headers, shipment_id).status_code == 404
 
-@pytest.mark.xfail(strict=True, reason="POST accepts an invalid shipment_status with 201 instead of rejecting it with 400 or 422")
-def test_post_shipment_rejects_invalid_value(base_url, user_headers, preserve_data_files):
+def test_post_shipment_rejects_invalid_field_type(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
     payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
-    payload["shipment_status"] = "NOT_A_REAL_STATUS"
+    shipment_id = payload["id"]
+    payload["order_id"] = "not-an-int"
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
+    assert _shipment_by_id(base_url, user_headers, shipment_id).status_code == 404
+
+def test_post_shipment_rejects_duplicate_id_without_overwriting_existing(base_url, user_headers, preserve_data_files):
+    preserve_data_files("shipment.json")
+    existing = _first_shipment(base_url, user_headers)
+    headers = _get_headers(user_headers, method="post")
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=existing)
+    assert response.status_code in (409, 422)
+    assert _shipment_by_id(base_url, user_headers, existing["id"]).json() == existing
 
 @pytest.mark.xfail(strict=True, reason="POST accepts an duplicate references with 201 instead of rejecting it")
 def test_post_shipment_duplicate_reference_is_handled(base_url, user_headers, preserve_data_files):
@@ -273,18 +283,21 @@ def test_post_shipment_unexpected_field_is_handled_consistently(base_url, user_h
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
     payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
+    shipment_id = payload["id"]
     payload["unexpected_field"] = "should-not-be-accepted"
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
-    assert response.status_code in (201, 400, 422)
+    assert response.status_code in (400, 422)
+    assert _shipment_by_id(base_url, user_headers, shipment_id).status_code == 404
 
-@pytest.mark.xfail(strict=True, reason="POST accepts an nonexistent order_id key with 201 instead of rejecting it with 400, 404, 409 or 422")
 def test_post_shipment_rejects_invalid_foreign_key(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     headers = _get_headers(user_headers, method = "post")
     payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
+    shipment_id = payload["id"]
     payload["order_id"] = 99999999999
     response = requests.post(f"{base_url}/api/v1/shipments", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422)
+    assert _shipment_by_id(base_url, user_headers, shipment_id).status_code == 404
 
 def test_post_shipment_is_immendiately_retrieveable(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
@@ -381,6 +394,7 @@ def test_put_shipment_valid_payload_returns_200(base_url, user_headers, preserve
     existing = _first_shipment(base_url, user_headers)
     headers = _get_headers(user_headers, method ="put")
     payload = {
+        "id": existing["id"],
         "reference": existing["reference"],
         "order_id": existing["order_id"],
         "shipment_date": existing["shipment_date"],
@@ -396,7 +410,25 @@ def test_put_shipment_valid_payload_returns_200(base_url, user_headers, preserve
 
 def test_put_shipment_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="put",)
-    response = requests.put(f"{base_url}/api/v1/shipments/999999999", headers=headers, json={},)
+    existing = _first_shipment(base_url, user_headers)
+    missing_id = 999999999
+    payload = {
+        "id": missing_id,
+        "reference": existing["reference"],
+        "order_id": existing["order_id"],
+        "shipment_date": existing["shipment_date"],
+        "shipment_type": existing["shipment_type"],
+        "shipment_status": existing["shipment_status"],
+        "carrier_name": existing["carrier_name"],
+        "shipping_method": existing["shipping_method"],
+        "payment_type": existing["payment_type"],
+    }
+
+    response = requests.put(
+        f"{base_url}/api/v1/shipments/{missing_id}",
+        headers=headers,
+        json=payload,
+    )
     assert response.status_code == 404
 
 def test_put_shipment_invalid_id_does_not_return_500(base_url, user_headers):
@@ -404,13 +436,13 @@ def test_put_shipment_invalid_id_does_not_return_500(base_url, user_headers):
     response = requests.put(f"{base_url}/api/v1/shipments/not-an-id", headers=headers, json={},)
     assert response.status_code != 500
 
-@pytest.mark.xfail(strict = True, reason="With the id it currently accepts invalid field values instead of rejecting it")
 
 def test_put_shipment_rejects_invalid_field_value(base_url, user_headers, preserve_data_files,):
     preserve_data_files("shipment.json")
     existing = _first_shipment(base_url, user_headers,)
     headers = _get_headers(user_headers, method="put",)
     payload = {
+        "id": existing["id"],
         "reference": existing["reference"],
         "order_id": "not-an-int",
         "shipment_date": existing["shipment_date"],
@@ -423,13 +455,13 @@ def test_put_shipment_rejects_invalid_field_value(base_url, user_headers, preser
     response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code in (400, 422)
 
-@pytest.mark.xfail(strict = True, reason="With the id it accepts invalid foreign keys instead of rejecting it")
 
 def test_put_shipment_rejects_invalid_foreign_key(base_url, user_headers, preserve_data_files):
     preserve_data_files("shipment.json")
     existing = _first_shipment(base_url, user_headers,)
     headers = _get_headers(user_headers, method="put",)
     payload = {
+        "id": existing["id"],
         "reference": existing["reference"],
         "order_id": 9999999999,
         "shipment_date": existing["shipment_date"],

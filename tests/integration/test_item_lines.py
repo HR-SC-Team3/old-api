@@ -482,10 +482,6 @@ def test_post_item_line_response_points_to_new_resource(
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an empty item_line payload and returns 201",
-)
 def test_post_item_line_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -505,10 +501,6 @@ def test_post_item_line_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an invalid field type and returns 201",
-)
 def test_post_item_line_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -528,14 +520,9 @@ def test_post_item_line_invalid_field_type_is_rejected(
             "description": "Bad Type Description",
         },
     )
-
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts duplicate item_line IDs and returns 201",
-)
 def test_post_item_line_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -782,10 +769,6 @@ def test_put_item_line_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an invalid field type and returns 200",
-)
 def test_put_item_line_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):

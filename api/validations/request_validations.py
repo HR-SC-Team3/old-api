@@ -1,6 +1,6 @@
 from pydantic import ValidationError
 
-from tests.integration.schemas import (   
+from validations.schema_validations import (   
     Warehouse,
     Location,
     Supplier,

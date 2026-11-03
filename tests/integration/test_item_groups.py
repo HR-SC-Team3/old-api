@@ -370,16 +370,6 @@ def test_post_item_group_response_points_to_new_resource(
     assert response.status_code == 201
     assert "Location" in response.headers
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No request validation exists at all: an empty/near-empty payload "
-        "missing every documented required-looking field (name, "
-        "description) is still accepted with 201. Expected: 400/422 "
-        "listing the missing fields."
-    ),
-)
 def test_post_item_group_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -391,15 +381,6 @@ def test_post_item_group_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Field values are stored as-is with no type checking: an `id` of "
-        "type string is accepted with 201 instead of being rejected. "
-        "Expected: 400/422 for a type mismatch against the documented "
-        "integer id."
-    ),
-)
 def test_post_item_group_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -415,15 +396,6 @@ def test_post_item_group_invalid_field_type_is_rejected(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "There is no id uniqueness check anywhere in "
-        "ItemGroups.add_item_group: POSTing a second item group with an id "
-        "that already exists is accepted with 201 instead of a 409/400 "
-        "conflict."
-    ),
-)
 def test_post_item_group_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -437,7 +409,7 @@ def test_post_item_group_duplicate_id_returns_conflict(
         json={**existing, "name": "Duplicate of " + existing["name"]},
     )
 
-    assert response.status_code == 409
+    assert response.status_code in (409, 422)
 
 
 def test_post_item_group_is_immediately_retrievable(
@@ -458,7 +430,7 @@ def test_post_item_group_is_immediately_retrievable(
     assert get_response.json()["name"] == "Retrievable Group"
 
 
-def test_post_item_group_missing_id_breaks_lookups_for_unmatched_ids(
+def test_post_item_group_missing_id_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
     """
@@ -476,17 +448,11 @@ def test_post_item_group_missing_id_breaks_lookups_for_unmatched_ids(
     headers = _get_headers(user_headers, method="post")
 
     post_response = requests.post(_url(base_url), headers=headers, json={})
-    assert post_response.status_code == 201
+    assert post_response.status_code in (400, 422)
 
     get_headers = _get_headers(user_headers)
-
-    existing_id_response = requests.get(_url(base_url, "/1"), headers=get_headers)
-    assert existing_id_response.status_code == 200
-
-    unmatched_id_response = requests.get(
-        _url(base_url, "/999999"), headers=get_headers
-    )
-    assert unmatched_id_response.status_code == 500
+    collection_response = requests.get(_url(base_url), headers=get_headers)
+    assert collection_response.status_code == 200
 
 
 @pytest.mark.skip(
@@ -625,7 +591,7 @@ def test_put_item_group_nonexistent_id_returns_404(
     response = requests.put(
         _url(base_url, "/999999"),
         headers=headers,
-        json={"id": 999999, "name": "Ghost Group"},
+        json={"id": 999999, "name": "Ghost Group", "description": "A group of ghosts"},
     )
 
     assert response.status_code == 404

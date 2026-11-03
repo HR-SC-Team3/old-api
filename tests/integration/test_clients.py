@@ -429,10 +429,6 @@ def test_post_client_without_permission_returns_403(
     assert response.status_code == 403
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current handler does not validate missing fields."
-)
 def test_post_client_missing_fields_returns_400(
     base_url,
     user_headers,
@@ -453,13 +449,9 @@ def test_post_client_missing_fields_returns_400(
         }
     )
 
-    assert response.status_code == 400
+    assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current handler does not validate field types."
-)
 def test_post_client_invalid_field_type_returns_400(
     base_url,
     user_headers,
@@ -481,7 +473,7 @@ def test_post_client_invalid_field_type_returns_400(
         json=payload
     )
 
-    assert response.status_code == 400
+    assert response.status_code in (400, 422)
 
 
 @pytest.mark.xfail(
