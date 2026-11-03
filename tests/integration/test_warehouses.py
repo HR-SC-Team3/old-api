@@ -479,6 +479,20 @@ def test_post_warehouse_duplicate_id_returns_conflict(base_url, user_headers, pr
     assert response.status_code == 422
 
 
+def test_post_warehouse_string_id_is_rejected(base_url, user_headers, preserve_data_files):
+    preserve_data_files("warehouse.json")
+    existing = _first_warehouse(base_url, user_headers)
+    headers = _get_headers(user_headers, method="post")
+
+    response = requests.post(
+        f"{base_url}/api/v1/warehouses",
+        headers=headers,
+        json={**existing, "id": str(existing["id"])},
+    )
+
+    assert response.status_code == 422
+
+
 def test_post_warehouse_is_immediately_retrievable(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 

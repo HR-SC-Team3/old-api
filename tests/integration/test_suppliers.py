@@ -446,8 +446,16 @@ def test_post_supplier_response_points_to_new_resource(
 ):
     preserve_data_files("supplier.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_supplier(base_url, user_headers)
+    payload = {
+        key: value
+        for key, value in existing.items()
+        if key not in {"id", "created_at", "updated_at"}
+    }
+    payload["code"] = f"{existing['code']}-LOCATE-{existing['id']}"
+    payload["name"] = "Locate Me Co"
     response = requests.post(
-        _url(base_url), headers=headers, json={"name": "Locate Me Co"}
+        _url(base_url), headers=headers, json=payload
     )
 
     assert response.status_code == 201

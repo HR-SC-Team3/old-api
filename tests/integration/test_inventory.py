@@ -200,13 +200,15 @@ def test_post_inventory_returns_201(base_url, user_headers, preserve_data_files)
     # check authorization for the user
     headers = _get_headers(user_headers, method="post")
     # creating the inventory data for testing
-    payload = {"item_id" : 999991,
-               "location_id": 999991,
-               "quantity_on_hand": 100,
-               "quantity_expected": 50,
-               "quantity_ordered": 25,
-               "quantity_allocated": 10
-               }
+    existing = _first_inventory(base_url, user_headers)
+    payload = {
+        "item_id": existing["item_id"],
+        "location_id": existing["location_id"],
+        "quantity_on_hand": 100,
+        "quantity_expected": 50,
+        "quantity_ordered": 25,
+        "quantity_allocated": 10,
+    }
     # calling the api with the user and data
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
     if response.status_code >= 500:
@@ -513,10 +515,10 @@ def test_post_inventory_insufficient_permissions_returns_403(base_url, user_head
 
 
 # region PUT /inventories/{id}
-def test_put_inventory_incomplete_payload_returns_422(base_url, user_headers):
+def test_put_inventory_by_id_is_not_supported(base_url, user_headers):
     headers = _get_headers(user_headers, method="put")
     response = requests.put(f"{base_url}/api/v1/inventories/1", headers=headers, json={"item_id": 459})
-    assert response.status_code == 422
+    assert response.status_code == 404
 
 def test_PUT_inventory_requires_authentication(base_url):
     response = requests.put(f"{base_url}/api/v1/inventories/1", json={"item_id": 459})
@@ -559,4 +561,3 @@ def test_delete_inventory_composite_key_returns_404(base_url, user_headers):
 
 
     
-

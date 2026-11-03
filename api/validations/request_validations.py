@@ -1,3 +1,5 @@
+import json
+
 from pydantic import ValidationError
 
 from validations.schema_validations import (   
@@ -43,7 +45,7 @@ class RequestValidator:
             return False, error
         
         try:
-            schema.model_validate(data)
+            schema.model_validate_json(json.dumps(data), strict=True)
         except ValidationError as error:
             return False, str(error)
 

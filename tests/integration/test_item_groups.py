@@ -348,7 +348,9 @@ def test_post_item_group_response_points_to_new_resource(
     preserve_data_files("item_group.json")
     headers = _get_headers(user_headers, method="post")
     response = requests.post(
-        _url(base_url), headers=headers, json={"name": "Locate Me Group"}
+        _url(base_url),
+        headers=headers,
+        json={"name": "Locate Me Group", "description": "Location test group"},
     )
 
     assert response.status_code == 201
@@ -425,11 +427,20 @@ def test_post_item_group_missing_id_gets_generated_id_and_lookups_stay_clean(
     preserve_data_files("item_group.json")
     headers = _get_headers(user_headers, method="post")
 
-    post_response = requests.post(_url(base_url), headers=headers, json={})
-    assert post_response.status_code in (400, 422)
-    assert "id" in post_response.json()
+    payload = {
+        "name": "Generated ID Group",
+        "description": "Group created without a supplied ID",
+    }
+    post_response = requests.post(_url(base_url), headers=headers, json=payload)
+    assert post_response.status_code == 201
+    created_id = post_response.json()["id"]
 
     get_headers = _get_headers(user_headers)
+    created_response = requests.get(
+        _url(base_url, f"/{created_id}"), headers=get_headers
+    )
+    assert created_response.status_code == 200
+    assert created_response.json()["name"] == payload["name"]
 
     unmatched_id_response = requests.get(
         _url(base_url, "/999999"), headers=get_headers
