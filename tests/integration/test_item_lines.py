@@ -997,10 +997,6 @@ def test_get_item_line_items_only_returns_correct_items(
                 assert item["item_line_id"] == existing["id"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for nonexistent item_line instead of 404",
-)
 def test_get_item_line_items_nonexistent_item_line_returns_404(
     base_url, user_headers
 ):
@@ -1010,18 +1006,6 @@ def test_get_item_line_items_nonexistent_item_line_returns_404(
     )
 
     assert response.status_code == 404
-
-
-def test_get_item_line_items_empty_result_returns_200(
-    base_url, user_headers
-):
-    response = requests.get(
-        _url(base_url, "/999999/items"),
-        headers=_get_headers(user_headers),
-    )
-
-    if response.status_code == 200:
-        assert response.json() == []
 
 
 def test_get_item_line_items_requires_authentication(base_url):

@@ -971,15 +971,6 @@ def test_get_transfer_items_only_contains_expected_fields(base_url, user_headers
         assert set(raw.keys()) == {"item_id", "amount"}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "get_items_in_transfer() filters TransferItems by transfer_id with "
-        "no existence check on the parent transfer at all. A nonexistent "
-        "parent id returns 200 with an empty array (indistinguishable from "
-        "a real transfer that simply has no items) instead of 404."
-    ),
-)
 def test_get_transfer_items_nonexistent_parent_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
 

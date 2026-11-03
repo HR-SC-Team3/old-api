@@ -117,13 +117,23 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                     else:
                                         self.send_json_response(200, resource)
                                 case 3 if paths[5] == controller.sub_resource:
-                                    self.send_json_response(
-                                        200, controller.get_sub_resource(int(paths[4]))
+                                    sub_resource = controller.get_sub_resource(
+                                        int(paths[4])
                                     )
+                                    if sub_resource is None:
+                                        self.send_response(404)
+                                        self.end_headers()
+                                    else:
+                                        self.send_json_response(200, sub_resource)
                                 case 4 if paths[3] == "items" and paths[5] == "inventory" and paths[6] == "totals":
-                                        self.send_json_response(
-                                            200, controller.get_sub_resource_totals(int(paths[4]))
+                                        totals = controller.get_sub_resource_totals(
+                                            int(paths[4])
                                         )
+                                        if totals is None:
+                                            self.send_response(404)
+                                            self.end_headers()
+                                        else:
+                                            self.send_json_response(200, totals)
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
@@ -153,10 +163,18 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                         self.send_json_response(200, shipment)
                                 case 3 if paths[5] == "orders":
                                     orders = controller.get_orders(int(paths[4]))
-                                    self.send_json_response(200, orders)
+                                    if orders is None:
+                                        self.send_response(404)
+                                        self.end_headers()
+                                    else:
+                                        self.send_json_response(200, orders)
                                 case 3 if paths[5] == "items":
                                     items = controller.get_items(int(paths[4]))
-                                    self.send_json_response(200, items)
+                                    if items is None:
+                                        self.send_response(404)
+                                        self.end_headers()
+                                    else:
+                                        self.send_json_response(200, items)
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
@@ -223,9 +241,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 case 3 if paths[5] == "items":
                                     order_id = int(paths[4])
                                     updated_items = self._read_json_body()
-                                    controller.put_items(order_id, updated_items)
-                                    self.send_response(200)
-                                    self.end_headers()
+                                    if controller.put_items(order_id, updated_items) is None:
+                                        self.send_response(404)
+                                    else:
+                                        self.send_response(200)
+                                    self.end_headers()                                         
 
                                 case _:
                                     self.send_response(404)

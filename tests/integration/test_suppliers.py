@@ -366,14 +366,6 @@ def test_get_supplier_items_are_consistent_with_items_endpoint(base_url, user_he
         assert direct.json() == item
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "get_items_for_supplier() filters Items by supplier_id with no "
-        "existence check on the parent supplier at all. A nonexistent "
-        "parent id returns 200 with an empty array instead of 404."
-    ),
-)
 def test_get_supplier_items_nonexistent_parent_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
 

@@ -12,6 +12,8 @@ class ItemGroups(IResource):
         return pool.get_item_group(resource_id)
 
     def get_sub_resource(self, resource_id):
+        if data_provider.fetch_item_group_pool().get_item_group(resource_id) is None:
+            return None
         return data_provider.fetch_item_pool().get_items_for_item_group(
             resource_id
         )

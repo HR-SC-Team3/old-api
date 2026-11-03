@@ -13,9 +13,10 @@ class Transfers(IResource):
         return pool.get_transfer(resource_id)
 
     def get_sub_resource(self, resource_id):
-        return data_provider.fetch_transfer_pool().get_items_in_transfer(
-            resource_id
-        )
+        pool = data_provider.fetch_transfer_pool()
+        if pool.get_transfer(resource_id) is None:
+            return None
+        return pool.get_items_in_transfer(resource_id)
 
     def post(self, data):
         pool = data_provider.fetch_transfer_pool()

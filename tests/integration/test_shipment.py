@@ -490,10 +490,8 @@ def test_get_shipment_orders_insufficient_returns_403(base_url, user_headers):
     response = _request_shipment(base_url, user_headers, method="get", path="/api/v1/shipments/1/orders", allowed=False, json={},)
     assert response.status_code == 403
 
-@pytest.mark.xfail(strict = True, reason="It returns 200 for nonexistent shipment instead of not found 404")
-
 def test_get_shipment_order_nonexistent_parent_return_404(base_url, user_headers):
-    headers = _get_headers(user_headers)
+    headers = _get_headers(user_headers, method="get", allowed=True)
     response = requests.get(f"{base_url}/api/v1/shipments/99999999/orders", headers =headers)
     assert response.status_code == 404
 
@@ -532,11 +530,13 @@ def test_put_shipment_orders_insufficient_returns_403(base_url, user_headers):
     response = _request_shipment(base_url, user_headers, method="put", path="/api/v1/shipments/1/orders", allowed=False, json={},)
     assert response.status_code == 403
 
-@pytest.mark.xfail(strict = True, reason="It returns a format that doesn't match the expected order objects")
-
 def test_put_shipment_order_nonexistent_parent_return_404(base_url, user_headers):
-    headers = _get_headers(user_headers, method="put", allowed=False,)
-    response = requests.put(f"{base_url}/api/v1/shipments/99999999/orders", headers =headers)
+    headers = _get_headers(user_headers, method="put", allowed=True)
+    response = requests.put(
+        f"{base_url}/api/v1/shipments/99999999/orders",
+        headers=headers,
+        json=[],
+    )
     assert response.status_code == 404
 #endregion
 
@@ -549,10 +549,8 @@ def test_get_shipment_items_insufficient_returns_403(base_url, user_headers):
     response = _request_shipment(base_url, user_headers, method="get", path="/api/v1/shipments/1/items", allowed=False, json={},)
     assert response.status_code == 403
 
-@pytest.mark.xfail(strict = True, reason="it returns 500 instead of 404 for no non existent shipment found")
-
 def test_get_shipment_items_nonexistent_parent_return_404(base_url, user_headers):
-    headers = _get_headers(user_headers, method="get", allowed=False,)
+    headers = _get_headers(user_headers, method="get", allowed=True)
     response = requests.get(f"{base_url}/api/v1/shipments/99999999/items", headers =headers)
     assert response.status_code == 404
 
@@ -577,11 +575,13 @@ def test_put_shipment_items_insufficient_returns_403(base_url, user_headers):
     response = requests.put(f"{base_url}/api/v1/shipments/1/items", headers=headers, json={},)
     assert response.status_code == 403
 
-@pytest.mark.xfail(strict=True, reason="GET shipment items currently returns 500 for a nonexistent shipment instead of 404.")
-
 def test_put_shipment_items_nonexistent_parent_return_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="put", allowed=True)
-    response = requests.put(f"{base_url}/api/v1/shipments/99999999/items", headers =headers)
+    response = requests.put(
+        f"{base_url}/api/v1/shipments/99999999/items",
+        headers=headers,
+        json=[],
+    )
     assert response.status_code == 404
 
 #endregion
