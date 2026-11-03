@@ -47,8 +47,8 @@ class RequestValidator:
         except ValidationError as error:
             return False, str(error)
 
-        if method == "POST":
-            valid, error = RequestValidator.validate_duplicate_id(resource, data, controllers)
+        if method in ("POST", "PUT"):
+            valid, error = RequestValidator.validate_duplicate_id(resource, data, controllers, resource_id)
             if not valid:
                 return False, error   
         
@@ -70,13 +70,13 @@ class RequestValidator:
         return True, None
     
     @staticmethod
-    def validate_duplicate_id(resource, data, controllers):
+    def validate_duplicate_id(resource, data, controllers, resource_id=None):
         if resource == "transfers" and "id" not in data:
             return False, "Transfer id is required"
         if "id" not in data:
             return True, None
         controller = controllers[resource]
-        if controller.get(data["id"]) is not None:
+        if (controller.get(data["id"]) is not None and data["id"] != resource_id):
             return False, "Id already exists"
         return True, None
     

@@ -674,6 +674,20 @@ def test_put_warehouse_update_is_persisted(base_url, user_headers, preserve_data
     assert get_response.json()["name"] == "Persisted Warehouse Name"
 
 
+def test_put_warehouse_duplicate_id_is_rejected(base_url, user_headers, preserve_data_files):
+    preserve_data_files("warehouse.json")
+    headers = _get_headers(user_headers, method="put")
+    warehouses = requests.get(f"{base_url}/api/v1/warehouses", headers=_get_headers(user_headers),)
+    assert warehouses.status_code == 200
+    records = warehouses.json()
+    assert len(records) >= 2, "fixture data/warehouse.json needs at least two records"
+    target, other = records[:2]
+    response = requests.put(f"{base_url}/api/v1/warehouses/{target['id']}", headers=headers, json={**target, "id": other["id"]},)
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "Id already exists"
+
+
 def test_put_warehouse_nonexistent_id_returns_404(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
