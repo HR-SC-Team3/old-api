@@ -372,11 +372,13 @@ def test_post_transfer_returns_created_resource(
 ):
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
     payload = {
         "id": 555556,
         "reference": "TRF-TEST-2",
         "from_location_id": 369,
         "to_location_id": 320,
+        "transfer_status": existing["transfer_status"],
         "items": [{"item_id": 190, "amount": 5}],
     }
 
@@ -396,6 +398,7 @@ def test_post_transfer_response_points_to_new_resource(
 ):
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
 
     response = requests.post(
         _url(base_url),
@@ -405,6 +408,8 @@ def test_post_transfer_response_points_to_new_resource(
             "reference": "TRF-LOCATE",
             "from_location_id": 369,
             "to_location_id": 320,
+            "transfer_status": existing["transfer_status"],
+            "items": [{"item_id": 190, "amount": 5}],
         },
     )
 
@@ -432,11 +437,19 @@ def test_post_transfer_missing_id_gets_generated_id_and_collection_stays_readabl
     """
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
 
     post_response = requests.post(
-        _url(base_url), headers=headers, json={}
+        _url(base_url),
+        headers=headers,
+        json={
+            "reference": "TRF-GENERATED-ID",
+            "from_location_id": 369,
+            "to_location_id": 320,
+            "transfer_status": existing["transfer_status"],
+            "items": [{"item_id": 190, "amount": 5}],
+        },
     )
-    assert post_response.status_code == 422
     assert post_response.status_code == 201
     assert "id" in post_response.json()
 

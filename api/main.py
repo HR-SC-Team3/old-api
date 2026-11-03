@@ -293,7 +293,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                             | "locations"
                             | "items"
                             | "item_lines"
-                            | "inventories"
                         ):
                             if self._deny_without_access(user, paths[3:], "put"):
                                 return
@@ -308,7 +307,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                             if not valid:
                                 self.send_json_response(422, {"error": error})
                                 return
-                            if (self.controllers[paths[3]].put(resource_id, updated_resource) is None):
                             result = self.controllers[paths[3]].put(
                                 resource_id, updated_resource
                             )
@@ -425,15 +423,15 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 self.end_headers()
                                 return
                             data = self._read_json_body()
-                            valid, error = RequestValidator.validate(paths[3], data, self.controllers, method="POST")
-
+                            controller = self.controllers[paths[3]]
+                            self._assign_id_if_missing(controller, data)
+                            valid, error = RequestValidator.validate(
+                                paths[3], data, self.controllers, method="POST"
+                            )
                             if not valid:
                                 self.send_json_response(422, {"error": error})
                                 return
-                            controller = self.controllers[paths[3]]
-                            new_resource = data
-                            self._assign_id_if_missing(controller, new_resource)
-                            created = controller.post(new_resource)
+                            created = controller.post(data)
                             self.send_created_response(paths[3], created)
                         case "inventories":
                             if self._deny_without_access(user, paths[3:], "post"):
@@ -454,6 +452,7 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                             valid, error = RequestValidator.validate("inventories", new_inventory, self.controllers, method="POST")
                             if not valid:
                                 self.send_json_response(422, {"error": error})
+                                return
                             required_fields = [
                                 "item_id",
                                 "location_id",
