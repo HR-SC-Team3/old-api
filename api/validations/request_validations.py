@@ -130,6 +130,10 @@ class RequestValidator:
             if "order_id" in data:
                 if controllers["orders"].get(data["order_id"]) is None:
                     return False, "Invalid order_id"
+            if "items" in data:
+                for item in data["items"]:
+                    if controllers["items"].get(item["item_id"]) is None:
+                        return False, "Invalid item_id"
 
         elif resource == "orders":
             if "client_id" in data:

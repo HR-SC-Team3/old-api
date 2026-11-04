@@ -110,6 +110,7 @@ class Shipment(BaseModel):
     carrier_name: str
     shipping_method: str
     payment_type: str
+    items: list[ItemAmount] | None = None
     
 class Client(BaseModel):
     created_at: datetime | None = None

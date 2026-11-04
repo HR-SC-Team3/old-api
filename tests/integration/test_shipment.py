@@ -324,6 +324,18 @@ def test_post_shipment_response_has_no_content_type(base_url, user_headers, pres
     assert response.content == b""
     assert response.headers.get("Content-Type") is None
 
+def test_post_shipment_with_items_returns_201(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("shipment.json", "shipment_item.json")
+    payload = _valid_shipment_payload(_next_shipment_id(base_url, user_headers))
+    item_response = requests.get(f"{base_url}/api/v1/items", headers=user_headers(resource="items", method="get"),)
+    assert item_response.status_code == 200
+    payload["items"] = [{"item_id": item_response.json()[0]["id"], "amount": 3}]
+    response = requests.post(f"{base_url}/api/v1/shipments", headers=_get_headers(user_headers, method="post"), json=payload,)
+    assert response.status_code == 201
+    created = _shipment_by_id(base_url, user_headers, payload["id"])
+    assert created.status_code == 200
+    assert created.json()["items"] == payload["items"]
+
 #endregion
 
 #region GET shipment id
@@ -473,6 +485,29 @@ def test_put_shipment_rejects_invalid_foreign_key(base_url, user_headers, preser
     }
     response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422)
+
+def test_put_shipment_with_items_returns_200(base_url, user_headers, preserve_data_files):
+    preserve_data_files("shipment.json", "shipment_item.json", "inventory.json")
+    existing = _first_shipment(base_url, user_headers,)
+    item_response = requests.get(f"{base_url}/api/v1/items", headers=user_headers(resource="items", method="get"),)
+    assert item_response.status_code == 200
+    payload = {
+        "id": existing["id"],
+        "reference": existing["reference"],
+        "order_id": existing["order_id"],
+        "shipment_date": existing["shipment_date"],
+        "shipment_type": existing["shipment_type"],
+        "shipment_status": existing["shipment_status"],
+        "carrier_name": existing["carrier_name"],
+        "shipping_method": existing["shipping_method"],
+        "payment_type": existing["payment_type"],
+        "items": [{"item_id": item_response.json()[0]["id"], "amount": 4}],
+    }
+    response = requests.put(f"{base_url}/api/v1/shipments/{existing['id']}", headers=_get_headers(user_headers, method="put"), json=payload,)
+    assert response.status_code == 200
+    updated = _shipment_by_id(base_url, user_headers, existing["id"])
+    assert updated.status_code == 200
+    assert updated.json()["items"] == payload["items"]
 
 #endregion
 
