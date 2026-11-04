@@ -348,22 +348,14 @@ def test_post_item_group_response_points_to_new_resource(
     preserve_data_files("item_group.json")
     headers = _get_headers(user_headers, method="post")
     response = requests.post(
-        _url(base_url), headers=headers, json={"name": "Locate Me Group"}
+        _url(base_url),
+        headers=headers,
+        json={"name": "Locate Me Group", "description": "Location test group"},
     )
 
     assert response.status_code == 201
     assert "Location" in response.headers
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No request validation exists at all: an empty/near-empty payload "
-        "missing every documented required-looking field (name, "
-        "description) is still accepted with 201. Expected: 400/422 "
-        "listing the missing fields."
-    ),
-)
 def test_post_item_group_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -375,15 +367,6 @@ def test_post_item_group_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Field values are stored as-is with no type checking: an `id` of "
-        "type string is accepted with 201 instead of being rejected. "
-        "Expected: 400/422 for a type mismatch against the documented "
-        "integer id."
-    ),
-)
 def test_post_item_group_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -399,15 +382,6 @@ def test_post_item_group_invalid_field_type_is_rejected(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "There is no id uniqueness check anywhere in "
-        "ItemGroups.add_item_group: POSTing a second item group with an id "
-        "that already exists is accepted with 201 instead of a 409/400 "
-        "conflict."
-    ),
-)
 def test_post_item_group_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -421,7 +395,7 @@ def test_post_item_group_duplicate_id_returns_conflict(
         json={**existing, "name": "Duplicate of " + existing["name"]},
     )
 
-    assert response.status_code == 409
+    assert response.status_code in (409, 422)
 
 
 def test_post_item_group_is_immediately_retrievable(
@@ -453,16 +427,27 @@ def test_post_item_group_missing_id_gets_generated_id_and_lookups_stay_clean(
     preserve_data_files("item_group.json")
     headers = _get_headers(user_headers, method="post")
 
-    post_response = requests.post(_url(base_url), headers=headers, json={})
+    payload = {
+        "name": "Generated ID Group",
+        "description": "Group created without a supplied ID",
+    }
+    post_response = requests.post(_url(base_url), headers=headers, json=payload)
     assert post_response.status_code == 201
-    assert "id" in post_response.json()
+    created_id = post_response.json()["id"]
 
     get_headers = _get_headers(user_headers)
+    created_response = requests.get(
+        _url(base_url, f"/{created_id}"), headers=get_headers
+    )
+    assert created_response.status_code == 200
+    assert created_response.json()["name"] == payload["name"]
 
     unmatched_id_response = requests.get(
         _url(base_url, "/999999"), headers=get_headers
     )
     assert unmatched_id_response.status_code == 404
+    collection_response = requests.get(_url(base_url), headers=get_headers)
+    assert collection_response.status_code == 200
 
 
 @pytest.mark.skip(
@@ -601,7 +586,7 @@ def test_put_item_group_nonexistent_id_returns_404(
     response = requests.put(
         _url(base_url, "/999999"),
         headers=headers,
-        json={"id": 999999, "name": "Ghost Group"},
+        json={"id": 999999, "name": "Ghost Group", "description": "A group of ghosts"},
     )
 
     assert response.status_code == 404

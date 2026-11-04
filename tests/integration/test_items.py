@@ -467,10 +467,6 @@ def test_post_item_response_points_to_new_resource(
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an empty item payload and returns 201",
-)
 def test_post_item_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -490,10 +486,6 @@ def test_post_item_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an invalid field type and returns 201",
-)
 def test_post_item_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -516,11 +508,6 @@ def test_post_item_invalid_field_type_is_rejected(
 
     assert response.status_code in (400, 422)
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts duplicate item IDs and returns 201",
-)
 def test_post_item_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -577,10 +564,6 @@ def test_post_item_is_immediately_retrievable(
     assert get_response.json()["description"] == "Retrievable Item"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts invalid foreign keys and returns 201",
-)
 @pytest.mark.parametrize(
     "foreign_key",
     [
@@ -806,10 +789,6 @@ def test_put_item_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an invalid field type and returns 200",
-)
 def test_put_item_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -831,10 +810,6 @@ def test_put_item_invalid_field_type_is_rejected(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts invalid foreign keys and returns 200",
-)
 @pytest.mark.parametrize(
     "foreign_key",
     [
@@ -1174,6 +1149,38 @@ def test_get_item_inventory_totals_response_content_type_is_json(
     assert response.headers.get(
         "Content-Type", ""
     ).startswith("application/json")
+
+
+# endregion
+
+
+# region Range validation
+
+
+@pytest.mark.parametrize(
+    "override, expected_message",
+    [
+        ({"id": 0}, "greater than 0"),
+        ({"case_size": 0}, "greater than 0"),
+        ({"order_multiple": -1}, "greater than 0"),
+        ({"unit_weight": -0.1}, "greater than or equal to 0"),
+    ],
+)
+def test_post_item_rejects_out_of_range_values(
+    base_url, user_headers, preserve_data_files, override, expected_message
+):
+    preserve_data_files("item.json")
+
+    payload = {**_first_item(base_url, user_headers), "id": 999991, **override}
+
+    response = requests.post(
+        _url(base_url),
+        headers=_get_headers(user_headers, method="post"),
+        json=payload,
+    )
+
+    assert response.status_code == 422
+    assert expected_message in response.json()["error"]
 
 
 # endregion

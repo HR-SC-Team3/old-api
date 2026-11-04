@@ -350,11 +350,13 @@ def test_get_transfer_by_malformed_id_error_leaks_no_internal_details(
 def test_post_transfer_valid_payload_returns_201(base_url, user_headers, preserve_data_files):
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
     payload = {
         "id": 555555,
         "reference": "TRF-TEST-1",
         "from_location_id": 369,
         "to_location_id": 320,
+        "transfer_status": existing["transfer_status"],
         "items": [{"item_id": 190, "amount": 5}],
     }
 
@@ -370,11 +372,13 @@ def test_post_transfer_returns_created_resource(
 ):
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
     payload = {
         "id": 555556,
         "reference": "TRF-TEST-2",
         "from_location_id": 369,
         "to_location_id": 320,
+        "transfer_status": existing["transfer_status"],
         "items": [{"item_id": 190, "amount": 5}],
     }
 
@@ -394,6 +398,7 @@ def test_post_transfer_response_points_to_new_resource(
 ):
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
 
     response = requests.post(
         _url(base_url),
@@ -403,6 +408,8 @@ def test_post_transfer_response_points_to_new_resource(
             "reference": "TRF-LOCATE",
             "from_location_id": 369,
             "to_location_id": 320,
+            "transfer_status": existing["transfer_status"],
+            "items": [{"item_id": 190, "amount": 5}],
         },
     )
 
@@ -410,20 +417,6 @@ def test_post_transfer_response_points_to_new_resource(
     assert "Location" in response.headers
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No request validation exists at all: an empty payload missing "
-        "every documented required-looking field (including `id`) is not "
-        "rejected up front. add_transfer() happily stores it (and "
-        "Transfers.save() persists it to disk) *before* the handler tries "
-        "to log f\"...{new_transfer['id']}\" for the notification, which "
-        "raises an uncaught KeyError since there never was an `id`. Actual: "
-        "500, but only *after* the malformed row was already saved -- see "
-        "test_post_transfer_missing_id_gets_generated_id_and_collection_stays_readable below "
-        "for the fallout. Expected: 400/422 up front, with nothing persisted."
-    ),
-)
 def test_post_transfer_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -444,9 +437,18 @@ def test_post_transfer_missing_id_gets_generated_id_and_collection_stays_readabl
     """
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
 
     post_response = requests.post(
-        _url(base_url), headers=headers, json={}
+        _url(base_url),
+        headers=headers,
+        json={
+            "reference": "TRF-GENERATED-ID",
+            "from_location_id": 369,
+            "to_location_id": 320,
+            "transfer_status": existing["transfer_status"],
+            "items": [{"item_id": 190, "amount": 5}],
+        },
     )
     assert post_response.status_code == 201
     assert "id" in post_response.json()
@@ -459,15 +461,6 @@ def test_post_transfer_missing_id_gets_generated_id_and_collection_stays_readabl
     assert collection_response.status_code == 200
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Field values are stored as-is with no type checking: an `id` of "
-        "type string is accepted with 201 instead of being rejected. "
-        "Expected: 400/422 for a type mismatch against the documented "
-        "integer id."
-    ),
-)
 def test_post_transfer_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -483,14 +476,6 @@ def test_post_transfer_invalid_field_type_is_rejected(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "There is no id uniqueness check anywhere in Transfers.add_transfer: "
-        "POSTing a second transfer with an id that already exists is "
-        "accepted with 201 instead of a 409/400 conflict."
-    ),
-)
 def test_post_transfer_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -504,7 +489,7 @@ def test_post_transfer_duplicate_id_returns_conflict(
         json={**existing, "reference": "Duplicate of " + existing["reference"]},
     )
 
-    assert response.status_code == 409
+    assert response.status_code == 422
 
 
 def test_post_transfer_is_immediately_retrievable(
@@ -512,12 +497,14 @@ def test_post_transfer_is_immediately_retrievable(
 ):
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
     payload = {
         "id": 555558,
-        "reference": "TRF-RETRIEVABLE",
+        "reference": "TRF-TEST-1",
         "from_location_id": 369,
         "to_location_id": 320,
-        "items": [{"item_id": 190, "amount": 3}],
+        "transfer_status": existing["transfer_status"],
+        "items": [{"item_id": 190, "amount": 5}],
     }
 
     create_response = requests.post(
@@ -532,18 +519,10 @@ def test_post_transfer_is_immediately_retrievable(
 
     assert get_response.status_code == 200
     assert get_response.json() is not None
-    assert get_response.json()["reference"] == "TRF-RETRIEVABLE"
-    assert get_response.json()["items"] == [{"item_id": 190, "amount": 3}]
+    assert get_response.json()["reference"] == payload["reference"]
+    assert get_response.json()["items"] == payload["items"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "add_transfer() never checks that from_location_id/to_location_id "
-        "reference an existing location. A payload pointing at nonexistent "
-        "location ids is accepted with 201 instead of being rejected."
-    ),
-)
 def test_post_transfer_invalid_foreign_key_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -694,12 +673,15 @@ def test_put_transfer_nonexistent_id_returns_404(
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="put")
 
-    response = requests.put(
-        _url(base_url, f"/999999"),
-        headers=headers,
-        json={"id": 999999, "reference": "Ghost Transfer"},
-    )
+    existing = _first_transfer(base_url, user_headers)
+    missing_id = 999999
+    payload = {**existing, "id": missing_id, "reference": "Ghost Transfer"}
 
+    response = requests.put(
+        _url(base_url, f"/{missing_id}"),
+        headers=headers,
+        json=payload,
+    )
     assert response.status_code == 404
 
 
@@ -712,7 +694,6 @@ def test_put_transfer_malformed_id_returns_400(
     response = requests.put(
         _url(base_url, f"/not-an-id"),
         headers=headers,
-        json={"reference": "x"},
     )
 
     assert response.status_code == 400
@@ -729,15 +710,6 @@ def test_put_transfer_replaces_the_whole_record_per_source():
     assert "self.data[i] = transfer" in TRANSFERS_MODEL_SOURCE
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "update_transfer() never checks that from_location_id/to_location_id "
-        "reference an existing location. Updating a transfer to point at "
-        "nonexistent location ids is accepted with 200 instead of being "
-        "rejected."
-    ),
-)
 def test_put_transfer_invalid_foreign_key_is_rejected(
     base_url, user_headers, preserve_data_files
 ):

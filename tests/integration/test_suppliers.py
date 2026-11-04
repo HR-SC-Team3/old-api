@@ -438,23 +438,22 @@ def test_post_supplier_response_points_to_new_resource(
 ):
     preserve_data_files("supplier.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_supplier(base_url, user_headers)
+    payload = {
+        key: value
+        for key, value in existing.items()
+        if key not in {"id", "created_at", "updated_at"}
+    }
+    payload["code"] = f"{existing['code']}-LOCATE-{existing['id']}"
+    payload["name"] = "Locate Me Co"
     response = requests.post(
-        _url(base_url), headers=headers, json={"name": "Locate Me Co"}
+        _url(base_url), headers=headers, json=payload
     )
 
     assert response.status_code == 201
     assert "Location" in response.headers
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No request validation exists at all: an empty/near-empty payload "
-        "missing every documented required-looking field (code, name, address, "
-        "etc.) is still accepted with 201. Expected: 400/422 listing the "
-        "missing fields."
-    ),
-)
 def test_post_supplier_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -466,14 +465,6 @@ def test_post_supplier_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Field values are stored as-is with no type checking: an `id` of type "
-        "string is accepted with 201 instead of being rejected. "
-        "Expected: 400/422 for a type mismatch against the documented integer id."
-    ),
-)
 def test_post_supplier_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -489,14 +480,6 @@ def test_post_supplier_invalid_field_type_is_rejected(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "There is no id/code uniqueness check anywhere in Suppliers.add_supplier: "
-        "POSTing a second supplier with an `id` (or `code`) that already exists "
-        "is accepted with 201 instead of a 409/400 conflict. "
-    ),
-)
 def test_post_supplier_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -510,7 +493,7 @@ def test_post_supplier_duplicate_id_returns_conflict(
         json={**existing, "name": "Duplicate Of " + existing["name"]},
     )
 
-    assert response.status_code == 409
+    assert response.status_code in (409, 422)
 
 
 def test_post_supplier_is_immediately_retrievable(
@@ -518,8 +501,13 @@ def test_post_supplier_is_immediately_retrievable(
 ):
     preserve_data_files("supplier.json")
     headers = _get_headers(user_headers, method="post")
-    payload = {"id": 555555, "code": "SUP-555555", "name": "Retrievable Co"}
-
+    existing = _first_supplier(base_url, user_headers)
+    payload = {
+        **existing,
+        "id": 555555,
+        "code": "SUP-555555",
+        "name": "Retrievable Co",
+    }
     create_response = requests.post(
         _url(base_url), headers=headers, json=payload
     )
@@ -675,12 +663,20 @@ def test_put_supplier_nonexistent_id_returns_404(
     preserve_data_files("supplier.json")
     headers = _get_headers(user_headers, method="put")
 
-    response = requests.put(
-        _url(base_url, f"/999999"),
-        headers=headers,
-        json={"id": 999999, "name": "Ghost Co"},
-    )
+    existing = _first_supplier(base_url, user_headers)
+    missing_id = 999999999999
+    payload = {
+        **existing,
+        "id": missing_id,
+        "code": "SUP-GHOST-999999999999",
+        "name": "Ghost Co",
+    }
 
+    response = requests.put(
+        _url(base_url, f"/{missing_id}"),
+        headers=headers,
+        json=payload,
+    )
     assert response.status_code == 404
 
 
