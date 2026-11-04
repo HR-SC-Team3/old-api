@@ -422,11 +422,6 @@ def test_post_item_type_without_permission_returns_403(
 
     assert response.status_code == 403
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current handler does not validate missing fields."
-)
 def test_post_item_type_missing_fields_returns_400(
     base_url,
     user_headers,
@@ -447,13 +442,9 @@ def test_post_item_type_missing_fields_returns_400(
         }
     )
 
-    assert response.status_code == 400
+    assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current handler does not validate field types."
-)
 def test_post_item_type_invalid_field_type_returns_400(
     base_url,
     user_headers,
@@ -475,7 +466,7 @@ def test_post_item_type_invalid_field_type_returns_400(
         json=payload
     )
 
-    assert response.status_code == 400
+    assert response.status_code in (400, 422)
 
 
 # endregion
@@ -853,10 +844,6 @@ def test_get_item_type_items_content_type_is_json(
     ).startswith("application/json")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when the parent item type does not exist."
-)
 def test_get_item_type_items_nonexistent_parent_returns_404(
     base_url,
     user_headers

@@ -215,7 +215,6 @@ def test_get_location_by_id_error_does_not_leak_internal_data(base_url, user_hea
 
 
 #region POST location
-@pytest.mark.xfail(strict=True, reason="POST /locations returns a 201 without a response body or Location header")
 def test_post_location_returns_201(base_url, user_headers, preserve_data_files):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post")
@@ -250,7 +249,6 @@ def test_post_location_accepts_application_json(base_url, user_headers, preserve
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=_valid_location_payload(),)
     assert response.status_code != 415
 
-@pytest.mark.xfail(strict=True, reason="It returns 201 which means it accepts missing fields")
 def test_post_location_missing_required_field_is_rejected(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post",)
@@ -259,7 +257,6 @@ def test_post_location_missing_required_field_is_rejected(base_url, user_headers
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=payload,)
     assert response.status_code in (400, 422,)
 
-@pytest.mark.xfail(strict=True, reason="it returns 201 which means it accepts invalid field types instead of returning 400 or 422")
 @pytest.mark.parametrize("field,value",[("id", "not-an-int"), ("warehouse_id", "not-an-int"), ("code", 12345), ("name", 12345),],)
 def test_post_location_rejects_invalid_field_type(base_url, user_headers, preserve_data_files, field, value,):
     preserve_data_files("location.json")
@@ -269,7 +266,6 @@ def test_post_location_rejects_invalid_field_type(base_url, user_headers, preser
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers,json=payload,)
     assert response.status_code in (400, 422,)
 
-@pytest.mark.xfail(strict=True, reason="It returns 201 which means it accepts duplicate id")
 def test_post_location_duplicate_id_is_handled(base_url, user_headers,preserve_data_files):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
@@ -287,7 +283,6 @@ def test_post_location_unexpected_field_is_handled_consistently(base_url,user_he
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers,json=payload,)
     assert response.status_code in (201, 400, 422,)
 
-@pytest.mark.xfail(strict=True, reason="it returns 201 when it should reject so it is accepting invalid foreign keys")
 def test_post_location_invalid_foreign_key_is_rejected(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post",)
@@ -296,7 +291,6 @@ def test_post_location_invalid_foreign_key_is_rejected(base_url, user_headers, p
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422,)
 
-@pytest.mark.xfail(strict=True, reason="It returns 201 without showing the created location id or location header")
 def test_post_location_is_immediately_retrievable(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post",)
@@ -322,7 +316,6 @@ def test_post_location_is_immediately_retrievable(base_url, user_headers, preser
     assert created["code"] == payload["code"]
     assert created["name"] == payload["name"]
 
-@pytest.mark.xfail(strict=True, reason="it returns 201 without application json Content type")
 def test_post_location_response_content_type_is_json(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post",)
@@ -339,7 +332,9 @@ def test_put_location_requires_authentication(base_url):
 
 def test_put_location_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="put")
-    response = requests.put(f"{base_url}/api/v1/locations/99999999", headers = headers, json=_valid_location_payload())
+    payload = _valid_location_payload()
+    payload["id"] = 99999999
+    response = requests.put(f"{base_url}/api/v1/locations/99999999", headers=headers, json=payload,)
     assert response.status_code == 404
 
 def test_put_locations_malformed_id_does_not_return_500(base_url, user_headers):
@@ -347,7 +342,6 @@ def test_put_locations_malformed_id_does_not_return_500(base_url, user_headers):
     response = requests.put(f"{base_url}/api/v1/locations/not-an-id", headers=headers, json = _valid_location_payload())
     assert response.status_code != 500
 
-@pytest.mark.xfail(strict=True, reason="it accepts invalid field values instead of rejecting")
 def test_put_location_rejects_invalid_field_value(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
@@ -364,7 +358,6 @@ def test_put_location_rejects_invalid_field_value(base_url, user_headers, preser
     assert response.status_code in (400, 422,)
 
 
-@pytest.mark.xfail(strict=True, reason="its returning 201 instead of rejecting invalid foreign keys")
 def test_put_location_rejects_invalid_foreign_key(base_url, user_headers,preserve_data_files,):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
@@ -408,7 +401,6 @@ def test_put_location_partial_payload_behavior(base_url, user_headers, preserve_
     response = requests.put(f"{base_url}/api/v1/locations/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code in (200, 400, 422,)
 
-@pytest.mark.xfail(strict=True, reason="it returns 200 without application/json Content-Type",)
 def test_put_location_response_content_type_is_json(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)

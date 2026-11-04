@@ -405,10 +405,6 @@ def test_get_item_line_malformed_id_error_leaks_no_internal_details(
 # region POST /item_lines
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="POST /item_lines returns 201 with an empty response body",
-)
 def test_post_item_line_returns_created_resource_with_id(
     base_url, user_headers, preserve_data_files
 ):
@@ -443,13 +439,6 @@ def test_post_item_line_returns_created_resource_with_id(
     assert body["name"] == "Test Item Line"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "POST /item_lines returns 201 without a Location header "
-        "or response body"
-    ),
-)
 def test_post_item_line_response_points_to_new_resource(
     base_url, user_headers, preserve_data_files
 ):
@@ -482,10 +471,6 @@ def test_post_item_line_response_points_to_new_resource(
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an empty item_line payload and returns 201",
-)
 def test_post_item_line_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -505,10 +490,6 @@ def test_post_item_line_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an invalid field type and returns 201",
-)
 def test_post_item_line_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -528,14 +509,9 @@ def test_post_item_line_invalid_field_type_is_rejected(
             "description": "Bad Type Description",
         },
     )
-
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts duplicate item_line IDs and returns 201",
-)
 def test_post_item_line_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -782,10 +758,6 @@ def test_put_item_line_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an invalid field type and returns 200",
-)
 def test_put_item_line_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -903,9 +875,6 @@ def test_delete_item_line_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    reason="Returns 200 despite item_line being deleted already.",
-)
 def test_delete_item_line_repeated_delete_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -997,10 +966,6 @@ def test_get_item_line_items_only_returns_correct_items(
                 assert item["item_line_id"] == existing["id"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for nonexistent item_line instead of 404",
-)
 def test_get_item_line_items_nonexistent_item_line_returns_404(
     base_url, user_headers
 ):
@@ -1010,18 +975,6 @@ def test_get_item_line_items_nonexistent_item_line_returns_404(
     )
 
     assert response.status_code == 404
-
-
-def test_get_item_line_items_empty_result_returns_200(
-    base_url, user_headers
-):
-    response = requests.get(
-        _url(base_url, "/999999/items"),
-        headers=_get_headers(user_headers),
-    )
-
-    if response.status_code == 200:
-        assert response.json() == []
 
 
 def test_get_item_line_items_requires_authentication(base_url):

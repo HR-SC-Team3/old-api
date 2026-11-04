@@ -326,14 +326,6 @@ def test_get_item_group_by_malformed_id_error_leaks_no_internal_details(
 # region POST /item_groups
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "POST /item_groups returns 201 with an empty body: no created "
-        "resource, no generated id, nothing. Redesign suggestion: return "
-        "the created resource (with its id) in the body."
-    ),
-)
 def test_post_item_group_returns_created_resource_with_id(
     base_url, user_headers, preserve_data_files
 ):
@@ -350,36 +342,20 @@ def test_post_item_group_returns_created_resource_with_id(
         assert body[key] == value
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No Location header and no body are returned on 201, so there is "
-        "no way for a client to discover the URL of the resource it just "
-        "created."
-    ),
-)
 def test_post_item_group_response_points_to_new_resource(
     base_url, user_headers, preserve_data_files
 ):
     preserve_data_files("item_group.json")
     headers = _get_headers(user_headers, method="post")
     response = requests.post(
-        _url(base_url), headers=headers, json={"name": "Locate Me Group"}
+        _url(base_url),
+        headers=headers,
+        json={"name": "Locate Me Group", "description": "Location test group"},
     )
 
     assert response.status_code == 201
     assert "Location" in response.headers
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No request validation exists at all: an empty/near-empty payload "
-        "missing every documented required-looking field (name, "
-        "description) is still accepted with 201. Expected: 400/422 "
-        "listing the missing fields."
-    ),
-)
 def test_post_item_group_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -391,15 +367,6 @@ def test_post_item_group_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Field values are stored as-is with no type checking: an `id` of "
-        "type string is accepted with 201 instead of being rejected. "
-        "Expected: 400/422 for a type mismatch against the documented "
-        "integer id."
-    ),
-)
 def test_post_item_group_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -415,15 +382,6 @@ def test_post_item_group_invalid_field_type_is_rejected(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "There is no id uniqueness check anywhere in "
-        "ItemGroups.add_item_group: POSTing a second item group with an id "
-        "that already exists is accepted with 201 instead of a 409/400 "
-        "conflict."
-    ),
-)
 def test_post_item_group_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -437,7 +395,7 @@ def test_post_item_group_duplicate_id_returns_conflict(
         json={**existing, "name": "Duplicate of " + existing["name"]},
     )
 
-    assert response.status_code == 409
+    assert response.status_code in (409, 422)
 
 
 def test_post_item_group_is_immediately_retrievable(
@@ -458,35 +416,38 @@ def test_post_item_group_is_immediately_retrievable(
     assert get_response.json()["name"] == "Retrievable Group"
 
 
-def test_post_item_group_missing_id_breaks_lookups_for_unmatched_ids(
+def test_post_item_group_missing_id_gets_generated_id_and_lookups_stay_clean(
     base_url, user_headers, preserve_data_files
 ):
     """
-    Documents a real, observed side effect of the validation gap above.
-    add_item_group() does not require an `id` field, so a payload without
-    one is accepted (201) and appended as-is. get_item_group() indexes
-    x["id"] unconditionally while scanning for a match, so once that
-    id-less row is the last one in the collection, any lookup for an id
-    that ISN'T found (i.e. that has to scan all the way to the end) raises
-    an uncaught KeyError -- a 500 -- instead of the usual 200/null. Lookups
-    for ids that already exist earlier in the collection are unaffected,
-    since get_item_group() returns as soon as it finds a match.
+    A payload without an `id` is accepted (201) and the API generates one,
+    so the stored row never lacks an id. Lookups for unknown ids still
+    return 404 instead of crashing on an id-less row.
     """
     preserve_data_files("item_group.json")
     headers = _get_headers(user_headers, method="post")
 
-    post_response = requests.post(_url(base_url), headers=headers, json={})
+    payload = {
+        "name": "Generated ID Group",
+        "description": "Group created without a supplied ID",
+    }
+    post_response = requests.post(_url(base_url), headers=headers, json=payload)
     assert post_response.status_code == 201
+    created_id = post_response.json()["id"]
 
     get_headers = _get_headers(user_headers)
-
-    existing_id_response = requests.get(_url(base_url, "/1"), headers=get_headers)
-    assert existing_id_response.status_code == 200
+    created_response = requests.get(
+        _url(base_url, f"/{created_id}"), headers=get_headers
+    )
+    assert created_response.status_code == 200
+    assert created_response.json()["name"] == payload["name"]
 
     unmatched_id_response = requests.get(
         _url(base_url, "/999999"), headers=get_headers
     )
-    assert unmatched_id_response.status_code == 500
+    assert unmatched_id_response.status_code == 404
+    collection_response = requests.get(_url(base_url), headers=get_headers)
+    assert collection_response.status_code == 200
 
 
 @pytest.mark.skip(
@@ -625,7 +586,7 @@ def test_put_item_group_nonexistent_id_returns_404(
     response = requests.put(
         _url(base_url, "/999999"),
         headers=headers,
-        json={"id": 999999, "name": "Ghost Group"},
+        json={"id": 999999, "name": "Ghost Group", "description": "A group of ghosts"},
     )
 
     assert response.status_code == 404
@@ -870,15 +831,6 @@ def test_get_item_group_items_ids_are_consistent_with_items_endpoint(
         assert direct.json()["item_group_id"] == existing["id"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "get_items_for_item_group() filters Items by item_group_id with no "
-        "existence check on the parent item group at all. A nonexistent "
-        "parent id returns 200 with an empty array (indistinguishable from "
-        "a real item group that simply has no items) instead of 404."
-    ),
-)
 def test_get_item_group_items_nonexistent_parent_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
 

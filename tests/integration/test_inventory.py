@@ -1,17 +1,10 @@
 import json
 import time
-from pathlib import Path
-from urllib import response
 
 import pytest
 import requests
 
 from schemas import Inventory
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-INVENTORIES_MODEL_SOURCE = (REPO_ROOT / "api" / "models" / "inventories.py").read_text(
-    encoding="utf-8"
-)
 
 # region Shared helpers
 
@@ -21,9 +14,29 @@ def _get_headers(user_headers, method="get", allowed=True):
 
 def _first_inventory(base_url, user_headers):
     headers = _get_headers(user_headers)
-    body = requests.get(f"{base_url}/api/v1/inventories", headers=headers).json()
+    response = requests.get(f"{base_url}/api/v1/inventories", headers=headers)
+    if response.status_code >= 500:
+        pytest.fail(f"Unexpected server error: {response.status_code}")
+    body = response.json()
     assert body, "fixture data/inventory.json is expected to be non-empty"
     return body[0]
+
+def _unused_inventory_pair(base_url, user_headers):
+    inventory_response = requests.get(f"{base_url}/api/v1/inventories", headers=_get_headers(user_headers),)
+    item_response = requests.get(f"{base_url}/api/v1/items", headers=user_headers(resource="items", method="get"),)
+    location_response = requests.get(f"{base_url}/api/v1/locations", headers=user_headers(resource="locations", method="get"),)
+    assert inventory_response.status_code == 200
+    assert item_response.status_code == 200
+    assert location_response.status_code == 200
+
+    occupied_pairs = {(inventory["item_id"], inventory["location_id"]) for inventory in inventory_response.json()}
+    for item in item_response.json():
+        for location in location_response.json():
+            pair = (item["id"], location["id"])
+            if pair not in occupied_pairs:
+                return pair
+
+    pytest.fail("No unused item/location pair is available for an inventory test")
 
 #endregion
 
@@ -34,14 +47,14 @@ def test_get_inventory_returns_200_with_valid_response(base_url, user_headers):
     headers = user_headers(resource="inventories", method="get", allowed=True)
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers)
 
-    # Check the response of that endpoint is successfull
+    # Check the response of that endpoint is successful
     assert response.status_code == 200
     body = response.json()
 
     # it should return a list
     assert isinstance(body, list)
 
-    # there should be atleast 1 inventory in the test data
+    # there should be at least 1 inventory in the test data
     assert len(body) > 0
 
     # the two fields to identify the inventory
@@ -63,11 +76,11 @@ def test_response_time_is_reasonable(base_url, user_headers):
     assert response.status_code != 500
     assert (elapsed < 0.5), f"GET /inventories took {elapsed:.2f}s"
 
-def test_get_inventory_requires_authentcation(base_url):
+def test_get_inventory_requires_authentication(base_url):
     response = requests.get(f"{base_url}/api/v1/inventories")
     assert response.status_code == 401
 
-def test_get_inventor_insufficient_permissions_returns_403(base_url, user_headers):
+def test_get_inventory_insufficient_permissions_returns_403(base_url, user_headers):
     headers = _get_headers(user_headers, method="get", allowed=False)
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers)
     assert response.status_code == 403
@@ -78,7 +91,7 @@ def test_response_content_type_is_json(base_url, user_headers):
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers)
     assert response.headers.get("Content-Type", "").startswith("application/json")
 
-# checks if the error doesnt leka any data
+# checks if the error doesnt leak any data
 def test_get_inventory_error_does_not_leak_internal_data(base_url):
     response = requests.get(f"{base_url}/api/v1/inventories")
     text_lower = response.text.lower()
@@ -89,22 +102,25 @@ def test_get_inventory_error_does_not_leak_internal_data(base_url):
 # is to say these test i expect to fail since there is no documented for get inventories
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason=(
         "Pagination is not currently documented for GET /inventories. "
         "The OpenAPI definition does not declare page, limit, page_size, "
         "cursor, or any other pagination parameters."
     ),
 )
-
 def test_get_inventories_supports_pagination(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers, params = {"page": 1, "limit": 2},)
+    if response.status_code >= 500:
+        pytest.fail(f"Unexpected server error: {response.status_code}")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     assert len(response.json()) <= 2
 
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError, 
     reason=(
         "Not currently documented for GET /inventories. The OpenAPI definition"
         "does not declare any query parameters for filtering inventory rows."
@@ -120,33 +136,32 @@ def test_get_inventories_supports_filtering(base_url, user_headers, filter_type)
     headers = _get_headers(user_headers)
     existing = _first_inventory(base_url, user_headers)
 
-    response = requests.get(f"{base_url}/api/v1/inventories", headers=headers, params={filter_type: existing[filter_type]},
-    )
+    response = requests.get(f"{base_url}/api/v1/inventories", headers=headers, params={filter_type: existing[filter_type]},)
+    if response.status_code >= 500:
+        pytest.fail(f"Unexpected server error: {response.status_code}")
     assert response.status_code == 200
     body = response.json()
     assert isinstance(body, list)
     assert all(row[filter_type] == existing[filter_type] for row in body)
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-       "Not currently documented for GET /inventories. The OpenAPI definition"
-        "does not declare a sorting parameter."
-    ),
-)
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=("Not currently documented for GET /inventories. The OpenAPI definition does not declare a sorting parameter."),)
 
 def test_get_inventories_supports_sorting(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers, params={"sort": "item_id", "order": "desc"},)
+    if response.status_code >= 500:
+        pytest.fail(f"Unexpected server error: {response.status_code}")
     assert response.status_code == 200
     ids = [row["item_id"] for row in response.json()]
     assert ids == sorted(ids, reverse=True)
 
-@pytest.mark.xfail(strict=True, reason="The API currently returns a different status code for an empty inventory result; the documented/spec behavior is 404.",)
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason="The API currently returns a different status code for an empty inventory result; the documented/spec behavior is 404.",)
 
 def test_get_inventories_empty_result_returns_404(base_url, user_headers):
     headers = user_headers(app="smartglass_reader")
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers, params={"item_id": 999999999},)
+    if response.status_code >= 500:
+        pytest.fail(f"Unexpected server error: {response.status_code}")
     assert response.status_code == 404
     assert response.json() == []
 
@@ -165,16 +180,22 @@ def test_get_inventories_invalid_query_param_does_not_return_500(base_url, user_
     response = requests.get(f"{base_url}/api/v1/inventories", headers=headers, params={"page": -1},)
     assert response.status_code != 500
 
-def test_error_respone_have_constint_format(base_url):
+def test_error_response_has_consistent_format(base_url):
     get_response = requests.get(f"{base_url}/api/v1/inventories")
 
-    post_respone = requests.post(f"{base_url}/api/v1/inventories", json={},)
+    post_response = requests.post(f"{base_url}/api/v1/inventories", json={},)
 
     assert get_response.status_code == 401
-    assert post_respone.status_code == 401
+    assert post_response.status_code == 401
 
     assert get_response.headers.get("Content-Type") is None
-    assert post_respone.headers.get("Content-Type") is None
+    assert post_response.headers.get("Content-Type") is None
+
+@pytest.mark.parametrize("suffix", ["1/totals", "1/1"])
+def test_get_inventory_subroute_returns_404(base_url, user_headers, suffix):
+    headers = _get_headers(user_headers)
+    response = requests.get(f"{base_url}/api/v1/inventories/{suffix}", headers=headers,)
+    assert response.status_code == 404
 
 #endregion
 
@@ -190,26 +211,24 @@ def test_GET_inventory_by_id_is_not_supported(base_url, user_headers):
 
 # region POST /inventories
 
-@pytest.mark.xfail(
-        strict = True,
-        reason = ("POST inventories should return 201 but it doesn't return it right now")
-)
-
 def test_post_inventory_returns_201(base_url, user_headers, preserve_data_files):
     # this is to preserve the original data before anything gets added or removed or changed
     preserve_data_files("inventory.json")
-    # check autherization for the user
+    # check authorization for the user
     headers = _get_headers(user_headers, method="post")
-    # creating the inventory data for testing
-    payload = {"item_id" : 999991,
-               "location_id": 999991,
-               "quantity_on_hand": 100,
-               "quantity_expected": 50,
-               "quantity_ordered": 25,
-               "quantity_allocated": 10
-               }
+    item_id, location_id = _unused_inventory_pair(base_url, user_headers)
+    payload = {
+        "item_id": item_id,
+        "location_id": location_id,
+        "quantity_on_hand": 100,
+        "quantity_expected": 50,
+        "quantity_ordered": 25,
+        "quantity_allocated": 10,
+    }
     # calling the api with the user and data
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
+    if response.status_code >= 500:
+        pytest.fail(f"Unexpected server error: {response.status_code}")
     # checking if the status is correct 
     assert response.status_code == 201
 
@@ -228,13 +247,15 @@ def test_post_inventory_is_immediately_retrievable(base_url, user_headers, prese
     # this part is to post something into the data
     preserve_data_files("inventory.json")
     post_headers = _get_headers(user_headers, method="post")
-    payload = {"item_id" : 999992,
-               "location_id": 999992,
-               "quantity_on_hand": 100,
-               "quantity_expected": 50,
-               "quantity_ordered": 25,
-               "quantity_allocated": 10
-               }
+    item_id, location_id = _unused_inventory_pair(base_url, user_headers)
+    payload = {
+        "item_id": item_id,
+        "location_id": location_id,
+        "quantity_on_hand": 100,
+        "quantity_expected": 50,
+        "quantity_ordered": 25,
+        "quantity_allocated": 10,
+    }
     create_response = requests.post(f"{base_url}/api/v1/inventories", headers=post_headers, json=payload,)
     assert create_response.status_code == 201
 
@@ -306,10 +327,6 @@ def test_post_inventory_existing_pair_is_upserted(base_url, user_headers, preser
     assert matching[0]["quantity_ordered"] == 25
     assert matching[0]["quantity_allocated"] == 10
 
-@pytest.mark.xfail(
-        strict = True,
-        reason = ("POST inventories should reject references to missing fields but it doesn't reject it right now")
-)
 @pytest.mark.parametrize(
     "field,payload",
     [
@@ -349,77 +366,73 @@ def test_post_inventory_existing_pair_is_upserted(base_url, user_headers, preser
     ],
 )
 
+
 def test_post_inventory_rejects_invalid_field_types(base_url, user_headers, preserve_data_files, field, payload):
     preserve_data_files("inventory.json")
 
     headers = _get_headers(user_headers, method="post")
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
+    if response.status_code >= 500:
+        pytest.fail(f"Unexpected server error: {response.status_code}")
     # it should return a bad request and unprocessable entity
     assert response.status_code in (400, 422), (f"Invalid type for {field!r} should be rejected,"f"but API returned {response.status_code}")
 
-def test_post_inventory_missing_quantity_on_hand_returns_400(base_url, user_headers, preserve_data_files):
+@pytest.mark.parametrize(
+    "missing_field",
+    [
+        "item_id",
+        "location_id",
+        "quantity_on_hand",
+        "quantity_expected",
+        "quantity_ordered",
+        "quantity_allocated",
+    ],
+)
+def test_post_inventory_missing_rejects_invalid_values(base_url, user_headers, preserve_data_files, missing_field):
     preserve_data_files("inventory.json")
-
     headers = _get_headers(user_headers, method="post")
+    existing = _first_inventory(base_url, user_headers)
     payload = {
-        "item_id": 999996,
-        "location_id": 999996,
+        "item_id": existing["item_id"],
+        "location_id": existing["location_id"],
+        "quantity_on_hand": 100,
         "quantity_expected": 50,
         "quantity_ordered": 25,
         "quantity_allocated": 10,
     }
+    payload.pop(missing_field)
 
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload)
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-        strict = True,
-        reason = ("POST inventories should reject references invalid values but right now it accepts it")
-)
 
 @pytest.mark.parametrize(
-    "payload",
+    "field",
     [
-        {
-            "item_id": -1,
-            "location_id": 999997,
-            "quantity_on_hand": 100,
-            "quantity_expected": 50,
-            "quantity_ordered": 25,
-            "quantity_allocated": 10,
-        },
-        {
-            "item_id": 999997,
-            "location_id": -1,
-            "quantity_on_hand": 100,
-            "quantity_expected": 50,
-            "quantity_ordered": 25,
-            "quantity_allocated": 10,
-        },
-        {
-            "item_id": 999997,
-            "location_id": 999997,
-            "quantity_on_hand": -1,
-            "quantity_expected": 50,
-            "quantity_ordered": 25,
-            "quantity_allocated": 10,
-        },
+        "quantity_on_hand",
+        "quantity_expected",
+        "quantity_ordered",
+        "quantity_allocated",
     ],
 )
-
-def test_post_inventory_missing_rejects_invalid_values(base_url, user_headers, preserve_data_files, payload):
+def test_post_inventory_rejects_negative_values(base_url, user_headers, preserve_data_files, field):
     preserve_data_files("inventory.json")
-
+    existing = _first_inventory(base_url, user_headers)
+    payload = {
+        "item_id": existing["item_id"],
+        "location_id": existing["location_id"],
+        "quantity_on_hand": 100,
+        "quantity_expected": 50,
+        "quantity_ordered": 25,
+        "quantity_allocated": 10,
+    }
+    payload[field] = -1
     headers = _get_headers(user_headers, method="post")
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
-    # it should return a bad request and unprocessable entity
     assert response.status_code in (400, 422)
 
-@pytest.mark.xfail(
-        strict = True,
-        reason = ("POST inventories should reject unexpected fields, but current way may accept or just ignore them")
-)
+
 
 def test_post_inventory_rejects_unexpected_fields(base_url, user_headers, preserve_data_files):
     preserve_data_files("inventory.json")
@@ -435,26 +448,26 @@ def test_post_inventory_rejects_unexpected_fields(base_url, user_headers, preser
         "unexpected_field": "should-not-be-accepted",
     }
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
+    if response.status_code >= 500:
+        pytest.fail(f"Unexpected server error: {response.status_code}")    
     assert response.status_code in (400, 404, 422), ("Unexpected fields should be rejected, but API returned" f"{response.status_code}")
 
-@pytest.mark.xfail(
-        strict = True,
-        reason = ("POST inventories should reject references to non-existent items or locations")
-)
 
 def test_post_inventory_rejects_invalid_foreign_key_references(base_url, user_headers, preserve_data_files):
     preserve_data_files("inventory.json")
 
     headers = _get_headers(user_headers, method="post")
     payload = {
-        "item_id": 9999999999999,
-        "location_id": 9999999999999,
+        "item_id": 9999999999,
+        "location_id": 9999999999,
         "quantity_on_hand": 100,
         "quantity_expected": 50,
         "quantity_ordered": 25,
         "quantity_allocated": 10,
     }
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload,)
+    if response.status_code >= 500:
+        pytest.fail(f"Unexpected server error: {response.status_code}")
     assert response.status_code in (400, 404, 422)
 
 def test_post_inventory_requires_json_content_type(base_url, user_headers, preserve_data_files):
@@ -481,9 +494,10 @@ def test_post_inventory_accepts_application_json_content_type(base_url, user_hea
     headers = _get_headers(user_headers, method="post")
     headers["Content-Type"] = "application/json"
 
+    existing = _first_inventory(base_url, user_headers)
     payload = {
-        "item_id": 999999,
-        "location_id": 999999,
+        "item_id": existing["item_id"],
+        "location_id": existing["location_id"],
         "quantity_on_hand": 100,
         "quantity_expected": 50,
         "quantity_ordered": 25,
@@ -525,10 +539,16 @@ def test_post_inventory_insufficient_permissions_returns_403(base_url, user_head
 
 
 # region PUT /inventories/{id}
-def test_PUT_inventory_by_id_is_not_supported(base_url, user_headers):
-    headers = _get_headers(user_headers, method= "put")
-    response = requests.put(f"{base_url}/api/v1/inventories/1",headers=headers, json={"item_id": 459})
+def test_put_inventory_by_id_is_not_supported(base_url, user_headers):
+    headers = _get_headers(user_headers, method="put")
+    inventory = _first_inventory(base_url, user_headers)
+    response = requests.put(f"{base_url}/api/v1/inventories/1", headers=headers, json=inventory,)
     assert response.status_code == 404
+
+def test_put_inventory_incomplete_payload_returns_422(base_url, user_headers):
+    headers = _get_headers(user_headers, method="put")
+    response = requests.put(f"{base_url}/api/v1/inventories/1", headers=headers, json={"item_id": 459},)
+    assert response.status_code == 422
 
 def test_PUT_inventory_requires_authentication(base_url):
     response = requests.put(f"{base_url}/api/v1/inventories/1", json={"item_id": 459})
@@ -538,6 +558,11 @@ def test_PUT_inventory_insufficient_permission(base_url, user_headers):
     headers = _get_headers(user_headers, method="put", allowed=False)
     response = requests.put(f"{base_url}/api/v1/inventories/1", headers=headers, json={"item_id": 459})
     assert response.status_code == 403
+
+def test_put_inventory_composite_key_returns_404(base_url, user_headers):
+    headers = _get_headers(user_headers, method="put")
+    response = requests.put(f"{base_url}/api/v1/inventories/1/1", headers=headers, json={"item_id": 1, "location_id": 1},)
+    assert response.status_code == 404
 # endregion
 
 
@@ -553,14 +578,12 @@ def test_DELETE_inventory_by_id_is_not_supported(base_url, user_headers):
     response = requests.delete(f"{base_url}/api/v1/inventories/1", headers=headers,)
     assert response.status_code == 404
 
-def test_DELETE_inventory_by_id_is_not_supported(base_url):
+def test_DELETE_inventory_by_id_requires_authentication(base_url):
     response = requests.delete(f"{base_url}/api/v1/inventories/1")
     assert response.status_code == 401
 
+def test_delete_inventory_composite_key_returns_404(base_url, user_headers):
+    headers = _get_headers(user_headers, method="delete")
+    response = requests.delete(f"{base_url}/api/v1/inventories/1/1", headers=headers,)
+    assert response.status_code == 404
 # endregion
-
-
-
-    
-
-
