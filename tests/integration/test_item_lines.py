@@ -892,9 +892,6 @@ def test_delete_item_line_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    reason="Returns 200 despite item_line being deleted already.",
-)
 def test_delete_item_line_repeated_delete_returns_404(
     base_url, user_headers, preserve_data_files
 ):
