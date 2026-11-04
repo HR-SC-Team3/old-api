@@ -1,20 +1,20 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, NonNegativeFloat, NonNegativeInt, PositiveInt
 
 
 class ItemAmount(BaseModel):
     """A `{item_id, amount}` line, embedded in orders and transfers."""
 
-    item_id: int
-    amount: int
-    unit_price: float | None = None
+    item_id: PositiveInt
+    amount: PositiveInt
+    unit_price: NonNegativeFloat | None = None
 
 
 class Warehouse(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    id: int
+    id: PositiveInt
     code: str
     name: str
     address: str
@@ -30,8 +30,8 @@ class Warehouse(BaseModel):
 class Location(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    id: int
-    warehouse_id: int
+    id: PositiveInt
+    warehouse_id: PositiveInt
     code: str
     name: str
 
@@ -39,7 +39,7 @@ class Location(BaseModel):
 class Supplier(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    id: int
+    id: PositiveInt
     code: str
     name: str
     address: str
@@ -55,7 +55,7 @@ class Supplier(BaseModel):
 class ItemGroup(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    id: int
+    id: PositiveInt
     name: str
     description: str
 
@@ -63,47 +63,47 @@ class ItemGroup(BaseModel):
 class Inventory(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    item_id: int
-    location_id: int
-    quantity_on_hand: int
-    quantity_expected: int
-    quantity_ordered: int
-    quantity_allocated: int
+    item_id: PositiveInt
+    location_id: PositiveInt
+    quantity_on_hand: NonNegativeInt
+    quantity_expected: NonNegativeInt
+    quantity_ordered: NonNegativeInt
+    quantity_allocated: NonNegativeInt
 
 
 class Order(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    id: int
-    client_id: int
+    id: PositiveInt
+    client_id: PositiveInt
     order_date: datetime
     request_date: datetime
     reference: str
     customer_po_number: str
     order_status: str
     shipping_notes: str | None
-    warehouse_id: int
-    ship_to_client_id: int
-    bill_to_client_id: int
+    warehouse_id: PositiveInt
+    ship_to_client_id: PositiveInt
+    bill_to_client_id: PositiveInt
     items: list[ItemAmount]
 
 
 class Transfer(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    id: int
+    id: PositiveInt
     reference: str
-    from_location_id: int
-    to_location_id: int
+    from_location_id: PositiveInt
+    to_location_id: PositiveInt
     transfer_status: str
     items: list[ItemAmount]
 
 class Shipment(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    id: int
+    id: PositiveInt
     reference: str
-    order_id: int
+    order_id: PositiveInt
     shipment_date: datetime
     shipment_type: str
     shipment_status: str
@@ -115,7 +115,7 @@ class Shipment(BaseModel):
 class Client(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    id: int
+    id: PositiveInt
     name: str
     address: str
     city: str
@@ -129,33 +129,33 @@ class Client(BaseModel):
 class ItemType(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    id: int
+    id: PositiveInt
     name: str
     description: str
     
 class Item(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    id: int
+    id: PositiveInt
     code: str
     description: str
     barcode: str
     model_number: str
     commodity_code: int
-    unit_weight: float
-    item_line_id: int
-    item_group_id: int
-    item_type_id: int
-    min_purchase_qty: int
-    case_size: int
+    unit_weight: NonNegativeFloat
+    item_line_id: PositiveInt
+    item_group_id: PositiveInt
+    item_type_id: PositiveInt
+    min_purchase_qty: PositiveInt
+    case_size: PositiveInt
     packaging_type: str
-    order_multiple: int
-    supplier_id: int
+    order_multiple: PositiveInt
+    supplier_id: PositiveInt
     supplier_sku: str
 
 class ItemLine(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    id: int
+    id: PositiveInt
     name: str
     description: str

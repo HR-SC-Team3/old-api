@@ -1152,3 +1152,35 @@ def test_get_item_inventory_totals_response_content_type_is_json(
 
 
 # endregion
+
+
+# region Range validation
+
+
+@pytest.mark.parametrize(
+    "override, expected_message",
+    [
+        ({"id": 0}, "greater than 0"),
+        ({"case_size": 0}, "greater than 0"),
+        ({"order_multiple": -1}, "greater than 0"),
+        ({"unit_weight": -0.1}, "greater than or equal to 0"),
+    ],
+)
+def test_post_item_rejects_out_of_range_values(
+    base_url, user_headers, preserve_data_files, override, expected_message
+):
+    preserve_data_files("item.json")
+
+    payload = {**_first_item(base_url, user_headers), "id": 999991, **override}
+
+    response = requests.post(
+        _url(base_url),
+        headers=_get_headers(user_headers, method="post"),
+        json=payload,
+    )
+
+    assert response.status_code == 422
+    assert expected_message in response.json()["error"]
+
+
+# endregion

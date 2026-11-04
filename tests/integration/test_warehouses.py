@@ -884,3 +884,25 @@ def test_delete_warehouse_insufficient_permissions_returns_403(base_url, user_he
 
 
 # endregion
+
+
+# region Range validation
+
+
+@pytest.mark.parametrize("bad_id", [0, -1])
+def test_post_warehouse_rejects_non_positive_id(base_url, user_headers, preserve_data_files, bad_id):
+    preserve_data_files("warehouse.json")
+
+    payload = {**_first_warehouse(base_url, user_headers), "id": bad_id, "code": "RANGE-WH"}
+
+    response = requests.post(
+        f"{base_url}/api/v1/warehouses",
+        headers=_get_headers(user_headers, method="post"),
+        json=payload,
+    )
+
+    assert response.status_code == 422
+    assert "greater than 0" in response.json()["error"]
+
+
+# endregion

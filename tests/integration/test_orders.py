@@ -966,3 +966,39 @@ def test_put_order_items_without_permission(
 
 
 # endregion
+
+
+# region Range validation
+
+
+@pytest.mark.parametrize(
+    "line_override, expected_message",
+    [
+        ({"amount": 0}, "greater than 0"),
+        ({"amount": -1}, "greater than 0"),
+        ({"unit_price": -0.5}, "greater than or equal to 0"),
+    ],
+)
+def test_post_order_rejects_out_of_range_item_line(
+    base_url,
+    user_headers,
+    preserve_data_files,
+    line_override,
+    expected_message
+):
+    preserve_data_files("order.json")
+
+    payload = _order_payload(999994)
+    payload["items"] = [{**payload["items"][0], **line_override}]
+
+    response = requests.post(
+        f"{base_url}/api/v1/orders",
+        headers=_get_headers(user_headers, method="post"),
+        json=payload
+    )
+
+    assert response.status_code == 422
+    assert expected_message in response.json()["error"]
+
+
+# endregion
