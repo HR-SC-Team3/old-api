@@ -416,11 +416,6 @@ def test_post_inventory_missing_rejects_invalid_values(base_url, user_headers, p
         "quantity_allocated",
     ],
 )
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="Inventory requests currently accept negative quantities",
-)
 def test_post_inventory_rejects_negative_values(base_url, user_headers, preserve_data_files, field):
     preserve_data_files("inventory.json")
     existing = _first_inventory(base_url, user_headers)
@@ -592,32 +587,3 @@ def test_delete_inventory_composite_key_returns_404(base_url, user_headers):
     response = requests.delete(f"{base_url}/api/v1/inventories/1/1", headers=headers,)
     assert response.status_code == 404
 # endregion
-
-
-#region Range validation
-@pytest.mark.parametrize(
-    "field",
-    ["quantity_on_hand", "quantity_expected", "quantity_ordered", "quantity_allocated"],
-)
-def test_post_inventory_rejects_negative_quantities(base_url, user_headers, preserve_data_files, field):
-    preserve_data_files("inventory.json")
-    item_id, location_id = _unused_inventory_pair(base_url, user_headers)
-    payload = {
-        "item_id": item_id,
-        "location_id": location_id,
-        "quantity_on_hand": 1,
-        "quantity_expected": 1,
-        "quantity_ordered": 1,
-        "quantity_allocated": 1,
-        field: -1,
-    }
-
-    response = requests.post(
-        f"{base_url}/api/v1/inventories",
-        headers=_get_headers(user_headers, method="post"),
-        json=payload,
-    )
-
-    assert response.status_code == 422
-    assert "greater than or equal to 0" in response.json()["error"]
-#endregion
