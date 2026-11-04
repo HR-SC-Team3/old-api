@@ -1,3 +1,10 @@
+## [0.2.0](https://github.com/HR-SC-Team3/old-api/compare/v0.1.1...v0.2.0) (2026-11-04)
+
+
+### Features
+
+* Sprint 3 ([#143](https://github.com/HR-SC-Team3/old-api/issues/143)) ([e7b3771](https://github.com/HR-SC-Team3/old-api/commit/e7b37713e3d98b69541f727d705dda7d6f88a1f7)), closes [#102](https://github.com/HR-SC-Team3/old-api/issues/102) [#129](https://github.com/HR-SC-Team3/old-api/issues/129) [#102](https://github.com/HR-SC-Team3/old-api/issues/102) [#136](https://github.com/HR-SC-Team3/old-api/issues/136) [#133](https://github.com/HR-SC-Team3/old-api/issues/133) [#102](https://github.com/HR-SC-Team3/old-api/issues/102) [#134](https://github.com/HR-SC-Team3/old-api/issues/134) [#102](https://github.com/HR-SC-Team3/old-api/issues/102) [#131](https://github.com/HR-SC-Team3/old-api/issues/131) [#131](https://github.com/HR-SC-Team3/old-api/issues/131) [#102](https://github.com/HR-SC-Team3/old-api/issues/102) [#135](https://github.com/HR-SC-Team3/old-api/issues/135) [#102](https://github.com/HR-SC-Team3/old-api/issues/102) [#102](https://github.com/HR-SC-Team3/old-api/issues/102)
+
 ### [0.1.1](https://github.com/HR-SC-Team3/old-api/compare/v0.1.0...v0.1.1) (2026-10-16)
 
 
@@ -12,6 +19,11 @@
 ### Documentation
 
 * Clarify policy on changing application behavior ([71a1e36](https://github.com/HR-SC-Team3/old-api/commit/71a1e36637dfc4a01415b9fc7ac2606f762cf834))
+
+
+### Chores
+
+* **release:** v0.1.1 [skip ci] ([7297281](https://github.com/HR-SC-Team3/old-api/commit/7297281f3f80550322444f17afee280f04c9e0e4))
 
 ## [0.1.0](https://github.com/HR-SC-Team3/old-api/compare/e37f19face01c55d0b1089aadfc68de0ce9073c6...v0.1.0) (2026-09-30)
 
