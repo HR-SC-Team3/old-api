@@ -1030,10 +1030,6 @@ def test_get_item_inventory_only_returns_correct_item_inventory(
                 assert inventory["item_id"] == existing["id"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for nonexistent item inventory instead of 404",
-)
 def test_get_item_inventory_nonexistent_item_returns_404(
     base_url, user_headers
 ):
@@ -1043,18 +1039,6 @@ def test_get_item_inventory_nonexistent_item_returns_404(
     )
 
     assert response.status_code == 404
-
-
-def test_get_item_inventory_empty_result_returns_200(
-    base_url, user_headers
-):
-    response = requests.get(
-        _url(base_url, "/999999/inventory"),
-        headers=_get_headers(user_headers),
-    )
-
-    if response.status_code == 200:
-        assert response.json() == []
 
 
 def test_get_item_inventory_requires_authentication(base_url):
@@ -1115,10 +1099,6 @@ def test_get_item_inventory_totals_returns_200(
     assert response.status_code == 200
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for nonexistent item inventory totals instead of 404",
-)
 def test_get_item_inventory_totals_nonexistent_item_returns_404(
     base_url, user_headers
 ):

@@ -35,6 +35,8 @@ class Orders(IResource):
 
     def put_items(self, resource_id, data):
         order_pool = data_provider.fetch_order_pool()
+        if order_pool.get_order(resource_id) is None:
+            return None
         order_pool.update_items_in_order(resource_id, data)
         order_pool.save()
         return True

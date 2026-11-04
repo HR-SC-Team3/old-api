@@ -844,10 +844,6 @@ def test_get_item_type_items_content_type_is_json(
     ).startswith("application/json")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when the parent item type does not exist."
-)
 def test_get_item_type_items_nonexistent_parent_returns_404(
     base_url,
     user_headers

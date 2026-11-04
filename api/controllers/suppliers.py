@@ -12,6 +12,8 @@ class Suppliers(IResource):
         return pool.get_supplier(resource_id)
 
     def get_sub_resource(self, resource_id):
+        if data_provider.fetch_supplier_pool().get_supplier(resource_id) is None:
+            return None
         return data_provider.fetch_item_pool().get_items_for_supplier(resource_id)
 
     def post(self, data):
