@@ -245,8 +245,11 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                         self.send_response(200)
                                     self.end_headers()
                                 case 3 if paths[5] == "commit":
-                                    controller.commit(int(paths[4]))
-                                    self.send_response(200)
+
+                                    if controller.commit(int(paths[4])) is None:
+                                        self.send_response(404)
+                                    else:
+                                        self.send_response(200)
                                     self.end_headers()
                                 case _:
                                     self.send_response(404)
@@ -320,6 +323,18 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                 self.end_headers()
                         case "inventories":
                             if self._deny_without_access(user, paths[3:], "put"):
+                                return
+                            if len(paths) - 3 != 2 or paths[4] == "":
+                                self._drain_request_body()
+                                self.send_response(404)
+                                self.end_headers()
+                                return
+
+                            resource_id = int(paths[4])
+                            updated_inventory = self._read_json_body()
+                            valid, error = RequestValidator.validate("inventories", updated_inventory, self.controllers, method="PUT", resource_id=resource_id,)
+                            if not valid:
+                                self.send_json_response(422, {"error": error})
                                 return
                             self.send_response(404)
                             self.end_headers()

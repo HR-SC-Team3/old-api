@@ -8,6 +8,7 @@ class ItemAmount(BaseModel):
 
     item_id: int
     amount: int
+    unit_price: int | None = None
 
 
 class Warehouse(BaseModel):
