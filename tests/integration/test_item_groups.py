@@ -846,15 +846,6 @@ def test_get_item_group_items_ids_are_consistent_with_items_endpoint(
         assert direct.json()["item_group_id"] == existing["id"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "get_items_for_item_group() filters Items by item_group_id with no "
-        "existence check on the parent item group at all. A nonexistent "
-        "parent id returns 200 with an empty array (indistinguishable from "
-        "a real item group that simply has no items) instead of 404."
-    ),
-)
 def test_get_item_group_items_nonexistent_parent_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
 
