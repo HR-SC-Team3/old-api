@@ -63,7 +63,7 @@ def _order_payload(order_id=999999):
             {
                 "item_id": 1,
                 "amount": 2,
-                "unit_price": 10
+                "unit_price": 10.4
             }
         ]
     }
@@ -330,6 +330,7 @@ def test_post_order_returns_created_order(
     body = response.json()
 
     assert body["id"] == 999999
+    assert body["items"][0]["unit_price"] == 10.4
 
 
 def test_post_order_is_saved(

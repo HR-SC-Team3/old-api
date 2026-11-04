@@ -21,6 +21,23 @@ def _first_inventory(base_url, user_headers):
     assert body, "fixture data/inventory.json is expected to be non-empty"
     return body[0]
 
+def _unused_inventory_pair(base_url, user_headers):
+    inventory_response = requests.get(f"{base_url}/api/v1/inventories", headers=_get_headers(user_headers),)
+    item_response = requests.get(f"{base_url}/api/v1/items", headers=user_headers(resource="items", method="get"),)
+    location_response = requests.get(f"{base_url}/api/v1/locations", headers=user_headers(resource="locations", method="get"),)
+    assert inventory_response.status_code == 200
+    assert item_response.status_code == 200
+    assert location_response.status_code == 200
+
+    occupied_pairs = {(inventory["item_id"], inventory["location_id"]) for inventory in inventory_response.json()}
+    for item in item_response.json():
+        for location in location_response.json():
+            pair = (item["id"], location["id"])
+            if pair not in occupied_pairs:
+                return pair
+
+    pytest.fail("No unused item/location pair is available for an inventory test")
+
 #endregion
 
 #region GET Inventory
@@ -199,11 +216,10 @@ def test_post_inventory_returns_201(base_url, user_headers, preserve_data_files)
     preserve_data_files("inventory.json")
     # check authorization for the user
     headers = _get_headers(user_headers, method="post")
-    # creating the inventory data for testing
-    existing = _first_inventory(base_url, user_headers)
+    item_id, location_id = _unused_inventory_pair(base_url, user_headers)
     payload = {
-        "item_id": existing["item_id"],
-        "location_id": existing["location_id"],
+        "item_id": item_id,
+        "location_id": location_id,
         "quantity_on_hand": 100,
         "quantity_expected": 50,
         "quantity_ordered": 25,
@@ -231,10 +247,10 @@ def test_post_inventory_is_immediately_retrievable(base_url, user_headers, prese
     # this part is to post something into the data
     preserve_data_files("inventory.json")
     post_headers = _get_headers(user_headers, method="post")
-    existing = _first_inventory(base_url, user_headers)
+    item_id, location_id = _unused_inventory_pair(base_url, user_headers)
     payload = {
-        "item_id": existing["item_id"],
-        "location_id": existing["location_id"],
+        "item_id": item_id,
+        "location_id": location_id,
         "quantity_on_hand": 100,
         "quantity_expected": 50,
         "quantity_ordered": 25,
@@ -361,17 +377,30 @@ def test_post_inventory_rejects_invalid_field_types(base_url, user_headers, pres
     # it should return a bad request and unprocessable entity
     assert response.status_code in (400, 422), (f"Invalid type for {field!r} should be rejected,"f"but API returned {response.status_code}")
 
-def test_post_inventory_missing_quantity_on_hand_returns_400(base_url, user_headers, preserve_data_files):
+@pytest.mark.parametrize(
+    "missing_field",
+    [
+        "item_id",
+        "location_id",
+        "quantity_on_hand",
+        "quantity_expected",
+        "quantity_ordered",
+        "quantity_allocated",
+    ],
+)
+def test_post_inventory_missing_rejects_invalid_values(base_url, user_headers, preserve_data_files, missing_field):
     preserve_data_files("inventory.json")
-
     headers = _get_headers(user_headers, method="post")
+    existing = _first_inventory(base_url, user_headers)
     payload = {
-        "item_id": 999996,
-        "location_id": 999996,
+        "item_id": existing["item_id"],
+        "location_id": existing["location_id"],
+        "quantity_on_hand": 100,
         "quantity_expected": 50,
         "quantity_ordered": 25,
         "quantity_allocated": 10,
     }
+    payload.pop(missing_field)
 
     response = requests.post(f"{base_url}/api/v1/inventories", headers=headers, json=payload)
     assert response.status_code in (400, 422)

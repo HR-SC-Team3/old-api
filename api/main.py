@@ -248,7 +248,6 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                     controller.commit(int(paths[4]))
                                     self.send_response(200)
                                     self.end_headers()
-                                    self.end_headers()
                                 case _:
                                     self.send_response(404)
                                     self.end_headers()
