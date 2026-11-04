@@ -245,11 +245,9 @@ class ApiRequestHandler(http.server.BaseHTTPRequestHandler):
                                         self.send_response(200)
                                     self.end_headers()
                                 case 3 if paths[5] == "commit":
-
-                                    if controller.commit(int(paths[4])) is None:
-                                        self.send_response(404)
-                                    else:
-                                        self.send_response(200)
+                                    controller.commit(int(paths[4]))
+                                    self.send_response(200)
+                                    self.end_headers()
                                     self.end_headers()
                                 case _:
                                     self.send_response(404)

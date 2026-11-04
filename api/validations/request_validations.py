@@ -49,7 +49,7 @@ class RequestValidator:
         except ValidationError as error:
             return False, str(error)
 
-        if method == "PUT" and data["id"] != resource_id:
+        if method == "PUT" and "id" in data and data["id"] != resource_id:
             return False, "Request body id must match URL id"
 
         if method in ("POST", "PUT"):
