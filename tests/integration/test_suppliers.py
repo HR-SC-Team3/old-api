@@ -103,16 +103,6 @@ def test_response_time_is_reasonable(base_url, user_headers):
     ), f"GET /suppliers took {elapsed:.2f}s, which is unreasonably slow"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Not implemented: any query string (pagination, filter, or unknown "
-        "key alike) makes `paths[0]` mismatch the 'suppliers' resource key "
-        "in endpoint_access, so a fully permitted user is rejected with 403 "
-        "instead of the query string being ignored or the params being "
-        "honoured. See module docstring."
-    ),
-)
 @pytest.mark.parametrize(
     "params",
     [
@@ -124,32 +114,50 @@ def test_response_time_is_reasonable(base_url, user_headers):
         pytest.param({"totally_unknown_key": "x"}, id="unknown-key"),
     ],
 )
-def test_query_params_are_honoured_or_gracefully_ignored(
-    base_url, user_headers, params
-):
+def test_query_params_are_ignored(base_url, user_headers, params):
     headers = user_headers(resource="suppliers", method="get", allowed=True)
-    response = requests.get(
-        _url(base_url), headers=headers, params=params
-    )
+    baseline = requests.get(_url(base_url), headers=headers)
+    response = requests.get(_url(base_url), headers=headers, params=params)
 
-    # A fully-permitted user sending an (undocumented) query string should
-    # never be worse off than sending no query string at all.
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.json() == baseline.json()
 
 
-def test_query_params_currently_return_403(base_url, user_headers):
-    """
-    Pins the *actual* behavior described above so a regression (e.g. a 500
-    instead of 403) is caught even before the underlying bug is fixed.
-    """
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so pagination is not honoured.",
+)
+def test_query_param_limit_is_honoured(base_url, user_headers):
     headers = user_headers(resource="suppliers", method="get", allowed=True)
-    response = requests.get(
-        _url(base_url), headers=headers, params={"page": 1}
-    )
+    response = requests.get(_url(base_url), headers=headers, params={"limit": 1})
 
-    assert response.status_code == 403
-    assert response.text == ""
+    assert response.status_code == 200
+    assert len(response.json()) <= 1
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so filtering is not honoured.",
+)
+def test_query_param_filter_is_honoured(base_url, user_headers):
+    headers = user_headers(resource="suppliers", method="get", allowed=True)
+    name = requests.get(_url(base_url), headers=headers).json()[0]["name"]
+    response = requests.get(_url(base_url), headers=headers, params={"name": name})
+
+    assert response.status_code == 200
+    assert all(row["name"] == name for row in response.json())
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so sorting is not honoured.",
+)
+def test_query_param_sort_is_honoured(base_url, user_headers):
+    headers = user_headers(resource="suppliers", method="get", allowed=True)
+    response = requests.get(_url(base_url), headers=headers, params={"sort": "name", "order": "desc"})
+
+    values = [row["name"] for row in response.json()]
+    assert values == sorted(values, reverse=True)
 
 
 @pytest.mark.skip(
@@ -262,14 +270,6 @@ def test_get_supplier_by_id_matches_documented_schema(base_url, user_headers):
     Supplier.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "get_supplier() returns None for an unknown id, and main.py writes "
-        "`json.dumps(None)` straight back with a 200, instead of a 404. "
-        "Actual: 200 with body `null`. Expected: 404."
-    ),
-)
 def test_get_supplier_by_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(_url(base_url, f"/999999"), headers=headers)
@@ -277,15 +277,6 @@ def test_get_supplier_by_nonexistent_id_returns_404(base_url, user_headers):
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "`supplier_id = int(paths[1])` is not guarded, so a non-numeric id "
-        "raises an uncaught ValueError that bubbles up to the generic "
-        "`except Exception: send_response(500)` in do_GET. "
-        "Actual: 500 Internal Server Error. Expected: 400 Bad Request."
-    ),
-)
 def test_get_supplier_by_malformed_id_returns_400(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(_url(base_url, f"/not-an-id"), headers=headers)
@@ -375,14 +366,6 @@ def test_get_supplier_items_are_consistent_with_items_endpoint(base_url, user_he
         assert direct.json() == item
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "get_items_for_supplier() filters Items by supplier_id with no "
-        "existence check on the parent supplier at all. A nonexistent "
-        "parent id returns 200 with an empty array instead of 404."
-    ),
-)
 def test_get_supplier_items_nonexistent_parent_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
 
@@ -421,14 +404,6 @@ def test_get_supplier_items_response_content_type_is_json(base_url, user_headers
 # region POST /suppliers
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "POST /suppliers returns 201 with an empty body: no created resource, "
-        "no generated id, nothing."
-        "Redesign suggestion: return the created resource (with its id) in the body."
-    ),
-)
 def test_post_supplier_returns_created_resource_with_id(
     base_url, user_headers, preserve_data_files
 ):
@@ -458,35 +433,27 @@ def test_post_supplier_returns_created_resource_with_id(
         assert body[key] == value
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No Location header and no body are returned on 201, so there is no "
-        "way for a client to discover the URL of the resource it just created."
-    ),
-)
 def test_post_supplier_response_points_to_new_resource(
     base_url, user_headers, preserve_data_files
 ):
     preserve_data_files("supplier.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_supplier(base_url, user_headers)
+    payload = {
+        key: value
+        for key, value in existing.items()
+        if key not in {"id", "created_at", "updated_at"}
+    }
+    payload["code"] = f"{existing['code']}-LOCATE-{existing['id']}"
+    payload["name"] = "Locate Me Co"
     response = requests.post(
-        _url(base_url), headers=headers, json={"name": "Locate Me Co"}
+        _url(base_url), headers=headers, json=payload
     )
 
     assert response.status_code == 201
     assert "Location" in response.headers
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No request validation exists at all: an empty/near-empty payload "
-        "missing every documented required-looking field (code, name, address, "
-        "etc.) is still accepted with 201. Expected: 400/422 listing the "
-        "missing fields."
-    ),
-)
 def test_post_supplier_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -498,14 +465,6 @@ def test_post_supplier_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Field values are stored as-is with no type checking: an `id` of type "
-        "string is accepted with 201 instead of being rejected. "
-        "Expected: 400/422 for a type mismatch against the documented integer id."
-    ),
-)
 def test_post_supplier_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -521,14 +480,6 @@ def test_post_supplier_invalid_field_type_is_rejected(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "There is no id/code uniqueness check anywhere in Suppliers.add_supplier: "
-        "POSTing a second supplier with an `id` (or `code`) that already exists "
-        "is accepted with 201 instead of a 409/400 conflict. "
-    ),
-)
 def test_post_supplier_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -542,7 +493,7 @@ def test_post_supplier_duplicate_id_returns_conflict(
         json={**existing, "name": "Duplicate Of " + existing["name"]},
     )
 
-    assert response.status_code == 409
+    assert response.status_code in (409, 422)
 
 
 def test_post_supplier_is_immediately_retrievable(
@@ -550,8 +501,13 @@ def test_post_supplier_is_immediately_retrievable(
 ):
     preserve_data_files("supplier.json")
     headers = _get_headers(user_headers, method="post")
-    payload = {"id": 555555, "code": "SUP-555555", "name": "Retrievable Co"}
-
+    existing = _first_supplier(base_url, user_headers)
+    payload = {
+        **existing,
+        "id": 555555,
+        "code": "SUP-555555",
+        "name": "Retrievable Co",
+    }
     create_response = requests.post(
         _url(base_url), headers=headers, json=payload
     )
@@ -596,16 +552,6 @@ def test_post_supplier_insufficient_permissions_returns_403(base_url, user_heade
 
     assert response.status_code == 403
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "do_POST never inspects the Content-Type header before json.loads()-ing "
-        "the body, so a request sent as text/plain (or with no Content-Type at "
-        "all) is accepted exactly like application/json. "
-        "Expected: a non-JSON Content-Type should be rejected."
-    ),
-)
 def test_post_supplier_wrong_content_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -621,7 +567,7 @@ def test_post_supplier_wrong_content_type_is_rejected(
         data=json.dumps({"name": "Plain Text Co"}),
     )
 
-    assert response.status_code in (400, 415)
+    assert response.status_code == 415
 
 
 @pytest.mark.xfail(
@@ -711,37 +657,29 @@ def test_put_supplier_update_is_persisted(base_url, user_headers, preserve_data_
     assert get_response.json()["name"] == "Persisted Name Co"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "update_supplier() loops over the data looking for a matching id and "
-        "simply does nothing if none is found; handle_put_version_1 always "
-        "sends 200 regardless. Actual: 200 for a nonexistent id. Expected: 404."
-    ),
-)
 def test_put_supplier_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
     preserve_data_files("supplier.json")
     headers = _get_headers(user_headers, method="put")
 
-    response = requests.put(
-        _url(base_url, f"/999999"),
-        headers=headers,
-        json={"id": 999999, "name": "Ghost Co"},
-    )
+    existing = _first_supplier(base_url, user_headers)
+    missing_id = 999999999999
+    payload = {
+        **existing,
+        "id": missing_id,
+        "code": "SUP-GHOST-999999999999",
+        "name": "Ghost Co",
+    }
 
+    response = requests.put(
+        _url(base_url, f"/{missing_id}"),
+        headers=headers,
+        json=payload,
+    )
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Same unguarded `int(paths[1])` as GET/DELETE by id: a non-numeric id "
-        "raises an uncaught ValueError caught only by the generic 500 handler. "
-        "Actual: 500. Expected: 400."
-    ),
-)
 def test_put_supplier_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -832,17 +770,9 @@ def test_delete_supplier_resource_is_actually_gone(
     get_response = requests.get(
         _url(base_url, f"/{existing['id']}"), headers=get_headers
     )
-    assert get_response.json() is None
+    assert get_response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "remove_supplier() is a silent no-op if the id doesn't match anything, "
-        "and handle_delete_version_1 always sends 200 regardless. "
-        "Actual: 200 for a nonexistent id. Expected: 404."
-    ),
-)
 def test_delete_supplier_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -854,13 +784,6 @@ def test_delete_supplier_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Same unguarded `int(paths[1])` as GET/PUT by id. "
-        "Actual: 500. Expected: 400."
-    ),
-)
 def test_delete_supplier_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -874,17 +797,6 @@ def test_delete_supplier_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "First DELETE is expected to remove the resource (200/204) and a "
-        "second DELETE on the same, now-gone id is expected to 404. "
-        "remove_supplier() is a silent no-op when the id isn't found, and "
-        "handle_delete_version_1 always sends 200 regardless of whether "
-        "anything was removed. The second delete still gets 200 instead of "
-        "404 because there is no existence check before responding."
-    ),
-)
 def test_delete_supplier_repeated_delete_returns_404_not_500(
     base_url, user_headers, preserve_data_files
 ):

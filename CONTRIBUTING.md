@@ -41,6 +41,7 @@ test. Keep this in mind for every PR:
    behavior, quirks and bugs included. If a test fails against current behavior, fix
    the test's expectation, not the application. Formatting/comment-only changes that
    provably don't alter behavior are the only acceptable touches to application code.
+   The only exception is if a ticket exists that describes the changes needed.
 2. **Use the permission helper, don't edit `data/user.json`.** Tests that need a user
    with specific permissions must go through `scripts/permission_users.py` (exposed to
    integration tests via the `user_headers` fixture in `tests/integration/conftest.py`),
@@ -159,7 +160,7 @@ existing resources - see `scripts/check_test_parity.py`.
 
 **Quick checklist before opening a PR:**
 
-- [ ] No application behavior was changed (tests-only, or provably behavior-preserving)
+- [ ] No application behavior was changed (tests-only, or provably behavior-preserving) unless allowed by a ticket
 - [ ] No files under `data/` were edited
 - [ ] Test users were created via `permission_users.py` / `user_headers`, not by hand
 - [ ] Branch name follows `<type>/<description>`

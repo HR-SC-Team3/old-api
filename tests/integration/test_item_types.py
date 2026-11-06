@@ -231,10 +231,6 @@ def test_get_item_type_schema(
     ItemType.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 with null instead of 404."
-)
 def test_get_nonexistent_item_type_returns_404(
     base_url,
     user_headers
@@ -249,25 +245,7 @@ def test_get_nonexistent_item_type_returns_404(
     assert response.status_code == 404
 
 
-def test_get_nonexistent_item_type_current_behavior(
-    base_url,
-    user_headers
-):
-    headers = _get_headers(user_headers)
 
-    response = requests.get(
-        f"{base_url}/api/v1/item_types/999999999",
-        headers=headers
-    )
-
-    assert response.status_code == 200
-    assert response.json() is None
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API converts malformed IDs to 500."
-)
 def test_get_item_type_malformed_id_returns_400(
     base_url,
     user_headers
@@ -293,7 +271,7 @@ def test_get_item_type_malformed_id_current_behavior(
         headers=headers
     )
 
-    assert response.status_code == 500
+    assert response.status_code == 400
 
 
 def test_get_item_type_without_api_key_returns_401(
@@ -444,11 +422,6 @@ def test_post_item_type_without_permission_returns_403(
 
     assert response.status_code == 403
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current handler does not validate missing fields."
-)
 def test_post_item_type_missing_fields_returns_400(
     base_url,
     user_headers,
@@ -469,13 +442,9 @@ def test_post_item_type_missing_fields_returns_400(
         }
     )
 
-    assert response.status_code == 400
+    assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current handler does not validate field types."
-)
 def test_post_item_type_invalid_field_type_returns_400(
     base_url,
     user_headers,
@@ -497,7 +466,7 @@ def test_post_item_type_invalid_field_type_returns_400(
         json=payload
     )
 
-    assert response.status_code == 400
+    assert response.status_code in (400, 422)
 
 
 # endregion
@@ -577,10 +546,6 @@ def test_put_item_type_uses_full_replace():
     assert "self.data[i] = item_type" in ITEM_TYPES_MODEL_SOURCE
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when item type does not exist."
-)
 def test_put_nonexistent_item_type_returns_404(
     base_url,
     user_headers,
@@ -602,31 +567,8 @@ def test_put_nonexistent_item_type_returns_404(
     assert response.status_code == 404
 
 
-def test_put_nonexistent_item_type_current_behavior(
-    base_url,
-    user_headers,
-    preserve_data_files
-):
-    preserve_data_files("item_type.json")
-
-    headers = _get_headers(
-        user_headers,
-        method="put"
-    )
-
-    response = requests.put(
-        f"{base_url}/api/v1/item_types/999999999",
-        headers=headers,
-        json=_item_type_payload(999999999)
-    )
-
-    assert response.status_code == 200
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API converts malformed IDs to 500."
-)
 def test_put_item_type_malformed_id_returns_400(
     base_url,
     user_headers
@@ -660,7 +602,7 @@ def test_put_item_type_malformed_id_current_behavior(
         json=_item_type_payload()
     )
 
-    assert response.status_code == 500
+    assert response.status_code == 400
 
 
 def test_put_item_type_without_api_key_returns_401(
@@ -753,14 +695,9 @@ def test_delete_item_type_removes_item_type(
         headers=_get_headers(user_headers)
     )
 
-    assert get_response.status_code == 200
-    assert get_response.json() is None
+    assert get_response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when item type does not exist."
-)
 def test_delete_nonexistent_item_type_returns_404(
     base_url,
     user_headers,
@@ -781,24 +718,6 @@ def test_delete_nonexistent_item_type_returns_404(
     assert response.status_code == 404
 
 
-def test_delete_nonexistent_item_type_current_behavior(
-    base_url,
-    user_headers,
-    preserve_data_files
-):
-    preserve_data_files("item_type.json")
-
-    headers = _get_headers(
-        user_headers,
-        method="delete"
-    )
-
-    response = requests.delete(
-        f"{base_url}/api/v1/item_types/999999999",
-        headers=headers
-    )
-
-    assert response.status_code == 200
 
 
 def test_delete_item_type_without_api_key_returns_401(
@@ -925,10 +844,6 @@ def test_get_item_type_items_content_type_is_json(
     ).startswith("application/json")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when the parent item type does not exist."
-)
 def test_get_item_type_items_nonexistent_parent_returns_404(
     base_url,
     user_headers

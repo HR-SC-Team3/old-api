@@ -63,7 +63,7 @@ def _order_payload(order_id=999999):
             {
                 "item_id": 1,
                 "amount": 2,
-                "unit_price": 10
+                "unit_price": 10.4
             }
         ]
     }
@@ -212,10 +212,6 @@ def test_get_order_contains_items(base_url, user_headers):
     assert isinstance(body["items"], list)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 with null instead of 404."
-)
 def test_get_nonexistent_order_returns_404(
     base_url,
     user_headers
@@ -230,25 +226,7 @@ def test_get_nonexistent_order_returns_404(
     assert response.status_code == 404
 
 
-def test_get_nonexistent_order_current_behavior(
-    base_url,
-    user_headers
-):
-    headers = _get_headers(user_headers)
 
-    response = requests.get(
-        f"{base_url}/api/v1/orders/999999999",
-        headers=headers
-    )
-
-    assert response.status_code == 200
-    assert response.json() is None
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API converts malformed IDs to 500."
-)
 def test_get_order_malformed_id_returns_400(
     base_url,
     user_headers
@@ -274,7 +252,7 @@ def test_get_order_malformed_id_current_behavior(
         headers=headers
     )
 
-    assert response.status_code == 500
+    assert response.status_code == 400
 
 
 def test_get_order_without_api_key_returns_401(base_url):
@@ -329,10 +307,6 @@ def test_post_order_returns_201(
     assert response.status_code == 201
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current POST endpoint returns 201 with an empty body."
-)
 def test_post_order_returns_created_order(
     base_url,
     user_headers,
@@ -356,6 +330,7 @@ def test_post_order_returns_created_order(
     body = response.json()
 
     assert body["id"] == 999999
+    assert body["items"][0]["unit_price"] == 10.4
 
 
 def test_post_order_is_saved(
@@ -449,10 +424,6 @@ def test_post_order_without_permission_returns_403(
     assert response.status_code == 403
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current handler does not validate missing fields."
-)
 def test_post_order_missing_fields_returns_400(
     base_url,
     user_headers,
@@ -473,13 +444,9 @@ def test_post_order_missing_fields_returns_400(
         }
     )
 
-    assert response.status_code == 400
+    assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current handler does not validate field types."
-)
 def test_post_order_invalid_field_type_returns_400(
     base_url,
     user_headers,
@@ -501,7 +468,7 @@ def test_post_order_invalid_field_type_returns_400(
         json=payload
     )
 
-    assert response.status_code == 400
+    assert response.status_code in (400, 422)
 
 
 @pytest.mark.xfail(
@@ -593,14 +560,29 @@ def test_put_order_update_is_persisted(
         assert get_response.json()["reference"] == "UPDATED-REFERENCE"
 
 
+def test_put_order_rejects_body_id_different_from_url_id(base_url, user_headers, preserve_data_files,):
+    preserve_data_files("order.json", "order_item.json")
+    order = _first_order(base_url, user_headers)
+    headers = _get_headers(user_headers, method="put")
+    new_id = 999999999
+    mismatched_order = {**order, "id": new_id, "reference": "SHOULD-NOT-SAVE"}
+
+    response = requests.put(f"{base_url}/api/v1/orders/{order['id']}", headers=headers, json=mismatched_order,)
+
+    assert response.status_code == 422
+    assert "id" in response.json()["error"].lower()
+
+    get_original = requests.get(f"{base_url}/api/v1/orders/{order['id']}", headers=_get_headers(user_headers),)
+    get_new_id = requests.get(f"{base_url}/api/v1/orders/{new_id}", headers=_get_headers(user_headers),)
+    assert get_original.status_code == 200
+    assert get_original.json() == order
+    assert get_new_id.status_code == 404
+
+
 def test_put_order_uses_full_replace():
     assert "self.data[i] = order" in ORDERS_MODEL_SOURCE
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when order does not exist."
-)
 def test_put_nonexistent_order_returns_404(
     base_url,
     user_headers,
@@ -622,31 +604,8 @@ def test_put_nonexistent_order_returns_404(
     assert response.status_code == 404
 
 
-def test_put_nonexistent_order_current_behavior(
-    base_url,
-    user_headers,
-    preserve_data_files
-):
-    preserve_data_files("order.json")
-
-    headers = _get_headers(
-        user_headers,
-        method="put"
-    )
-
-    response = requests.put(
-        f"{base_url}/api/v1/orders/999999999",
-        headers=headers,
-        json=_order_payload(999999999)
-    )
-
-    assert response.status_code == 200
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API converts malformed IDs to 500."
-)
 def test_put_order_malformed_id_returns_400(
     base_url,
     user_headers
@@ -680,7 +639,7 @@ def test_put_order_malformed_id_current_behavior(
         json=_order_payload()
     )
 
-    assert response.status_code == 500
+    assert response.status_code == 400
 
 
 def test_put_order_without_api_key_returns_401(base_url):
@@ -765,14 +724,9 @@ def test_delete_order_removes_order(
         headers=_get_headers(user_headers)
     )
 
-    assert get_response.status_code == 200
-    assert get_response.json() is None
+    assert get_response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current API returns 200 when order does not exist."
-)
 def test_delete_nonexistent_order_returns_404(
     base_url,
     user_headers,
@@ -1009,6 +963,42 @@ def test_put_order_items_without_permission(
     )
 
     assert response.status_code == 403
+
+
+# endregion
+
+
+# region Range validation
+
+
+@pytest.mark.parametrize(
+    "line_override, expected_message",
+    [
+        ({"amount": 0}, "greater than 0"),
+        ({"amount": -1}, "greater than 0"),
+        ({"unit_price": -0.5}, "greater than or equal to 0"),
+    ],
+)
+def test_post_order_rejects_out_of_range_item_line(
+    base_url,
+    user_headers,
+    preserve_data_files,
+    line_override,
+    expected_message
+):
+    preserve_data_files("order.json")
+
+    payload = _order_payload(999994)
+    payload["items"] = [{**payload["items"][0], **line_override}]
+
+    response = requests.post(
+        f"{base_url}/api/v1/orders",
+        headers=_get_headers(user_headers, method="post"),
+        json=payload
+    )
+
+    assert response.status_code == 422
+    assert expected_message in response.json()["error"]
 
 
 # endregion

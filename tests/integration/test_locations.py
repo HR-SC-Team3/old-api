@@ -102,7 +102,7 @@ def test_get_locations_error_does_not_leak_internal_data(base_url,):
     _error_text_does_not_leak(response)
 
 
-@pytest.mark.xfail(strict=True, reason="GET /locations with query parameters currently returns 403 even for an allowed GET user")
+@pytest.mark.xfail(strict=True, reason="Query parameters are ignored by GET /locations, so this is not honoured")
 def test_get_locations_support_pagination(base_url,user_headers,):
     response = _get_locations(base_url, user_headers, params={"page": 1, "limit": 2,},)
     assert response.status_code == 200
@@ -110,7 +110,7 @@ def test_get_locations_support_pagination(base_url,user_headers,):
     assert isinstance(body, list)
     assert len(body) <= 2
 
-@pytest.mark.xfail(strict=True, reason="GET /locations with query parameters currently returns 403 even for an allowed GET user")
+@pytest.mark.xfail(strict=True, reason="Query parameters are ignored by GET /locations, so this is not honoured")
 @pytest.mark.parametrize("filter_type",["warehouse_id", "code",],)
 def test_get_locations_support_filtering(base_url, user_headers,filter_type,):
     existing = _first_location(base_url, user_headers,)
@@ -121,26 +121,32 @@ def test_get_locations_support_filtering(base_url, user_headers,filter_type,):
     for location in body:
         assert location[filter_type] == existing[filter_type]
 
-@pytest.mark.xfail(strict=True, reason="GET /locations with query parameters currently returns 403 even for an allowed GET user")
+@pytest.mark.xfail(strict=True, reason="Query parameters are ignored by GET /locations, so this is not honoured")
 def test_get_locations_supports_sorting(base_url, user_headers,):
-    response = _get_locations(base_url, user_headers, params={"sort": "id",},)
+    response = _get_locations(base_url, user_headers, params={"sort": "id", "order": "desc",},)
     assert response.status_code == 200
     body = response.json()
     assert isinstance(body, list)
     ids = [location["id"] for location in body]
-    assert ids == sorted(ids)
+    assert ids == sorted(ids, reverse=True)
 
-@pytest.mark.xfail(strict=True, reason="it returns 403 instead of returnng 200 even when user has permissions for get")
+@pytest.mark.xfail(strict=True, reason="Query parameters are ignored by GET /locations, so filtering is not honoured")
 def test_get_locations_empty_result_returns_200_empty_array(base_url, user_headers):
     response = _get_locations(base_url, user_headers,params={"warehouse_id": 999999999,},)
     assert response.status_code == 200
     assert response.json() == []
 
+@pytest.mark.parametrize("params",[{"page": 1, "limit": 2}, {"sort": "id"}, {"warehouse_id": 1}, {"unknown_parameter": "test"}, {"page": -1}],)
+def test_get_locations_query_params_are_ignored(base_url, user_headers, params,):
+    baseline = _get_locations(base_url, user_headers)
+    response = _get_locations(base_url, user_headers, params=params,)
+    assert response.status_code == 200
+    assert response.json() == baseline.json()
+
 def test_get_locations_invalid_query_param_does_not_return_500(base_url, user_headers,):
     response = _get_locations(base_url, user_headers,params={"page": -1,},)
     assert response.status_code != 500
 
-@pytest.mark.xfail(strict=True, reason=" returns 403 instead of 200, 400 or 422 even when user is allowed get")
 def test_get_locations_unknown_query_param_is_handled(base_url, user_headers,):
     response = _get_locations(base_url, user_headers, params={"unknown_parameter": "test",},)
     assert response.status_code in (200, 400, 422)
@@ -165,12 +171,10 @@ def test_get_location_by_id_matches_schema(base_url, user_headers):
     Location.model_validate(body)
     assert body["id"] == existing["id"]
 
-@pytest.mark.xfail(strict=True, reason="GET location id returns 200 with a non existent location id instead of 404")
 def test_get_location_by_id_nonexistent_returns_404(base_url, user_headers):
     response = _location_by_id(base_url, user_headers, 99999999)
     assert response.status_code == 404
 
-@pytest.mark.xfail(strict=True, reason="It currently returns 500 for malformed ids")
 def test_get_location_by_id_malformed_id_does_not_return_500(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(f"{base_url}/api/v1/locations/not-an-id",headers=headers)
@@ -202,7 +206,6 @@ def test_get_location_by_id_insufficient_permissions_returns_403(base_url, user_
     response = _request_location(base_url, user_headers, method="get", path="/api/v1/locations/1", allowed=False)
     assert response.status_code == 403
 
-@pytest.mark.xfail(strict=True, reason="it should return 404 but it returns 200 for a id tht should error out")
 def test_get_location_by_id_error_does_not_leak_internal_data(base_url, user_headers):
     response = _location_by_id(base_url, user_headers, 999999999)
     assert response.status_code == 404
@@ -212,7 +215,6 @@ def test_get_location_by_id_error_does_not_leak_internal_data(base_url, user_hea
 
 
 #region POST location
-@pytest.mark.xfail(strict=True, reason="POST /locations returns a 201 without a response body or Location header")
 def test_post_location_returns_201(base_url, user_headers, preserve_data_files):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post")
@@ -233,13 +235,12 @@ def test_post_location_insufficient_permission_returns_403(base_url, user_header
     response = _request_location(base_url, user_headers, method="post", path="/api/v1/locations", allowed=False, json=_valid_location_payload(),)
     assert response.status_code == 403
 
-@pytest.mark.xfail(strict=True, reason="Currently returns 500 when getting non-JSON requests bodies")
 def test_post_location_requires_application_json(base_url, user_headers, preserve_data_files):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post")
     headers["Content-Type"] = "text/plain"
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers, data="This is not a json file")
-    assert response.status_code in (400, 415, 422)
+    assert response.status_code == 415
 
 def test_post_location_accepts_application_json(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
@@ -248,7 +249,6 @@ def test_post_location_accepts_application_json(base_url, user_headers, preserve
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=_valid_location_payload(),)
     assert response.status_code != 415
 
-@pytest.mark.xfail(strict=True, reason="It returns 201 which means it accepts missing fields")
 def test_post_location_missing_required_field_is_rejected(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post",)
@@ -257,7 +257,6 @@ def test_post_location_missing_required_field_is_rejected(base_url, user_headers
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=payload,)
     assert response.status_code in (400, 422,)
 
-@pytest.mark.xfail(strict=True, reason="it returns 201 which means it accepts invalid field types instead of returning 400 or 422")
 @pytest.mark.parametrize("field,value",[("id", "not-an-int"), ("warehouse_id", "not-an-int"), ("code", 12345), ("name", 12345),],)
 def test_post_location_rejects_invalid_field_type(base_url, user_headers, preserve_data_files, field, value,):
     preserve_data_files("location.json")
@@ -267,7 +266,6 @@ def test_post_location_rejects_invalid_field_type(base_url, user_headers, preser
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers,json=payload,)
     assert response.status_code in (400, 422,)
 
-@pytest.mark.xfail(strict=True, reason="It returns 201 which means it accepts duplicate id")
 def test_post_location_duplicate_id_is_handled(base_url, user_headers,preserve_data_files):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
@@ -285,7 +283,6 @@ def test_post_location_unexpected_field_is_handled_consistently(base_url,user_he
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers,json=payload,)
     assert response.status_code in (201, 400, 422,)
 
-@pytest.mark.xfail(strict=True, reason="it returns 201 when it should reject so it is accepting invalid foreign keys")
 def test_post_location_invalid_foreign_key_is_rejected(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post",)
@@ -294,7 +291,6 @@ def test_post_location_invalid_foreign_key_is_rejected(base_url, user_headers, p
     response = requests.post(f"{base_url}/api/v1/locations", headers=headers, json=payload,)
     assert response.status_code in (400, 404, 409, 422,)
 
-@pytest.mark.xfail(strict=True, reason="It returns 201 without showing the created location id or location header")
 def test_post_location_is_immediately_retrievable(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post",)
@@ -320,7 +316,6 @@ def test_post_location_is_immediately_retrievable(base_url, user_headers, preser
     assert created["code"] == payload["code"]
     assert created["name"] == payload["name"]
 
-@pytest.mark.xfail(strict=True, reason="it returns 201 without application json Content type")
 def test_post_location_response_content_type_is_json(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     headers = _get_headers(user_headers, method="post",)
@@ -335,19 +330,18 @@ def test_put_location_requires_authentication(base_url):
     response = requests.put(f"{base_url}/api/v1/locations/1", json={})
     assert response.status_code == 401
 
-@pytest.mark.xfail(strict=True, reason="it returns 200 instead of 404 for non existent ids")
 def test_put_location_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="put")
-    response = requests.put(f"{base_url}/api/v1/locations/99999999", headers = headers, json=_valid_location_payload())
+    payload = _valid_location_payload()
+    payload["id"] = 99999999
+    response = requests.put(f"{base_url}/api/v1/locations/99999999", headers=headers, json=payload,)
     assert response.status_code == 404
 
-@pytest.mark.xfail(strict=True, reason="It returns 500 for malformed ids")
 def test_put_locations_malformed_id_does_not_return_500(base_url, user_headers):
     headers = _get_headers(user_headers, method="put")
     response = requests.put(f"{base_url}/api/v1/locations/not-an-id", headers=headers, json = _valid_location_payload())
     assert response.status_code != 500
 
-@pytest.mark.xfail(strict=True, reason="it accepts invalid field values instead of rejecting")
 def test_put_location_rejects_invalid_field_value(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
@@ -364,7 +358,6 @@ def test_put_location_rejects_invalid_field_value(base_url, user_headers, preser
     assert response.status_code in (400, 422,)
 
 
-@pytest.mark.xfail(strict=True, reason="its returning 201 instead of rejecting invalid foreign keys")
 def test_put_location_rejects_invalid_foreign_key(base_url, user_headers,preserve_data_files,):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
@@ -408,7 +401,6 @@ def test_put_location_partial_payload_behavior(base_url, user_headers, preserve_
     response = requests.put(f"{base_url}/api/v1/locations/{existing['id']}", headers=headers, json=payload,)
     assert response.status_code in (200, 400, 422,)
 
-@pytest.mark.xfail(strict=True, reason="it returns 200 without application/json Content-Type",)
 def test_put_location_response_content_type_is_json(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
@@ -463,13 +455,11 @@ def test_delete_location_valid_id_returns_success(base_url, user_headers, preser
     response = requests.delete(f"{base_url}/api/v1/locations/{existing['id']}", headers = headers)
     assert response.status_code in (200, 204)
 
-@pytest.mark.xfail(strict=True, reason="it returns 200 instead of 404 for a non-existent location id")
 def test_delete_location_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers, method="delete")
     response = requests.delete(f"{base_url}/api/v1/locations/999999999", headers = headers)
     assert response.status_code == 404
 
-@pytest.mark.xfail(strict=True, reason="it returns returns 200 instead of 400 at the first part")
 def test_delete_location_removes_resource(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
@@ -479,7 +469,6 @@ def test_delete_location_removes_resource(base_url, user_headers, preserve_data_
     get_response = _location_by_id(base_url, user_headers, existing["id"],)
     assert get_response.status_code == 404
 
-@pytest.mark.xfail(strict=True, reason="it returns 200 even when the same location got deleted a second time")
 def test_delete_location_twice_returns_404(base_url, user_headers, preserve_data_files,):
     preserve_data_files("location.json")
     existing = _first_location(base_url, user_headers,)
@@ -518,13 +507,11 @@ def test_locations_unauthorized_errors_have_consistent_format(base_url,):
     assert put_response.headers.get("Content-Type") is None
     assert delete_response.headers.get("Content-Type") is None
 
-@pytest.mark.xfail(strict=True, reason="it returns 200 for a non-existent location id instead of 404",)
 def test_locations_404_error_does_not_leak_internal_data(base_url, user_headers):
     response = _location_by_id(base_url, user_headers, 999999999,)
     assert response.status_code == 404
     _error_text_does_not_leak(response)
 
-@pytest.mark.xfail(strict=True, reason="it returns 500 for malformed ids",)
 def test_locations_malformed_id_error_does_not_leak_internal_data(base_url, user_headers,):
     headers = _get_headers(user_headers)
     response = requests.get(f"{base_url}/api/v1/locations/not-an-id", headers=headers,)

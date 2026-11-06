@@ -87,10 +87,6 @@ def test_response_time_is_reasonable(base_url, user_headers):
     ), f"GET /item_lines took {elapsed:.2f}s, which is unreasonably slow"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API does not support query parameters for item_lines",
-)
 @pytest.mark.parametrize(
     "params",
     [
@@ -103,19 +99,27 @@ def test_response_time_is_reasonable(base_url, user_headers):
         pytest.param({"totally_unknown_key": "x"}, id="unknown-key"),
     ],
 )
-def test_query_params_are_honoured_or_gracefully_ignored(
-    base_url, user_headers, params
-):
+def test_query_params_are_ignored(base_url, user_headers, params):
     headers = _get_headers(user_headers)
 
-    response = requests.get(
-        _url(base_url),
-        headers=headers,
-        params=params,
-    )
+    baseline = requests.get(_url(base_url), headers=headers)
+    response = requests.get(_url(base_url), headers=headers, params=params)
 
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.json() == baseline.json()
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="API does not support pagination, query parameters are ignored",
+)
+def test_query_param_limit_is_honoured(base_url, user_headers):
+    headers = _get_headers(user_headers)
+
+    response = requests.get(_url(base_url), headers=headers, params={"limit": 1})
+
+    assert response.status_code == 200
+    assert len(response.json()) <= 1
 
 
 @pytest.mark.xfail(
@@ -180,7 +184,7 @@ def test_sort_name_returns_correctly_ordered_results(
     response = requests.get(
         _url(base_url),
         headers=headers,
-        params={"sort": "name"},
+        params={"sort": "name", "order": "desc"},
     )
 
     assert response.status_code == 200
@@ -193,7 +197,7 @@ def test_sort_name_returns_correctly_ordered_results(
         if "name" in item_line
     ]
 
-    assert names == sorted(names)
+    assert names == sorted(names, reverse=True)
 
 
 @pytest.mark.xfail(
@@ -313,10 +317,6 @@ def test_get_item_line_by_id_matches_documented_schema(
     ItemLine.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for a nonexistent item_line instead of 404",
-)
 def test_get_item_line_by_nonexistent_id_returns_404(
     base_url, user_headers
 ):
@@ -329,11 +329,6 @@ def test_get_item_line_by_nonexistent_id_returns_404(
 
     assert response.status_code == 404
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 500 for a malformed item_line ID instead of 400",
-)
 def test_get_item_line_by_malformed_id_returns_400(
     base_url, user_headers
 ):
@@ -410,10 +405,6 @@ def test_get_item_line_malformed_id_error_leaks_no_internal_details(
 # region POST /item_lines
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="POST /item_lines returns 201 with an empty response body",
-)
 def test_post_item_line_returns_created_resource_with_id(
     base_url, user_headers, preserve_data_files
 ):
@@ -448,13 +439,6 @@ def test_post_item_line_returns_created_resource_with_id(
     assert body["name"] == "Test Item Line"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "POST /item_lines returns 201 without a Location header "
-        "or response body"
-    ),
-)
 def test_post_item_line_response_points_to_new_resource(
     base_url, user_headers, preserve_data_files
 ):
@@ -487,10 +471,6 @@ def test_post_item_line_response_points_to_new_resource(
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an empty item_line payload and returns 201",
-)
 def test_post_item_line_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -510,10 +490,6 @@ def test_post_item_line_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an invalid field type and returns 201",
-)
 def test_post_item_line_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -533,14 +509,9 @@ def test_post_item_line_invalid_field_type_is_rejected(
             "description": "Bad Type Description",
         },
     )
-
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts duplicate item_line IDs and returns 201",
-)
 def test_post_item_line_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -624,10 +595,6 @@ def test_post_item_line_insufficient_permissions_returns_403(
     assert response.status_code == 403
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts text/plain content and returns 201",
-)
 def test_post_item_line_wrong_content_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -644,7 +611,7 @@ def test_post_item_line_wrong_content_type_is_rejected(
         data=json.dumps({"name": "Plain Text Item Line"}),
     )
 
-    assert response.status_code in (400, 415)
+    assert response.status_code == 415
 
 
 @pytest.mark.xfail(
@@ -754,10 +721,6 @@ def test_put_item_line_update_is_persisted(
     assert get_response.json()["name"] == "Persisted Item Line"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for a nonexistent item_line instead of 404",
-)
 def test_put_item_line_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -779,11 +742,6 @@ def test_put_item_line_nonexistent_id_returns_404(
 
     assert response.status_code == 404
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 500 for a malformed item_line ID instead of 400",
-)
 def test_put_item_line_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -800,10 +758,6 @@ def test_put_item_line_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an invalid field type and returns 200",
-)
 def test_put_item_line_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -873,10 +827,6 @@ def test_delete_item_line_valid_id_returns_200(
     assert response.status_code in (200, 204)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Returns 200 from GET instead of 404",
-)
 def test_delete_item_line_resource_is_actually_gone(
     base_url, user_headers, preserve_data_files
 ):
@@ -899,9 +849,6 @@ def test_delete_item_line_resource_is_actually_gone(
     assert get_response.status_code == 404
 
 
-@pytest.mark.xfail(
-    reason="Returns 200 when it should return 404.",
-)
 def test_delete_item_line_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -915,9 +862,6 @@ def test_delete_item_line_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    reason="Returns 200 when it should return 400.",
-)
 def test_delete_item_line_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -931,9 +875,6 @@ def test_delete_item_line_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    reason="Returns 200 despite item_line being deleted already.",
-)
 def test_delete_item_line_repeated_delete_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -1025,10 +966,6 @@ def test_get_item_line_items_only_returns_correct_items(
                 assert item["item_line_id"] == existing["id"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for nonexistent item_line instead of 404",
-)
 def test_get_item_line_items_nonexistent_item_line_returns_404(
     base_url, user_headers
 ):
@@ -1038,18 +975,6 @@ def test_get_item_line_items_nonexistent_item_line_returns_404(
     )
 
     assert response.status_code == 404
-
-
-def test_get_item_line_items_empty_result_returns_200(
-    base_url, user_headers
-):
-    response = requests.get(
-        _url(base_url, "/999999/items"),
-        headers=_get_headers(user_headers),
-    )
-
-    if response.status_code == 200:
-        assert response.json() == []
 
 
 def test_get_item_line_items_requires_authentication(base_url):

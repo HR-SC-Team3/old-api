@@ -89,10 +89,6 @@ def test_response_time_is_reasonable(base_url, user_headers):
     ), f"GET /items took {elapsed:.2f}s, which is unreasonably slow"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 403 when query parameters are used",
-)
 @pytest.mark.parametrize(
     "params",
     [
@@ -105,19 +101,27 @@ def test_response_time_is_reasonable(base_url, user_headers):
         pytest.param({"totally_unknown_key": "x"}, id="unknown-key"),
     ],
 )
-def test_query_params_are_honoured_or_gracefully_ignored(
-    base_url, user_headers, params
-):
+def test_query_params_are_ignored(base_url, user_headers, params):
     headers = _get_headers(user_headers)
 
-    response = requests.get(
-        _url(base_url),
-        headers=headers,
-        params=params,
-    )
+    baseline = requests.get(_url(base_url), headers=headers)
+    response = requests.get(_url(base_url), headers=headers, params=params)
 
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.json() == baseline.json()
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so pagination is not honoured.",
+)
+def test_query_param_limit_is_honoured(base_url, user_headers):
+    headers = _get_headers(user_headers)
+
+    response = requests.get(_url(base_url), headers=headers, params={"limit": 1})
+
+    assert response.status_code == 200
+    assert len(response.json()) <= 1
 
 
 @pytest.mark.xfail(
@@ -164,7 +168,7 @@ def test_filter_item_group_returns_matching_items(base_url, user_headers):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="API returns 403 when query parameters are used",
+    reason="Query parameters are ignored, so this is not honoured",
 )
 def test_sort_description_returns_correctly_ordered_results(
     base_url, user_headers
@@ -192,7 +196,7 @@ def test_sort_description_returns_correctly_ordered_results(
 
 @pytest.mark.xfail(
     strict=True,
-    reason="API returns 403 when query parameters are used",
+    reason="Query parameters are ignored, so this is not honoured",
 )
 def test_empty_result_set_returns_200_with_empty_array(
     base_url, user_headers
@@ -307,10 +311,6 @@ def test_get_item_by_id_matches_documented_schema(
     Item.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for a nonexistent item instead of 404",
-)
 def test_get_item_by_nonexistent_id_returns_404(
     base_url, user_headers
 ):
@@ -324,10 +324,6 @@ def test_get_item_by_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 500 for a malformed item ID instead of 400",
-)
 def test_get_item_by_malformed_id_returns_400(
     base_url, user_headers
 ):
@@ -404,10 +400,6 @@ def test_get_item_malformed_id_error_leaks_no_internal_details(
 # region POST /items
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="POST /items returns 201 with an empty response body",
-)
 def test_post_item_returns_created_resource_with_id(
     base_url, user_headers, preserve_data_files
 ):
@@ -442,10 +434,6 @@ def test_post_item_returns_created_resource_with_id(
     assert body["description"] == "Test Item"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="POST /items returns 201 without a Location header or response body",
-)
 def test_post_item_response_points_to_new_resource(
     base_url, user_headers, preserve_data_files
 ):
@@ -479,10 +467,6 @@ def test_post_item_response_points_to_new_resource(
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an empty item payload and returns 201",
-)
 def test_post_item_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -502,10 +486,6 @@ def test_post_item_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an invalid field type and returns 201",
-)
 def test_post_item_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -528,11 +508,6 @@ def test_post_item_invalid_field_type_is_rejected(
 
     assert response.status_code in (400, 422)
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts duplicate item IDs and returns 201",
-)
 def test_post_item_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -589,10 +564,6 @@ def test_post_item_is_immediately_retrievable(
     assert get_response.json()["description"] == "Retrievable Item"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts invalid foreign keys and returns 201",
-)
 @pytest.mark.parametrize(
     "foreign_key",
     [
@@ -655,10 +626,6 @@ def test_post_item_insufficient_permissions_returns_403(
     assert response.status_code == 403
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts text/plain content and returns 201",
-)
 def test_post_item_wrong_content_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -675,7 +642,7 @@ def test_post_item_wrong_content_type_is_rejected(
         data=json.dumps({"description": "Plain Text Item"}),
     )
 
-    assert response.status_code in (400, 415)
+    assert response.status_code == 415
 
 
 @pytest.mark.xfail(
@@ -784,10 +751,6 @@ def test_put_item_update_is_persisted(
     assert get_response.json()["description"] == "Persisted Item"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 500 for a nonexistent item instead of 404",
-)
 def test_put_item_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -810,10 +773,6 @@ def test_put_item_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 500 for a malformed item ID instead of 400",
-)
 def test_put_item_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -830,10 +789,6 @@ def test_put_item_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts an invalid field type and returns 200",
-)
 def test_put_item_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -855,10 +810,6 @@ def test_put_item_invalid_field_type_is_rejected(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API accepts invalid foreign keys and returns 200",
-)
 @pytest.mark.parametrize(
     "foreign_key",
     [
@@ -938,10 +889,7 @@ def test_delete_item_valid_id_returns_200(
 
     assert response.status_code in (200, 204)
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Returnt 200 bij GET i.p.v. 404"
-)
+
 def test_delete_item_resource_is_actually_gone(
     base_url, user_headers, preserve_data_files
 ):
@@ -964,10 +912,6 @@ def test_delete_item_resource_is_actually_gone(
     assert get_response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Return the code 200 when it should reurn 404.",
-)
 def test_delete_item_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -980,11 +924,6 @@ def test_delete_item_nonexistent_id_returns_404(
 
     assert response.status_code == 404
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="Returns the code 200 when it should return 400",
-)
 def test_delete_item_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -998,10 +937,6 @@ def test_delete_item_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Returns 200 despite item being deleted already",
-)
 def test_delete_item_repeated_delete_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -1095,10 +1030,6 @@ def test_get_item_inventory_only_returns_correct_item_inventory(
                 assert inventory["item_id"] == existing["id"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for nonexistent item inventory instead of 404",
-)
 def test_get_item_inventory_nonexistent_item_returns_404(
     base_url, user_headers
 ):
@@ -1108,18 +1039,6 @@ def test_get_item_inventory_nonexistent_item_returns_404(
     )
 
     assert response.status_code == 404
-
-
-def test_get_item_inventory_empty_result_returns_200(
-    base_url, user_headers
-):
-    response = requests.get(
-        _url(base_url, "/999999/inventory"),
-        headers=_get_headers(user_headers),
-    )
-
-    if response.status_code == 200:
-        assert response.json() == []
 
 
 def test_get_item_inventory_requires_authentication(base_url):
@@ -1180,10 +1099,6 @@ def test_get_item_inventory_totals_returns_200(
     assert response.status_code == 200
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API returns 200 for nonexistent item inventory totals instead of 404",
-)
 def test_get_item_inventory_totals_nonexistent_item_returns_404(
     base_url, user_headers
 ):
@@ -1234,6 +1149,38 @@ def test_get_item_inventory_totals_response_content_type_is_json(
     assert response.headers.get(
         "Content-Type", ""
     ).startswith("application/json")
+
+
+# endregion
+
+
+# region Range validation
+
+
+@pytest.mark.parametrize(
+    "override, expected_message",
+    [
+        ({"id": 0}, "greater than 0"),
+        ({"case_size": 0}, "greater than 0"),
+        ({"order_multiple": -1}, "greater than 0"),
+        ({"unit_weight": -0.1}, "greater than or equal to 0"),
+    ],
+)
+def test_post_item_rejects_out_of_range_values(
+    base_url, user_headers, preserve_data_files, override, expected_message
+):
+    preserve_data_files("item.json")
+
+    payload = {**_first_item(base_url, user_headers), "id": 999991, **override}
+
+    response = requests.post(
+        _url(base_url),
+        headers=_get_headers(user_headers, method="post"),
+        json=payload,
+    )
+
+    assert response.status_code == 422
+    assert expected_message in response.json()["error"]
 
 
 # endregion

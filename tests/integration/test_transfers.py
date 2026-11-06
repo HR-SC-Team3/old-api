@@ -118,16 +118,6 @@ def test_response_time_is_reasonable(base_url, user_headers):
     ), f"GET /transfers took {elapsed:.2f}s, which is unreasonably slow"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "do_GET splits the raw request path on '/' without ever stripping "
-        "the query string. Any request with a '?...' on it turns paths[0] "
-        "into e.g. 'transfers?page=1' instead of 'transfers', which is not "
-        "a key in endpoint_access, so a fully-authorized user is rejected "
-        "with 403 instead of the query string being honoured or ignored."
-    ),
-)
 @pytest.mark.parametrize(
     "params",
     [
@@ -139,27 +129,49 @@ def test_response_time_is_reasonable(base_url, user_headers):
         pytest.param({"totally_unknown_key": "x"}, id="unknown-key"),
     ],
 )
-def test_query_params_are_honoured_or_gracefully_ignored(
-    base_url, user_headers, params
-):
+def test_query_params_are_ignored(base_url, user_headers, params):
     headers = _get_headers(user_headers)
-    response = requests.get(
-        _url(base_url), headers=headers, params=params
-    )
+    baseline = requests.get(_url(base_url), headers=headers)
+    response = requests.get(_url(base_url), headers=headers, params=params)
 
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.json() == baseline.json()
 
 
-def test_query_params_currently_return_403(base_url, user_headers):
-    """Pins the *actual* behavior described above."""
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so pagination is not honoured.",
+)
+def test_query_param_limit_is_honoured(base_url, user_headers):
     headers = _get_headers(user_headers)
-    response = requests.get(
-        _url(base_url), headers=headers, params={"page": 1}
-    )
+    response = requests.get(_url(base_url), headers=headers, params={"limit": 1})
 
-    assert response.status_code == 403
-    assert response.text == ""
+    assert response.status_code == 200
+    assert len(response.json()) <= 1
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so filtering is not honoured.",
+)
+def test_query_param_filter_is_honoured(base_url, user_headers):
+    headers = _get_headers(user_headers)
+    response = requests.get(_url(base_url), headers=headers, params={"transfer_status": "Processed"})
+
+    assert response.status_code == 200
+    assert all(row["transfer_status"] == "Processed" for row in response.json())
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so sorting is not honoured.",
+)
+def test_query_param_sort_is_honoured(base_url, user_headers):
+    headers = _get_headers(user_headers)
+    response = requests.get(_url(base_url), headers=headers, params={"sort": "reference", "order": "desc"})
+
+    values = [row["reference"] for row in response.json()]
+    assert values == sorted(values, reverse=True)
 
 
 @pytest.mark.skip(
@@ -261,14 +273,6 @@ def test_get_transfer_by_id_matches_documented_schema(base_url, user_headers):
     Transfer.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "get_transfer() returns None for an unknown id, and main.py writes "
-        "json.dumps(None) straight back with a 200, instead of a 404. "
-        "Actual: 200 with body `null`. Expected: 404."
-    ),
-)
 def test_get_transfer_by_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(_url(base_url, f"/999999"), headers=headers)
@@ -276,15 +280,6 @@ def test_get_transfer_by_nonexistent_id_returns_404(base_url, user_headers):
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "transfer_id = int(paths[1]) is not guarded, so a non-numeric id "
-        "raises an uncaught ValueError that bubbles up to the generic "
-        "except Exception: send_response(500) in do_GET. "
-        "Actual: 500 Internal Server Error. Expected: 400 Bad Request."
-    ),
-)
 def test_get_transfer_by_malformed_id_returns_400(base_url, user_headers):
     headers = _get_headers(user_headers)
     response = requests.get(_url(base_url, f"/not-an-id"), headers=headers)
@@ -355,11 +350,13 @@ def test_get_transfer_by_malformed_id_error_leaks_no_internal_details(
 def test_post_transfer_valid_payload_returns_201(base_url, user_headers, preserve_data_files):
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
     payload = {
         "id": 555555,
         "reference": "TRF-TEST-1",
         "from_location_id": 369,
         "to_location_id": 320,
+        "transfer_status": existing["transfer_status"],
         "items": [{"item_id": 190, "amount": 5}],
     }
 
@@ -370,24 +367,18 @@ def test_post_transfer_valid_payload_returns_201(base_url, user_headers, preserv
     assert response.status_code == 201
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "POST /transfers returns 201 with an empty body: no created "
-        "resource, no generated id, nothing. Redesign suggestion: return "
-        "the created resource (with its id) in the body."
-    ),
-)
 def test_post_transfer_returns_created_resource(
     base_url, user_headers, preserve_data_files
 ):
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
     payload = {
         "id": 555556,
         "reference": "TRF-TEST-2",
         "from_location_id": 369,
         "to_location_id": 320,
+        "transfer_status": existing["transfer_status"],
         "items": [{"item_id": 190, "amount": 5}],
     }
 
@@ -402,19 +393,12 @@ def test_post_transfer_returns_created_resource(
         assert body[key] == value
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No Location header and no body are returned on 201, so there is "
-        "no way for a client to discover the URL of the resource it just "
-        "created."
-    ),
-)
 def test_post_transfer_response_points_to_new_resource(
     base_url, user_headers, preserve_data_files
 ):
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
 
     response = requests.post(
         _url(base_url),
@@ -424,6 +408,8 @@ def test_post_transfer_response_points_to_new_resource(
             "reference": "TRF-LOCATE",
             "from_location_id": 369,
             "to_location_id": 320,
+            "transfer_status": existing["transfer_status"],
+            "items": [{"item_id": 190, "amount": 5}],
         },
     )
 
@@ -431,20 +417,6 @@ def test_post_transfer_response_points_to_new_resource(
     assert "Location" in response.headers
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "No request validation exists at all: an empty payload missing "
-        "every documented required-looking field (including `id`) is not "
-        "rejected up front. add_transfer() happily stores it (and "
-        "Transfers.save() persists it to disk) *before* the handler tries "
-        "to log f\"...{new_transfer['id']}\" for the notification, which "
-        "raises an uncaught KeyError since there never was an `id`. Actual: "
-        "500, but only *after* the malformed row was already saved -- see "
-        "test_post_transfer_missing_id_corrupts_the_whole_collection below "
-        "for the fallout. Expected: 400/422 up front, with nothing persisted."
-    ),
-)
 def test_post_transfer_missing_required_fields_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -456,49 +428,39 @@ def test_post_transfer_missing_required_fields_returns_400(
     assert response.status_code in (400, 422)
 
 
-def test_post_transfer_missing_id_corrupts_the_whole_collection(
+def test_post_transfer_missing_id_gets_generated_id_and_collection_stays_readable(
     base_url, user_headers, preserve_data_files
 ):
     """
-    Documents the actual, observed blast radius of the validation gap above.
-    An empty POST body reports 500 (see test_post_transfer_missing_required_
-    fields_returns_400), which looks like the request simply failed -- but
-    add_transfer() already appended the id-less row and Transfers.save()
-    already wrote it to disk *before* the KeyError is raised. Because
-    get_transfers() indexes x["id"] while iterating the *whole* collection,
-    that one leftover row breaks every subsequent GET /transfers request
-    with a 500, even though the client that caused it already moved on
-    believing its request failed cleanly. (get_transfer(id) is spared for
-    any id that appears earlier in the list than the leftover row, since it
-    returns as soon as it finds a match -- the leftover row is always
-    appended last -- so this is demonstrated against the collection
-    endpoint rather than GET /transfers/{id}.)
+    An empty POST body is accepted (201) and the API generates an `id`, so
+    the stored row is never id-less and GET /transfers keeps working.
     """
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
 
     post_response = requests.post(
-        _url(base_url), headers=headers, json={}
+        _url(base_url),
+        headers=headers,
+        json={
+            "reference": "TRF-GENERATED-ID",
+            "from_location_id": 369,
+            "to_location_id": 320,
+            "transfer_status": existing["transfer_status"],
+            "items": [{"item_id": 190, "amount": 5}],
+        },
     )
-    assert post_response.status_code == 500
+    assert post_response.status_code == 201
+    assert "id" in post_response.json()
 
     get_headers = _get_headers(user_headers)
 
     collection_response = requests.get(
         _url(base_url), headers=get_headers
     )
-    assert collection_response.status_code == 500
+    assert collection_response.status_code == 200
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Field values are stored as-is with no type checking: an `id` of "
-        "type string is accepted with 201 instead of being rejected. "
-        "Expected: 400/422 for a type mismatch against the documented "
-        "integer id."
-    ),
-)
 def test_post_transfer_invalid_field_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -514,14 +476,6 @@ def test_post_transfer_invalid_field_type_is_rejected(
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "There is no id uniqueness check anywhere in Transfers.add_transfer: "
-        "POSTing a second transfer with an id that already exists is "
-        "accepted with 201 instead of a 409/400 conflict."
-    ),
-)
 def test_post_transfer_duplicate_id_returns_conflict(
     base_url, user_headers, preserve_data_files
 ):
@@ -535,7 +489,7 @@ def test_post_transfer_duplicate_id_returns_conflict(
         json={**existing, "reference": "Duplicate of " + existing["reference"]},
     )
 
-    assert response.status_code == 409
+    assert response.status_code == 422
 
 
 def test_post_transfer_is_immediately_retrievable(
@@ -543,12 +497,14 @@ def test_post_transfer_is_immediately_retrievable(
 ):
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="post")
+    existing = _first_transfer(base_url, user_headers)
     payload = {
         "id": 555558,
-        "reference": "TRF-RETRIEVABLE",
+        "reference": "TRF-TEST-1",
         "from_location_id": 369,
         "to_location_id": 320,
-        "items": [{"item_id": 190, "amount": 3}],
+        "transfer_status": existing["transfer_status"],
+        "items": [{"item_id": 190, "amount": 5}],
     }
 
     create_response = requests.post(
@@ -563,18 +519,10 @@ def test_post_transfer_is_immediately_retrievable(
 
     assert get_response.status_code == 200
     assert get_response.json() is not None
-    assert get_response.json()["reference"] == "TRF-RETRIEVABLE"
-    assert get_response.json()["items"] == [{"item_id": 190, "amount": 3}]
+    assert get_response.json()["reference"] == payload["reference"]
+    assert get_response.json()["items"] == payload["items"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "add_transfer() never checks that from_location_id/to_location_id "
-        "reference an existing location. A payload pointing at nonexistent "
-        "location ids is accepted with 201 instead of being rejected."
-    ),
-)
 def test_post_transfer_invalid_foreign_key_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -613,16 +561,6 @@ def test_post_transfer_insufficient_permissions_returns_403(base_url, user_heade
 
     assert response.status_code == 403
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "do_POST never inspects the Content-Type header before "
-        "json.loads()-ing the body, so a request sent as text/plain is "
-        "accepted exactly like application/json. Expected: a non-JSON "
-        "Content-Type should be rejected."
-    ),
-)
 def test_post_transfer_wrong_content_type_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -638,7 +576,7 @@ def test_post_transfer_wrong_content_type_is_rejected(
         data=json.dumps({"reference": "Plain Text Transfer"}),
     )
 
-    assert response.status_code in (400, 415)
+    assert response.status_code == 415
 
 
 @pytest.mark.xfail(
@@ -729,38 +667,24 @@ def test_put_transfer_update_is_persisted(base_url, user_headers, preserve_data_
     assert get_response.json()["items"] == [{"item_id": 190, "amount": 42}]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "update_transfer() loops over the data looking for a matching id "
-        "and simply does nothing if none is found; handle_put_version_1 "
-        "always sends 200 regardless. Actual: 200 for a nonexistent id. "
-        "Expected: 404."
-    ),
-)
 def test_put_transfer_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
     preserve_data_files("transfer.json", "transfer_item.json")
     headers = _get_headers(user_headers, method="put")
 
-    response = requests.put(
-        _url(base_url, f"/999999"),
-        headers=headers,
-        json={"id": 999999, "reference": "Ghost Transfer"},
-    )
+    existing = _first_transfer(base_url, user_headers)
+    missing_id = 999999
+    payload = {**existing, "id": missing_id, "reference": "Ghost Transfer"}
 
+    response = requests.put(
+        _url(base_url, f"/{missing_id}"),
+        headers=headers,
+        json=payload,
+    )
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Same unguarded int(paths[1]) as GET/DELETE by id: a non-numeric "
-        "id raises an uncaught ValueError caught only by the generic 500 "
-        "handler. Actual: 500. Expected: 400."
-    ),
-)
 def test_put_transfer_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -770,7 +694,6 @@ def test_put_transfer_malformed_id_returns_400(
     response = requests.put(
         _url(base_url, f"/not-an-id"),
         headers=headers,
-        json={"reference": "x"},
     )
 
     assert response.status_code == 400
@@ -787,15 +710,6 @@ def test_put_transfer_replaces_the_whole_record_per_source():
     assert "self.data[i] = transfer" in TRANSFERS_MODEL_SOURCE
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "update_transfer() never checks that from_location_id/to_location_id "
-        "reference an existing location. Updating a transfer to point at "
-        "nonexistent location ids is accepted with 200 instead of being "
-        "rejected."
-    ),
-)
 def test_put_transfer_invalid_foreign_key_is_rejected(
     base_url, user_headers, preserve_data_files
 ):
@@ -860,9 +774,7 @@ def test_delete_transfer_resource_is_actually_gone(
 ):
     """
     remove_transfer() does delete the row from the in-memory/on-disk
-    collection, but get_transfer() still returns 200 with a `null` body
-    instead of 404 for the now-missing id (same gap as GET-by-nonexistent-id
-    above), so "gone" is only observable as `null`, not as a 404.
+    collection, and GET-by-id returns 404 for the now-missing id.
     """
     preserve_data_files("transfer.json", "transfer_item.json")
     existing = _first_transfer(base_url, user_headers)
@@ -877,10 +789,10 @@ def test_delete_transfer_resource_is_actually_gone(
     get_response = requests.get(
         _url(base_url, f"/{existing['id']}"), headers=get_headers
     )
-    assert get_response.json() is None
+    assert get_response.status_code == 404
 
 
-def test_delete_transfer_also_removes_its_items(
+def test_delete_transfer_items_endpoint_returns_404_for_deleted_transfer(
     base_url, user_headers, preserve_data_files
 ):
     preserve_data_files("transfer.json", "transfer_item.json")
@@ -897,18 +809,9 @@ def test_delete_transfer_also_removes_its_items(
     items_response = requests.get(
         _url(base_url, f"/{existing['id']}/items"), headers=get_headers
     )
-    assert items_response.status_code == 200
-    assert items_response.json() == []
+    assert items_response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "remove_transfer() is a silent no-op if the id doesn't match "
-        "anything, and handle_delete_version_1 always sends 200 regardless. "
-        "Actual: 200 for a nonexistent id. Expected: 404."
-    ),
-)
 def test_delete_transfer_nonexistent_id_returns_404(
     base_url, user_headers, preserve_data_files
 ):
@@ -920,13 +823,6 @@ def test_delete_transfer_nonexistent_id_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Same unguarded int(paths[1]) as GET/PUT by id. Actual: 500. "
-        "Expected: 400."
-    ),
-)
 def test_delete_transfer_malformed_id_returns_400(
     base_url, user_headers, preserve_data_files
 ):
@@ -940,17 +836,6 @@ def test_delete_transfer_malformed_id_returns_400(
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "First DELETE is expected to remove the resource (200/204) and a "
-        "second DELETE on the same, now-gone id is expected to 404. "
-        "remove_transfer() is a silent no-op when the id isn't found, and "
-        "handle_delete_version_1 always sends 200 regardless of whether "
-        "anything was removed. The second delete still gets 200 instead of "
-        "404 because there is no existence check before responding."
-    ),
-)
 def test_delete_transfer_repeated_delete_returns_404_not_200(
     base_url, user_headers, preserve_data_files
 ):
@@ -1029,15 +914,6 @@ def test_get_transfer_items_only_contains_expected_fields(base_url, user_headers
         assert set(raw.keys()) == {"item_id", "amount"}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "get_items_in_transfer() filters TransferItems by transfer_id with "
-        "no existence check on the parent transfer at all. A nonexistent "
-        "parent id returns 200 with an empty array (indistinguishable from "
-        "a real transfer that simply has no items) instead of 404."
-    ),
-)
 def test_get_transfer_items_nonexistent_parent_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
 
@@ -1213,13 +1089,6 @@ def test_put_transfer_commit_nonexistent_transfer_returns_404(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Same unguarded int(paths[1]) as the other by-id routes. Actual: "
-        "500. Expected: 400."
-    ),
-)
 def test_put_transfer_commit_malformed_id_returns_400(base_url, user_headers):
     headers = _get_headers(user_headers, method="put")
 

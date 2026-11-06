@@ -104,51 +104,59 @@ def test_response_time_is_reasonable(base_url, user_headers):
     ), f"GET /warehouses took {elapsed:.2f}s, which is unreasonably slow"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "ApiRequestHandler does not strip the query string before checking "
-        "endpoint permissions. A query string therefore changes paths[0] "
-        "from 'warehouses' to e.g. 'warehouses?page=1' and results in 403."
-    ),
-)
 @pytest.mark.parametrize(
     "params",
     [
         pytest.param({"page": 1}, id="pagination-page"),
         pytest.param({"limit": 5}, id="pagination-limit"),
         pytest.param({"sort": "name"}, id="sort-name"),
-        pytest.param(
-            {"totally_unknown_key": "x"},
-            id="unknown-key",
-        ),
+        pytest.param({"page": -1}, id="invalid-negative-page"),
+        pytest.param({"totally_unknown_key": "x"}, id="unknown-key"),
     ],
 )
-def test_query_params_are_honoured_or_gracefully_ignored(base_url, user_headers, params):
+def test_query_params_are_ignored(base_url, user_headers, params):
+    headers = _get_headers(user_headers)
+    url = f"{base_url}/api/v1/warehouses"
+
+    baseline = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, params=params)
+
+    assert response.status_code == 200
+    assert response.json() == baseline.json()
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so pagination is not honoured.",
+)
+def test_query_param_limit_is_honoured(base_url, user_headers):
     headers = _get_headers(user_headers)
 
     response = requests.get(
         f"{base_url}/api/v1/warehouses",
         headers=headers,
-        params=params
+        params={"limit": 1},
     )
 
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert len(response.json()) <= 1
 
 
-def test_query_params_currently_return_403(base_url, user_headers):
+@pytest.mark.xfail(
+    strict=True,
+    reason="Query parameters are ignored, so sorting is not honoured.",
+)
+def test_query_param_sort_is_honoured(base_url, user_headers):
     headers = _get_headers(user_headers)
 
     response = requests.get(
         f"{base_url}/api/v1/warehouses",
         headers=headers,
-        params={"page": 1}
+        params={"sort": "name"},
     )
 
-    assert response.status_code == 403
-    assert response.text == ""
-
+    names = [w["name"] for w in response.json()]
+    assert names == sorted(names)
 
 
 def test_missing_api_key_is_rejected_with_401(base_url):
@@ -204,13 +212,6 @@ def test_get_warehouse_by_id_matches_documented_schema(base_url, user_headers):
     Warehouse.model_validate(response.json())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "get_warehouse() returns None for an unknown id and the API sends "
-        "that value with status 200 instead of returning 404."
-    ),
-)
 def test_get_warehouse_by_nonexistent_id_returns_404(base_url, user_headers):
     headers = _get_headers(user_headers)
 
@@ -221,13 +222,6 @@ def test_get_warehouse_by_nonexistent_id_returns_404(base_url, user_headers):
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "warehouse_id = int(paths[1]) is not protected against invalid "
-        "input, so a non-numeric id results in a 500 instead of 400."
-    ),
-)
 def test_get_warehouse_by_malformed_id_returns_400(base_url, user_headers):
     headers = _get_headers(user_headers)
 
@@ -397,13 +391,6 @@ def test_post_warehouse_valid_payload_returns_201(base_url, user_headers, preser
     assert response.status_code == 201
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "POST /warehouses returns 201 with an empty body. "
-        "The API does not return the created warehouse."
-    ),
-)
 def test_post_warehouse_returns_created_resource(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -438,14 +425,6 @@ def test_post_warehouse_returns_created_resource(base_url, user_headers, preserv
     for key, value in payload.items():
         assert body[key] == value
 
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "The warehouse model does not validate required fields. "
-        "An empty payload is accepted and stored instead of returning 400/422."
-    ),
-)
 def test_post_warehouse_missing_required_fields_returns_400(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -460,13 +439,6 @@ def test_post_warehouse_missing_required_fields_returns_400(base_url, user_heade
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "The API stores JSON values without validating their types. "
-        "An invalid id type is accepted instead of returning 400/422."
-    ),
-)
 def test_post_warehouse_invalid_field_type_is_rejected(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -485,13 +457,6 @@ def test_post_warehouse_invalid_field_type_is_rejected(base_url, user_headers, p
     assert response.status_code in (400, 422)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Warehouses.add_warehouse() does not check for duplicate ids or "
-        "codes, so a duplicate warehouse is accepted instead of 409/400."
-    ),
-)
 def test_post_warehouse_duplicate_id_returns_conflict(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -511,7 +476,21 @@ def test_post_warehouse_duplicate_id_returns_conflict(base_url, user_headers, pr
         }
     )
 
-    assert response.status_code == 409
+    assert response.status_code == 422
+
+
+def test_post_warehouse_string_id_is_rejected(base_url, user_headers, preserve_data_files):
+    preserve_data_files("warehouse.json")
+    existing = _first_warehouse(base_url, user_headers)
+    headers = _get_headers(user_headers, method="post")
+
+    response = requests.post(
+        f"{base_url}/api/v1/warehouses",
+        headers=headers,
+        json={**existing, "id": str(existing["id"])},
+    )
+
+    assert response.status_code == 422
 
 
 def test_post_warehouse_is_immediately_retrievable(base_url, user_headers, preserve_data_files):
@@ -533,8 +512,6 @@ def test_post_warehouse_is_immediately_retrievable(base_url, user_headers, prese
         "contact_name": "Test Contact",
         "contact_phone": "0612345678",
         "contact_email": "test@example.com",
-        "created_at": "",
-        "updated_at": "",
     }
 
     create_response = requests.post(
@@ -575,13 +552,6 @@ def test_post_warehouse_insufficient_permissions_returns_403(base_url, user_head
     assert response.status_code == 403
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "do_POST does not inspect Content-Type before parsing the body. "
-        "text/plain is accepted like application/json."
-    ),
-)
 def test_post_warehouse_wrong_content_type_is_rejected(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -600,7 +570,7 @@ def test_post_warehouse_wrong_content_type_is_rejected(base_url, user_headers, p
         )
     )
 
-    assert response.status_code in (400, 415)
+    assert response.status_code == 415
 
 
 @pytest.mark.xfail(
@@ -718,13 +688,20 @@ def test_put_warehouse_update_is_persisted(base_url, user_headers, preserve_data
     assert get_response.json()["name"] == "Persisted Warehouse Name"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "update_warehouse() does nothing when the id does not exist, "
-        "while the API still responds with 200. Expected behavior: 404."
-    ),
-)
+def test_put_warehouse_duplicate_id_is_rejected(base_url, user_headers, preserve_data_files):
+    preserve_data_files("warehouse.json")
+    headers = _get_headers(user_headers, method="put")
+    warehouses = requests.get(f"{base_url}/api/v1/warehouses", headers=_get_headers(user_headers),)
+    assert warehouses.status_code == 200
+    records = warehouses.json()
+    assert len(records) >= 2, "fixture data/warehouse.json needs at least two records"
+    target, other = records[:2]
+    response = requests.put(f"{base_url}/api/v1/warehouses/{target['id']}", headers=headers, json={**target, "id": other["id"]},)
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "Request body id must match URL id"
+
+
 def test_put_warehouse_nonexistent_id_returns_404(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -732,24 +709,24 @@ def test_put_warehouse_nonexistent_id_returns_404(base_url, user_headers, preser
         user_headers, method="put"
     )
 
+    existing = _first_warehouse(base_url, user_headers)
+    missing_id = 999999
+    payload = {
+        **existing,
+        "id": missing_id,
+        "code": "WH-GHOST-999999",
+        "name": "Ghost Warehouse",
+    }
+
     response = requests.put(
-        f"{base_url}/api/v1/warehouses/999999", headers=headers,
-        json={
-            "id": 999999,
-            "name": "Ghost Warehouse",
-        },
+        f"{base_url}/api/v1/warehouses/{missing_id}",
+        headers=headers,
+        json=payload,
     )
 
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "int(paths[1]) is not guarded, so a malformed warehouse id "
-        "causes 500 instead of the expected 400."
-    ),
-)
 def test_put_warehouse_malformed_id_returns_400(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -811,10 +788,6 @@ def test_delete_warehouse_valid_id_returns_200(base_url, user_headers, preserve_
     assert response.status_code in (200, 204)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="API does not persist warehouse changes because save() uses a newly loaded Warehouses instance"
-)
 def test_delete_warehouse_resource_is_actually_gone(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -841,13 +814,6 @@ def test_delete_warehouse_resource_is_actually_gone(base_url, user_headers, pres
     assert get_response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "remove_warehouse() silently does nothing for a nonexistent id "
-        "and the API still returns 200. Expected behavior: 404."
-    ),
-)
 def test_delete_warehouse_nonexistent_id_returns_404(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -862,13 +828,6 @@ def test_delete_warehouse_nonexistent_id_returns_404(base_url, user_headers, pre
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "int(paths[1]) is not guarded, so a malformed warehouse id "
-        "causes 500 instead of the expected 400."
-    ),
-)
 def test_delete_warehouse_malformed_id_returns_400(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -883,14 +842,6 @@ def test_delete_warehouse_malformed_id_returns_400(base_url, user_headers, prese
     assert response.status_code == 400
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "The second DELETE is expected to return 404, but "
-        "remove_warehouse() silently does nothing and the handler "
-        "always responds with 200."
-    ),
-)
 def test_delete_warehouse_repeated_delete_returns_404_not_200(base_url, user_headers, preserve_data_files):
     preserve_data_files("warehouse.json")
 
@@ -930,6 +881,28 @@ def test_delete_warehouse_insufficient_permissions_returns_403(base_url, user_he
     )
 
     assert response.status_code == 403
+
+
+# endregion
+
+
+# region Range validation
+
+
+@pytest.mark.parametrize("bad_id", [0, -1])
+def test_post_warehouse_rejects_non_positive_id(base_url, user_headers, preserve_data_files, bad_id):
+    preserve_data_files("warehouse.json")
+
+    payload = {**_first_warehouse(base_url, user_headers), "id": bad_id, "code": "RANGE-WH"}
+
+    response = requests.post(
+        f"{base_url}/api/v1/warehouses",
+        headers=_get_headers(user_headers, method="post"),
+        json=payload,
+    )
+
+    assert response.status_code == 422
+    assert "greater than 0" in response.json()["error"]
 
 
 # endregion
